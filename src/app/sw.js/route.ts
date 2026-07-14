@@ -1,7 +1,18 @@
-/* Melza — PWA service worker
- * network-first para app shell; auto-update via skipWaiting + clients.claim
+import { getAppVersion } from "@/lib/app-version";
+
+export const dynamic = "force-static";
+
+/**
+ * Service worker gerado no build com a versão do deploy embutida.
+ * Assim o browser detecta mudança a cada release (byte-diff do /sw.js).
  */
-const CACHE = "melza-v1";
+export function GET() {
+  const version = getAppVersion();
+  const cache = `melza-${version}`;
+
+  const body = `/* Melza SW ${version} — network-first + auto-update */
+const CACHE = ${JSON.stringify(cache)};
+const VERSION = ${JSON.stringify(version)};
 const PRECACHE = [
   "/manifest.webmanifest",
   "/favicon.ico",
@@ -32,10 +43,12 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-/** Cliente pede update imediato */
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (event.data === "GET_VERSION") {
+    event.ports?.[0]?.postMessage({ version: VERSION });
   }
 });
 
@@ -46,7 +59,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Nunca interceptar API / auth / SW
   if (
     url.pathname.startsWith("/api") ||
     url.pathname.startsWith("/auth") ||
@@ -61,7 +73,6 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith(".webmanifest") ||
     url.pathname.startsWith("/favicon");
 
-  // Stale-while-revalidate: atualiza em background (ícones/manifest/_next)
   if (isStaticAsset) {
     event.respondWith(
       caches.open(CACHE).then(async (cache) => {
@@ -78,13 +89,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first para HTML / rotas do app (sempre pega versão nova online)
   event.respondWith(
     fetch(request)
       .then((response) => {
         if (response.ok && request.mode === "navigate") {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          caches.open(CACHE).then((c) => c.put(request, copy));
         }
         return response;
       })
@@ -95,3 +105,13 @@ self.addEventListener("fetch", (event) => {
       )
   );
 });
+`;
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Service-Worker-Allowed": "/",
+    },
+  });
+}

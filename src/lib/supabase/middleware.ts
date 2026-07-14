@@ -36,6 +36,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/icons") ||
     pathname.startsWith("/sw.js") ||
     pathname.startsWith("/manifest") ||
+    pathname.startsWith("/api/version") ||
     /\.[a-zA-Z0-9]+$/.test(pathname);
 
   if (isPublicAsset) {
