@@ -1,0 +1,2734 @@
+import { useState, useRef, useEffect } from "react";
+import {
+  Home, CreditCard, ArrowUpDown, Bell, Search, ChevronRight, ChevronLeft,
+  Plus, X, Settings, User, Eye, EyeOff, TrendingUp, TrendingDown,
+  Send, Check, Users, Wallet, Building2, Receipt, Repeat, Shield,
+  MoreHorizontal, ArrowUpRight, ArrowDownLeft, Calendar, Filter,
+  RefreshCw, ShoppingBag, Coffee, Car, Utensils, Smartphone, Globe,
+  Music, Heart, Landmark, Lock, ChevronDown, MessageCircle, Bot,
+  Sparkles, Mic, LogOut, Mail, Star, Plane, Briefcase, Edit3,
+  CheckCircle, Loader, BarChart2, ArrowRight, Hash, QrCode, Share2,
+  Copy, Zap, PieChart, DollarSign, AlertCircle, Clock, SlidersHorizontal,
+  ChevronUp, Minus,
+} from "lucide-react";
+
+// ─────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────
+
+type ScreenId =
+  | "login" | "signup" | "forgot-password" | "email-confirm"
+  | "onboarding"
+  | "workspace-switcher" | "workspace-create" | "workspace-edit" | "workspace-members"
+  | "dashboard" | "dashboard-shared"
+  | "cards" | "card-detail" | "card-new"
+  | "accounts" | "account-new"
+  | "transactions" | "transaction-detail" | "transaction-new"
+  | "subscriptions"
+  | "loans"
+  | "entre-nos"
+  | "chat"
+  | "profile" | "settings";
+
+interface Member {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+}
+
+interface WorkspaceData {
+  id: string;
+  emoji: string;
+  name: string;
+  type: string;
+  color: string;
+  members: Member[];
+  balance: number;
+  income: number;
+  expenses: number;
+}
+
+interface Transaction {
+  id: string;
+  title: string;
+  category: string;
+  emoji: string;
+  amount: number;
+  type: "income" | "expense";
+  date: string;
+  dateGroup: string;
+  consumer: Member;
+  payer: Member;
+  cardOwner: Member;
+  installments?: { current: number; total: number };
+  status: "completed" | "pending";
+}
+
+// ─────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────
+
+const MATHEUS: Member = { id: "matheus", name: "Matheus", initials: "MS", color: "#6366F1" };
+const ANA: Member = { id: "ana", name: "Ana", initials: "AC", color: "#EC4899" };
+const PEDRO: Member = { id: "pedro", name: "Pedro", initials: "PR", color: "#14B8A6" };
+const JULIA: Member = { id: "julia", name: "Júlia", initials: "JL", color: "#F59E0B" };
+
+const WORKSPACES: WorkspaceData[] = [
+  { id: "personal", emoji: "👤", name: "Meu Financeiro", type: "Pessoal", color: "#6366F1", members: [MATHEUS], balance: 12847.32, income: 9250.00, expenses: 4823.45 },
+  { id: "couple", emoji: "❤️", name: "Matheus & Ana", type: "Casal", color: "#EC4899", members: [MATHEUS, ANA], balance: 7420.80, income: 18500.00, expenses: 9234.20 },
+  { id: "apartment", emoji: "🏠", name: "Apartamento 42", type: "Compartilhado", color: "#14B8A6", members: [MATHEUS, ANA, PEDRO, JULIA], balance: 2300.00, income: 4800.00, expenses: 3210.00 },
+  { id: "freelance", emoji: "💼", name: "Projeto Freelance", type: "Compartilhado", color: "#F59E0B", members: [MATHEUS, PEDRO], balance: 4500.00, income: 8000.00, expenses: 1200.00 },
+];
+
+const TRANSACTIONS: Transaction[] = [
+  { id: "1", title: "Supermercado Extra", category: "Alimentação", emoji: "🛒", amount: 287.40, type: "expense", date: "Hoje, 14:32", dateGroup: "Hoje", consumer: ANA, payer: MATHEUS, cardOwner: MATHEUS, status: "completed" },
+  { id: "2", title: "Netflix", category: "Streaming", emoji: "🎬", amount: 45.90, type: "expense", date: "Hoje, 08:00", dateGroup: "Hoje", consumer: MATHEUS, payer: MATHEUS, cardOwner: ANA, status: "completed" },
+  { id: "3", title: "Freela - Landing Page", category: "Receita", emoji: "💼", amount: 3500.00, type: "income", date: "Ontem, 10:15", dateGroup: "Ontem", consumer: MATHEUS, payer: MATHEUS, cardOwner: MATHEUS, status: "completed" },
+  { id: "4", title: "Posto Shell", category: "Transporte", emoji: "⛽", amount: 180.00, type: "expense", date: "Ontem, 19:15", dateGroup: "Ontem", consumer: PEDRO, payer: MATHEUS, cardOwner: MATHEUS, status: "completed" },
+  { id: "5", title: "iFood — Sushi Aki", category: "Alimentação", emoji: "🍱", amount: 127.80, type: "expense", date: "30 jun, 20:12", dateGroup: "30 jun", consumer: MATHEUS, payer: ANA, cardOwner: ANA, installments: { current: 1, total: 1 }, status: "completed" },
+  { id: "6", title: "Spotify Família", category: "Música", emoji: "🎵", amount: 26.90, type: "expense", date: "30 jun, 08:00", dateGroup: "30 jun", consumer: MATHEUS, payer: MATHEUS, cardOwner: MATHEUS, status: "completed" },
+  { id: "7", title: "Salário", category: "Receita", emoji: "🏢", amount: 9250.00, type: "income", date: "01 jul, 06:00", dateGroup: "01 jul", consumer: MATHEUS, payer: MATHEUS, cardOwner: MATHEUS, status: "completed" },
+  { id: "8", title: "Apple One", category: "Streaming", emoji: "🍎", amount: 59.90, type: "expense", date: "28 jun, 08:00", dateGroup: "28 jun", consumer: MATHEUS, payer: MATHEUS, cardOwner: ANA, installments: undefined, status: "pending" },
+];
+
+// ─────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────
+
+const fmt = (n: number, compact = false) => {
+  if (compact && n >= 1000) {
+    return `R$ ${(n / 1000).toFixed(1).replace(".", ",")}k`;
+  }
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+};
+
+const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', 'Fira Code', monospace" };
+
+// ─────────────────────────────────────────────────────────
+// DESIGN SYSTEM PRIMITIVES
+// ─────────────────────────────────────────────────────────
+
+function Avatar({ member, size = 36 }: { member: Member; size?: number }) {
+  return (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0 font-semibold text-white"
+      style={{ width: size, height: size, backgroundColor: member.color, fontSize: size * 0.36 }}
+    >
+      {member.initials[0]}
+    </div>
+  );
+}
+
+function WorkspaceAvatar({ ws, size = 40 }: { ws: WorkspaceData; size?: number }) {
+  return (
+    <div
+      className="rounded-2xl flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, background: `${ws.color}22`, fontSize: size * 0.5 }}
+    >
+      {ws.emoji}
+    </div>
+  );
+}
+
+function Badge({ label, color, bg }: { label: string; color: string; bg: string }) {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase" style={{ color, backgroundColor: bg }}>
+      {label}
+    </span>
+  );
+}
+
+function Btn({
+  children, variant = "primary", size = "md", wsColor, onClick, fullWidth, icon, disabled,
+}: {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary" | "ghost" | "destructive";
+  size?: "sm" | "md" | "lg";
+  wsColor?: string;
+  onClick?: () => void;
+  fullWidth?: boolean;
+  icon?: React.ReactNode;
+  disabled?: boolean;
+}) {
+  const base = "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all active:scale-[0.97] select-none cursor-pointer";
+  const sizes = { sm: "h-8 px-3 text-xs", md: "h-11 px-4 text-sm", lg: "h-[52px] px-5 text-[15px]" };
+  const variants = {
+    primary: `text-white`,
+    secondary: "bg-white/[0.07] text-white/80 hover:bg-white/[0.11]",
+    ghost: "text-white/50 hover:text-white/80 hover:bg-white/[0.06]",
+    destructive: "bg-[#EF444422] text-[#EF4444] hover:bg-[#EF444433]",
+  };
+  const bg = variant === "primary" ? (wsColor || "#6366F1") : undefined;
+  return (
+    <button
+      className={`${base} ${sizes[size]} ${variants[variant]} ${fullWidth ? "w-full" : ""} ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+      style={bg ? { backgroundColor: bg } : undefined}
+      onClick={onClick}
+    >
+      {icon && <span className="shrink-0">{icon}</span>}
+      {children}
+    </button>
+  );
+}
+
+function InputField({
+  label, type = "text", placeholder, value, onChange, icon, rightEl, hint,
+}: {
+  label?: string;
+  type?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (v: string) => void;
+  icon?: React.ReactNode;
+  rightEl?: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && <label className="text-xs font-medium text-white/50 tracking-wide">{label}</label>}
+      <div className="relative flex items-center">
+        {icon && <div className="absolute left-3.5 text-white/30">{icon}</div>}
+        <input
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="w-full h-[50px] bg-[#18181B] border border-white/[0.08] rounded-xl text-white/90 placeholder:text-white/25 focus:outline-none focus:border-white/20 transition-colors"
+          style={{ paddingLeft: icon ? 44 : 16, paddingRight: rightEl ? 44 : 16 }}
+        />
+        {rightEl && <div className="absolute right-3.5 text-white/40">{rightEl}</div>}
+      </div>
+      {hint && <span className="text-xs text-white/30 px-1">{hint}</span>}
+    </div>
+  );
+}
+
+function MoneyDisplay({ amount, size = "xl", color, wsColor }: { amount: number; size?: "sm" | "md" | "xl" | "2xl"; color?: string; wsColor?: string }) {
+  const sizes = { sm: "text-lg", md: "text-2xl", xl: "text-[34px]", "2xl": "text-[42px]" };
+  const [int, dec] = Math.abs(amount).toFixed(2).split(".");
+  const formatted = parseInt(int).toLocaleString("pt-BR");
+  const textColor = color || "rgba(255,255,255,0.95)";
+  return (
+    <span className={`${sizes[size]} font-semibold tracking-tight leading-none`} style={{ ...mono, color: textColor }}>
+      <span className="text-[0.55em] mr-0.5 opacity-60">R$</span>
+      {formatted}
+      <span className="text-[0.65em] opacity-60">,{dec}</span>
+    </span>
+  );
+}
+
+function Skeleton({ h = "h-4", w = "w-full", rounded = "rounded-lg" }: { h?: string; w?: string; rounded?: string }) {
+  return <div className={`${h} ${w} ${rounded} bg-white/[0.06] animate-pulse`} />;
+}
+
+function EmptyState({ icon, title, desc, cta, onCta, wsColor }: { icon: React.ReactNode; title: string; desc: string; cta?: string; onCta?: () => void; wsColor?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.05] flex items-center justify-center text-white/20">
+        {icon}
+      </div>
+      <div>
+        <p className="font-semibold text-white/80 text-[15px]">{title}</p>
+        <p className="text-sm text-white/35 mt-1 leading-relaxed">{desc}</p>
+      </div>
+      {cta && (
+        <Btn variant="secondary" size="sm" onClick={onCta}>{cta}</Btn>
+      )}
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="h-px bg-white/[0.06] mx-0" />;
+}
+
+// ─────────────────────────────────────────────────────────
+// SHELL COMPONENTS
+// ─────────────────────────────────────────────────────────
+
+function StatusBar() {
+  return (
+    <div className="relative flex items-center justify-between px-6 h-11 shrink-0">
+      <span className="text-[13px] font-semibold text-white/90" style={mono}>9:41</span>
+      <div className="absolute left-1/2 -translate-x-1/2 w-[110px] h-7 bg-black rounded-b-[18px]" />
+      <div className="flex items-center gap-1.5">
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
+          <rect x="0" y="3" width="3" height="9" rx="1" fill="white" opacity="0.35" />
+          <rect x="4.5" y="2" width="3" height="10" rx="1" fill="white" opacity="0.6" />
+          <rect x="9" y="0.5" width="3" height="11.5" rx="1" fill="white" />
+          <rect x="13.5" y="0.5" width="3" height="11.5" rx="1" fill="white" />
+        </svg>
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none">
+          <path d="M8 2.5a7 7 0 0 1 5 2.1M3 4.6A7 7 0 0 1 8 2.5M5.5 7a3.5 3.5 0 0 1 5 0M8 9.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+        <div className="flex items-center gap-0.5">
+          <div className="w-[22px] h-[11px] rounded-[3px] border border-white/60 relative p-[2px]">
+            <div className="w-[13px] h-full bg-white rounded-[1.5px]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TopBar({
+  title, subtitle, onBack, rightEl, wsColor,
+}: {
+  title: string;
+  subtitle?: string;
+  onBack?: () => void;
+  rightEl?: React.ReactNode;
+  wsColor?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-3 shrink-0">
+      {onBack && (
+        <button onClick={onBack} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06] hover:bg-white/[0.1] transition-colors">
+          <ChevronLeft size={18} strokeWidth={2} className="text-white/70" />
+        </button>
+      )}
+      <div className="flex-1">
+        <h3 className="text-[17px] font-semibold text-white/95 leading-tight" style={{ letterSpacing: "-0.015em" }}>{title}</h3>
+        {subtitle && <p className="text-xs text-white/40 mt-0.5">{subtitle}</p>}
+      </div>
+      {rightEl}
+    </div>
+  );
+}
+
+function BottomNav({
+  active, onNavigate, wsColor,
+}: {
+  active: ScreenId;
+  onNavigate: (s: ScreenId) => void;
+  wsColor: string;
+}) {
+  const items: { id: ScreenId; icon: typeof Home; label: string }[] = [
+    { id: "dashboard", icon: Home, label: "Início" },
+    { id: "cards", icon: CreditCard, label: "Cartões" },
+    { id: "transactions", icon: ArrowUpDown, label: "Histórico" },
+    { id: "entre-nos", icon: Users, label: "Entre Nós" },
+    { id: "profile", icon: User, label: "Perfil" },
+  ];
+  const isActive = (id: ScreenId) =>
+    id === active || (id === "dashboard" && active === "dashboard-shared");
+
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-[78px] border-t border-white/[0.06]" style={{ background: "rgba(9,9,11,0.92)", backdropFilter: "blur(20px)" }}>
+      <div className="flex items-center justify-around h-full pb-3 px-2">
+        {items.map(({ id, icon: Icon, label }) => {
+          const active_ = isActive(id);
+          return (
+            <button
+              key={id}
+              onClick={() => onNavigate(id)}
+              className="flex flex-col items-center gap-0.5 px-3 py-1 min-w-[48px] transition-all"
+            >
+              <div className="relative">
+                <Icon size={22} strokeWidth={active_ ? 2.5 : 1.75} style={{ color: active_ ? wsColor : "rgba(255,255,255,0.3)" }} />
+                {active_ && (
+                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ backgroundColor: wsColor }} />
+                )}
+              </div>
+              <span className="text-[10px] font-medium mt-1" style={{ color: active_ ? wsColor : "rgba(255,255,255,0.3)" }}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FAB({ onPress, wsColor }: { onPress: () => void; wsColor: string }) {
+  return (
+    <button
+      onClick={onPress}
+      className="absolute bottom-[90px] right-5 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all active:scale-95"
+      style={{ backgroundColor: wsColor, boxShadow: `0 8px 32px ${wsColor}55` }}
+    >
+      <Plus size={24} strokeWidth={2.5} className="text-white" />
+    </button>
+  );
+}
+
+// Attribution trio used in transaction items
+function AttributionTrio({ consumer, payer, cardOwner }: { consumer: Member; payer: Member; cardOwner: Member }) {
+  const allSame = consumer.id === payer.id && payer.id === cardOwner.id;
+  if (allSame) return null;
+
+  const fields = [
+    { label: "consumiu", member: consumer, show: true },
+    { label: "pagou", member: payer, show: payer.id !== consumer.id },
+    { label: "cartão", member: cardOwner, show: cardOwner.id !== payer.id },
+  ].filter(f => f.show);
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      {fields.map(({ label, member }, i) => (
+        <div key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-white/15 text-[10px]">·</span>}
+          <span className="text-[10px] text-white/30">{label}</span>
+          <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0" style={{ backgroundColor: member.color }}>
+            {member.initials[0]}
+          </div>
+          <span className="text-[10px] text-white/50 font-medium">{member.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TxRow({ tx, onTap, wsColor }: { tx: Transaction; onTap?: () => void; wsColor: string }) {
+  return (
+    <button onClick={onTap} className="flex items-center gap-3 py-3 w-full text-left hover:bg-white/[0.03] rounded-xl px-1 transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-[#1C1C1F] flex items-center justify-center text-lg shrink-0 select-none">
+        {tx.emoji}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[14px] font-medium text-white/90 truncate">{tx.title}</span>
+          {tx.status === "pending" && (
+            <span className="shrink-0 text-[9px] text-amber-400/80 bg-amber-400/10 px-1.5 py-px rounded-full font-semibold uppercase tracking-wide">Pendente</span>
+          )}
+          {tx.installments && (
+            <span className="shrink-0 text-[9px] text-white/30 bg-white/[0.05] px-1.5 py-px rounded-full">{tx.installments.current}/{tx.installments.total}x</span>
+          )}
+        </div>
+        <AttributionTrio consumer={tx.consumer} payer={tx.payer} cardOwner={tx.cardOwner} />
+        {tx.consumer.id === tx.payer.id && tx.payer.id === tx.cardOwner.id && (
+          <span className="text-xs text-white/30">{tx.category} · {tx.date}</span>
+        )}
+      </div>
+      <span
+        className="text-[14px] font-semibold shrink-0 tabular-nums"
+        style={{ ...mono, color: tx.type === "income" ? "#22C55E" : "rgba(255,255,255,0.75)" }}
+      >
+        {tx.type === "income" ? "+" : "−"}{fmt(tx.amount)}
+      </span>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTH SCREENS
+// ─────────────────────────────────────────────────────────
+
+function LoginScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] px-6">
+      <StatusBar />
+      <div className="flex-1 flex flex-col justify-center gap-8 pb-8">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3 pb-2">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
+            <span className="text-white text-2xl font-bold" style={{ letterSpacing: "-0.04em" }}>N</span>
+          </div>
+          <div className="text-center">
+            <h1 className="text-white text-2xl font-semibold tracking-tight">Nivo</h1>
+            <p className="text-white/35 text-sm mt-1">Finanças que fazem sentido.</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="flex flex-col gap-3">
+          <InputField
+            label="E-mail"
+            type="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={setEmail}
+            icon={<Mail size={16} />}
+          />
+          <InputField
+            label="Senha"
+            type={showPass ? "text" : "password"}
+            placeholder="••••••••"
+            value={pass}
+            onChange={setPass}
+            icon={<Lock size={16} />}
+            rightEl={
+              <button onClick={() => setShowPass(!showPass)}>
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            }
+          />
+          <div className="flex justify-end">
+            <button onClick={() => nav("forgot-password")} className="text-xs text-white/35 hover:text-white/60 transition-colors py-1">
+              Esqueceu a senha?
+            </button>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col gap-3">
+          <Btn variant="primary" size="lg" fullWidth onClick={() => nav("dashboard")}>
+            Entrar
+          </Btn>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.07]" />
+            <span className="text-xs text-white/25">ou</span>
+            <div className="flex-1 h-px bg-white/[0.07]" />
+          </div>
+          <Btn variant="secondary" size="lg" fullWidth icon={<span className="text-lg">🍎</span>}>
+            Continuar com Apple
+          </Btn>
+          <Btn variant="secondary" size="lg" fullWidth icon={<span className="text-lg">🇬</span>}>
+            Continuar com Google
+          </Btn>
+        </div>
+
+        {/* Signup */}
+        <p className="text-center text-sm text-white/30">
+          Não tem conta?{" "}
+          <button onClick={() => nav("signup")} className="text-white/65 font-medium hover:text-white/90 transition-colors">
+            Criar conta
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SignupScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] px-6">
+      <StatusBar />
+      <div className="flex items-center gap-3 py-3">
+        <button onClick={() => nav("login")} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <ChevronLeft size={18} strokeWidth={2} className="text-white/70" />
+        </button>
+        <span className="text-white/60 text-sm">Criar conta</span>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-8 pt-4 pb-8">
+        <div>
+          <h2 className="text-white text-[26px] font-semibold tracking-tight">Bem-vindo ao Nivo</h2>
+          <p className="text-white/35 text-sm mt-1.5">Crie sua conta em 30 segundos.</p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <InputField label="Nome completo" placeholder="Matheus Santos" value={name} onChange={setName} icon={<User size={16} />} />
+          <InputField label="E-mail" type="email" placeholder="seu@email.com" value={email} onChange={setEmail} icon={<Mail size={16} />} />
+          <InputField
+            label="Senha"
+            type="password"
+            placeholder="Mínimo 8 caracteres"
+            value={pass}
+            onChange={setPass}
+            icon={<Lock size={16} />}
+            hint="Use letras, números e símbolos."
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 mt-auto">
+          <Btn variant="primary" size="lg" fullWidth onClick={() => nav("email-confirm")}>
+            Criar conta
+          </Btn>
+          <p className="text-center text-xs text-white/25 leading-relaxed px-4">
+            Ao criar sua conta você concorda com os{" "}
+            <span className="text-white/45 underline underline-offset-2">Termos de Uso</span> e{" "}
+            <span className="text-white/45 underline underline-offset-2">Política de Privacidade</span>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForgotScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] px-6">
+      <StatusBar />
+      <div className="flex items-center gap-3 py-3">
+        <button onClick={() => nav("login")} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <ChevronLeft size={18} strokeWidth={2} className="text-white/70" />
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-8 pt-6 pb-8">
+        {!sent ? (
+          <>
+            <div>
+              <h2 className="text-white text-[26px] font-semibold tracking-tight">Recuperar senha</h2>
+              <p className="text-white/35 text-sm mt-1.5">Enviaremos um link para redefinir sua senha.</p>
+            </div>
+            <InputField label="E-mail" type="email" placeholder="seu@email.com" value={email} onChange={setEmail} icon={<Mail size={16} />} />
+            <div className="mt-auto">
+              <Btn variant="primary" size="lg" fullWidth onClick={() => setSent(true)}>
+                Enviar link
+              </Btn>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#22C55E15] flex items-center justify-center">
+              <CheckCircle size={32} className="text-[#22C55E]" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold text-lg">Link enviado!</h3>
+              <p className="text-white/35 text-sm mt-1.5 leading-relaxed">Verifique sua caixa de entrada<br />e siga as instruções.</p>
+            </div>
+            <button onClick={() => nav("login")} className="text-sm text-white/45 hover:text-white/70 transition-colors mt-2">
+              Voltar ao login
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmailConfirmScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (i: number, val: string) => {
+    if (!/^\d*$/.test(val)) return;
+    const next = [...code];
+    next[i] = val.slice(-1);
+    setCode(next);
+    if (val && i < 5) refs.current[i + 1]?.focus();
+  };
+
+  const handleKey = (i: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !code[i] && i > 0) refs.current[i - 1]?.focus();
+  };
+
+  const filled = code.every(c => c !== "");
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] px-6">
+      <StatusBar />
+      <div className="flex items-center gap-3 py-3">
+        <button onClick={() => nav("signup")} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <ChevronLeft size={18} strokeWidth={2} className="text-white/70" />
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-8 pt-6 pb-8">
+        <div>
+          <h2 className="text-white text-[26px] font-semibold tracking-tight">Confirme seu e-mail</h2>
+          <p className="text-white/35 text-sm mt-1.5">Enviamos um código de 6 dígitos para<br /><span className="text-white/55">matheus@email.com</span></p>
+        </div>
+
+        <div className="flex gap-2.5 justify-center">
+          {code.map((digit, i) => (
+            <input
+              key={i}
+              ref={el => { refs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={e => handleChange(i, e.target.value)}
+              onKeyDown={e => handleKey(i, e)}
+              className="w-12 h-14 rounded-xl bg-[#18181B] border border-white/[0.08] text-white text-xl font-bold text-center focus:outline-none focus:border-[#6366F1]/60 transition-colors"
+              style={mono}
+            />
+          ))}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
+          <Btn variant="primary" size="lg" fullWidth disabled={!filled} onClick={() => nav("onboarding")}>
+            Confirmar
+          </Btn>
+          <p className="text-center text-sm text-white/30">
+            Não recebeu?{" "}
+            <button className="text-white/55 font-medium hover:text-white/80 transition-colors">
+              Reenviar
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// ONBOARDING
+// ─────────────────────────────────────────────────────────
+
+function OnboardingScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      title: "Seu dinheiro.\nCada contexto.",
+      desc: "O Nivo organiza suas finanças em Workspaces. Pessoal, Casal, Família ou Compartilhado.",
+      visual: (
+        <div className="flex flex-col gap-3 w-full">
+          {[
+            { emoji: "👤", name: "Meu Financeiro", type: "Pessoal", color: "#6366F1" },
+            { emoji: "❤️", name: "Matheus & Ana", type: "Casal", color: "#EC4899" },
+            { emoji: "🏠", name: "Apartamento 42", type: "Compartilhado", color: "#14B8A6" },
+          ].map((ws, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06]"
+              style={{ background: `${ws.color}0D`, transform: `translateX(${i * 8}px)`, opacity: 1 - i * 0.12 }}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: `${ws.color}22` }}>
+                {ws.emoji}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white/90">{ws.name}</p>
+                <p className="text-xs text-white/35 mt-0.5">{ws.type}</p>
+              </div>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ws.color }} />
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "Transações com\ncontexto real.",
+      desc: "Cada transação sabe quem consumiu, quem pagou e de qual cartão. Nada se perde.",
+      visual: (
+        <div className="w-full p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#1C1C1F] flex items-center justify-center text-lg">🛒</div>
+            <div>
+              <p className="text-[14px] font-semibold text-white/90">Supermercado Extra</p>
+              <p className="text-xs text-white/35">R$ 287,40 · Hoje</p>
+            </div>
+          </div>
+          <Divider />
+          <div className="flex gap-2 pt-4">
+            {[
+              { label: "Consumiu", member: ANA },
+              { label: "Pagou", member: MATHEUS },
+              { label: "Cartão", member: MATHEUS },
+            ].map(({ label, member }) => (
+              <div key={label} className="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl bg-white/[0.04]">
+                <span className="text-[9px] text-white/30 font-medium uppercase tracking-wider">{label}</span>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: member.color }}>
+                  {member.initials[0]}
+                </div>
+                <span className="text-[11px] text-white/60 font-medium">{member.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Pronto para\ncomeçar.",
+      desc: "Seu Workspace Pessoal já foi criado. Adicione contas, cartões e comece a registrar.",
+      visual: (
+        <div className="w-full flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
+            <span className="text-4xl font-bold text-white" style={{ letterSpacing: "-0.04em" }}>N</span>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[15px] font-semibold text-white/90">Meu Financeiro</p>
+            <Badge label="Pessoal" color="#6366F1" bg="#6366F115" />
+          </div>
+          <div className="w-full flex gap-3 mt-2">
+            {[
+              { emoji: "💳", label: "Adicionar cartão" },
+              { emoji: "🏦", label: "Vincular conta" },
+              { emoji: "👥", label: "Convidar alguém" },
+            ].map(({ emoji, label }) => (
+              <div key={label} className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#18181B]">
+                <span className="text-lg">{emoji}</span>
+                <span className="text-[10px] text-white/40 text-center leading-tight">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  const current = steps[step];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] px-6 pb-8">
+      <StatusBar />
+      <div className="flex items-center justify-between py-3">
+        {step > 0 ? (
+          <button onClick={() => setStep(s => s - 1)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+            <ChevronLeft size={18} strokeWidth={2} className="text-white/70" />
+          </button>
+        ) : <div className="w-8" />}
+        <div className="flex gap-1.5">
+          {steps.map((_, i) => (
+            <div
+              key={i}
+              className="h-1 rounded-full transition-all duration-300"
+              style={{ width: i === step ? 20 : 6, backgroundColor: i === step ? "#6366F1" : "rgba(255,255,255,0.12)" }}
+            />
+          ))}
+        </div>
+        {step < steps.length - 1 ? (
+          <button onClick={() => nav("dashboard")} className="text-xs text-white/30 hover:text-white/55 transition-colors">
+            Pular
+          </button>
+        ) : <div className="w-10" />}
+      </div>
+
+      <div className="flex-1 flex flex-col gap-8 pt-4">
+        <div className="flex-1 flex items-center justify-center">{current.visual}</div>
+        <div>
+          <h2 className="text-white text-[28px] font-semibold leading-tight" style={{ letterSpacing: "-0.025em", whiteSpace: "pre-line" }}>
+            {current.title}
+          </h2>
+          <p className="text-white/40 text-sm mt-3 leading-relaxed">{current.desc}</p>
+        </div>
+        <Btn
+          variant="primary"
+          size="lg"
+          fullWidth
+          onClick={() => step < steps.length - 1 ? setStep(s => s + 1) : nav("dashboard")}
+        >
+          {step < steps.length - 1 ? "Continuar" : "Começar agora"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// WORKSPACE SWITCHER (Modal overlay style)
+// ─────────────────────────────────────────────────────────
+
+function WorkspaceSwitcher({
+  current, nav, onSelect,
+}: {
+  current: WorkspaceData;
+  nav: (s: ScreenId) => void;
+  onSelect: (ws: WorkspaceData) => void;
+}) {
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <div className="flex items-center justify-between px-5 py-3">
+        <h3 className="text-[17px] font-semibold text-white/95" style={{ letterSpacing: "-0.015em" }}>Workspaces</h3>
+        <button onClick={() => nav("dashboard")} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <X size={16} strokeWidth={2} className="text-white/70" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
+        <div className="flex flex-col gap-2 mt-2">
+          {WORKSPACES.map((ws) => {
+            const isActive = ws.id === current.id;
+            return (
+              <button
+                key={ws.id}
+                onClick={() => { onSelect(ws); nav("dashboard"); }}
+                className="flex items-center gap-4 p-4 rounded-2xl border transition-all text-left"
+                style={{
+                  background: isActive ? `${ws.color}12` : "#111113",
+                  borderColor: isActive ? `${ws.color}40` : "rgba(255,255,255,0.06)",
+                }}
+              >
+                <WorkspaceAvatar ws={ws} size={44} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold text-white/90 truncate">{ws.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-white/35">{ws.type}</span>
+                    <span className="text-white/15 text-xs">·</span>
+                    <span className="text-xs text-white/35">{ws.members.length} {ws.members.length === 1 ? "membro" : "membros"}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  {isActive && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ws.color }} />}
+                  <span className="text-sm font-semibold text-white/55" style={mono}>{fmt(ws.balance, true)}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => nav("workspace-create")}
+          className="flex items-center gap-3 p-4 w-full mt-3 rounded-2xl border border-dashed border-white/[0.12] hover:border-white/25 transition-colors"
+        >
+          <div className="w-11 h-11 rounded-xl bg-white/[0.04] flex items-center justify-center">
+            <Plus size={18} strokeWidth={2} className="text-white/35" />
+          </div>
+          <span className="text-sm text-white/40 font-medium">Criar novo Workspace</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CreateWorkspaceScreen({ nav }: { nav: (s: ScreenId) => void }) {
+  const [name, setName] = useState("");
+  const [selectedEmoji, setSelectedEmoji] = useState("🏠");
+  const emojis = ["🏠", "❤️", "💼", "✈️", "🎓", "🏋️", "🎮", "🍕", "🚗", "🎸"];
+  const types = [
+    { id: "personal", label: "Pessoal", desc: "Só para você", color: "#6366F1" },
+    { id: "couple", label: "Casal", desc: "Você e outra pessoa", color: "#EC4899" },
+    { id: "family", label: "Família", desc: "Grupo familiar", color: "#F59E0B" },
+    { id: "shared", label: "Compartilhado", desc: "Qualquer propósito", color: "#14B8A6" },
+  ];
+  const [selectedType, setSelectedType] = useState("shared");
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <TopBar title="Novo Workspace" onBack={() => nav("workspace-switcher")} />
+
+      <div className="flex-1 overflow-y-auto px-5 pb-6 flex flex-col gap-6">
+        {/* Emoji picker */}
+        <div>
+          <label className="text-xs text-white/40 font-medium uppercase tracking-wider">Ícone</label>
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {emojis.map(e => (
+              <button
+                key={e}
+                onClick={() => setSelectedEmoji(e)}
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-xl transition-all"
+                style={{ background: selectedEmoji === e ? "#6366F130" : "#18181B", border: `1px solid ${selectedEmoji === e ? "#6366F150" : "transparent"}` }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <InputField label="Nome do Workspace" placeholder="Ex: Viagem para Japão" value={name} onChange={setName} />
+
+        {/* Type selector */}
+        <div>
+          <label className="text-xs text-white/40 font-medium uppercase tracking-wider">Tipo</label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {types.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedType(t.id)}
+                className="flex flex-col gap-1 p-3.5 rounded-2xl border text-left transition-all"
+                style={{
+                  background: selectedType === t.id ? `${t.color}12` : "#111113",
+                  borderColor: selectedType === t.id ? `${t.color}40` : "rgba(255,255,255,0.06)",
+                }}
+              >
+                <span className="text-[13px] font-semibold text-white/90">{t.label}</span>
+                <span className="text-[11px] text-white/35">{t.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-auto">
+          <Btn variant="primary" size="lg" fullWidth disabled={!name} onClick={() => nav("workspace-members")}>
+            Continuar
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceMembersScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [email, setEmail] = useState("");
+  const [invited, setInvited] = useState<string[]>([]);
+
+  const invite = () => {
+    if (email && !invited.includes(email)) {
+      setInvited(p => [...p, email]);
+      setEmail("");
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <TopBar title="Membros" subtitle={ws.name} onBack={() => nav("workspace-create")} />
+
+      <div className="flex-1 overflow-y-auto px-5 pb-6 flex flex-col gap-6">
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+          <Avatar member={MATHEUS} size={40} />
+          <div>
+            <p className="text-[14px] font-semibold text-white/90">Matheus Santos</p>
+            <p className="text-xs text-white/35">matheus@email.com · Dono</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <label className="text-xs text-white/40 font-medium uppercase tracking-wider">Convidar por e-mail</label>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <InputField placeholder="amigo@email.com" type="email" value={email} onChange={setEmail} icon={<Mail size={16} />} />
+            </div>
+            <button
+              onClick={invite}
+              className="h-[50px] w-12 shrink-0 rounded-xl flex items-center justify-center transition-all active:scale-95"
+              style={{ background: "#6366F1" }}
+            >
+              <Plus size={18} strokeWidth={2.5} className="text-white" />
+            </button>
+          </div>
+          {invited.map(e => (
+            <div key={e} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-[#6366F10D]">
+              <div className="w-8 h-8 rounded-full bg-[#6366F125] flex items-center justify-center">
+                <Mail size={14} className="text-[#6366F1]" />
+              </div>
+              <span className="text-sm text-white/60 flex-1">{e}</span>
+              <span className="text-[10px] text-[#6366F1] bg-[#6366F115] px-2 py-0.5 rounded-full font-medium">Convidado</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-2">
+          <Btn variant="primary" size="lg" fullWidth onClick={() => nav("dashboard")}>
+            Concluir
+          </Btn>
+          <Btn variant="ghost" size="md" fullWidth onClick={() => nav("dashboard")}>
+            Pular por agora
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// PERSONAL DASHBOARD
+// ─────────────────────────────────────────────────────────
+
+function PersonalDashboard({
+  nav, ws, onSwitchWs,
+}: {
+  nav: (s: ScreenId) => void;
+  ws: WorkspaceData;
+  onSwitchWs: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [hideBalance, setHideBalance] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 900);
+    return () => clearTimeout(t);
+  }, [ws.id]);
+
+  const upcoming = [
+    { emoji: "🎬", name: "Netflix", date: "14 jul", amount: 45.90 },
+    { emoji: "🎵", name: "Spotify", date: "18 jul", amount: 26.90 },
+    { emoji: "🍎", name: "Apple One", date: "28 jul", amount: 59.90 },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 shrink-0">
+        <button onClick={onSwitchWs} className="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-[#18181B] border border-white/[0.06] transition-colors hover:bg-[#1E1E21]">
+          <span className="text-base">{ws.emoji}</span>
+          <span className="text-[13px] font-semibold text-white/80">{ws.name}</span>
+          <ChevronDown size={14} strokeWidth={2} className="text-white/35" />
+        </button>
+        <div className="flex items-center gap-2">
+          <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/[0.06] transition-colors relative">
+            <Bell size={18} strokeWidth={1.75} className="text-white/50" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ws.color }} />
+          </button>
+          <button onClick={() => nav("profile")} className="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-[13px] text-white" style={{ backgroundColor: ws.color }}>
+            M
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+        {/* Balance Card */}
+        <div className="px-5 mt-2">
+          <div
+            className="relative overflow-hidden rounded-3xl p-6"
+            style={{ background: `linear-gradient(135deg, ${ws.color}28 0%, ${ws.color}08 60%, transparent 100%)`, border: `1px solid ${ws.color}25` }}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: ws.color, transform: "translate(30%, -30%)" }} />
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Saldo total</p>
+            {loading ? (
+              <Skeleton h="h-9" w="w-48" rounded="rounded-xl" />
+            ) : (
+              <div className="flex items-center gap-3">
+                {hideBalance ? (
+                  <span className="text-[32px] font-semibold text-white/30 tracking-widest">••••••</span>
+                ) : (
+                  <MoneyDisplay amount={ws.balance} size="xl" wsColor={ws.color} />
+                )}
+                <button onClick={() => setHideBalance(!hideBalance)} className="text-white/25 hover:text-white/50 transition-colors mt-1">
+                  {hideBalance ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+              </div>
+            )}
+            {!loading && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <TrendingUp size={13} className="text-[#22C55E]" />
+                <span className="text-xs text-[#22C55E] font-medium">+12.3% este mês</span>
+              </div>
+            )}
+
+            {/* Quick stats */}
+            <div className="flex gap-3 mt-6 pt-4 border-t border-white/[0.07]">
+              {loading ? (
+                [1,2,3].map(i => <Skeleton key={i} h="h-10" w="flex-1" rounded="rounded-xl" />)
+              ) : (
+                [
+                  { label: "Receitas", value: ws.income, color: "#22C55E", icon: ArrowDownLeft },
+                  { label: "Despesas", value: ws.expenses, color: "#EF4444", icon: ArrowUpRight },
+                  { label: "Guardado", value: ws.income - ws.expenses, color: ws.color, icon: Wallet },
+                ].map(({ label, value, color, icon: Icon }) => (
+                  <div key={label} className="flex-1">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Icon size={11} style={{ color }} />
+                      <span className="text-[10px] text-white/35 font-medium">{label}</span>
+                    </div>
+                    <span className="text-[13px] font-semibold text-white/80" style={mono}>
+                      {fmt(value, true)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Switch to shared */}
+        {ws.id === "personal" && (
+          <div className="px-5 mt-3">
+            <button
+              onClick={() => nav("dashboard-shared")}
+              className="flex items-center gap-3 p-3.5 w-full rounded-2xl border border-white/[0.06] bg-[#111113] hover:bg-[#141417] transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-[#EC489915] flex items-center justify-center text-base">❤️</div>
+              <div className="flex-1 text-left">
+                <p className="text-[13px] font-semibold text-white/80">Matheus & Ana</p>
+                <p className="text-xs text-white/30">Ver dashboard compartilhado</p>
+              </div>
+              <ChevronRight size={16} className="text-white/25" />
+            </button>
+          </div>
+        )}
+
+        {/* Upcoming bills */}
+        <div className="px-5 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider">Próximas contas</h3>
+            <button onClick={() => nav("subscriptions")} className="text-xs font-medium" style={{ color: ws.color }}>Ver tudo</button>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {upcoming.map((item) => (
+              <div key={item.name} className="flex items-center gap-3 py-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#1C1C1F] flex items-center justify-center text-base">{item.emoji}</div>
+                <p className="text-[14px] font-medium text-white/80 flex-1">{item.name}</p>
+                <div className="text-right">
+                  <p className="text-[13px] font-semibold text-white/65" style={mono}>{fmt(item.amount)}</p>
+                  <p className="text-[11px] text-white/30">{item.date}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent transactions */}
+        <div className="px-5 mt-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider">Recentes</h3>
+            <button onClick={() => nav("transactions")} className="text-xs font-medium" style={{ color: ws.color }}>Ver tudo</button>
+          </div>
+          {loading ? (
+            <div className="flex flex-col gap-3 pt-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton h="h-10" w="w-10" rounded="rounded-xl" />
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <Skeleton h="h-3.5" w="w-32" />
+                    <Skeleton h="h-3" w="w-20" />
+                  </div>
+                  <Skeleton h="h-3.5" w="w-16" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            TRANSACTIONS.slice(0, 4).map(tx => (
+              <TxRow key={tx.id} tx={tx} onTap={() => nav("transaction-detail")} wsColor={ws.color} />
+            ))
+          )}
+        </div>
+      </div>
+
+      <BottomNav active="dashboard" onNavigate={nav} wsColor={ws.color} />
+      <FAB onPress={() => nav("transaction-new")} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// SHARED DASHBOARD
+// ─────────────────────────────────────────────────────────
+
+function SharedDashboard({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const couple = WORKSPACES.find(w => w.id === "couple")!;
+
+  const members = [
+    { member: MATHEUS, income: 9250, expenses: 5834 },
+    { member: ANA, income: 9250, expenses: 3400 },
+  ];
+
+  const categories = [
+    { emoji: "🛒", name: "Alimentação", amount: 1240.50, pct: 38, color: "#22C55E" },
+    { emoji: "🏠", name: "Moradia", amount: 2800.00, pct: 50, color: "#6366F1" },
+    { emoji: "⛽", name: "Transporte", amount: 540.00, pct: 18, color: "#F59E0B" },
+    { emoji: "🎬", name: "Lazer", amount: 380.70, pct: 12, color: "#EC4899" },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <div className="flex items-center justify-between px-5 py-3 shrink-0">
+        <button onClick={() => nav("dashboard")} className="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-[#18181B] border border-white/[0.06]">
+          <span className="text-base">❤️</span>
+          <span className="text-[13px] font-semibold text-white/80">Matheus & Ana</span>
+          <ChevronDown size={14} strokeWidth={2} className="text-white/35" />
+        </button>
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/[0.06]">
+          <Bell size={18} strokeWidth={1.75} className="text-white/50" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+        {/* Consolidated balance */}
+        <div className="px-5 mt-2">
+          <div className="relative overflow-hidden rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${couple.color}25 0%, ${couple.color}07 60%)`, border: `1px solid ${couple.color}22` }}>
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-15" style={{ background: couple.color, transform: "translate(30%,-30%)" }} />
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Saldo consolidado</p>
+            <MoneyDisplay amount={couple.balance} size="xl" />
+            <div className="flex items-center gap-1.5 mt-2">
+              <TrendingDown size={13} className="text-[#EF4444]" />
+              <span className="text-xs text-[#EF4444] font-medium">−4.1% vs mês passado</span>
+            </div>
+
+            <div className="flex gap-3 mt-5 pt-4 border-t border-white/[0.07]">
+              {[
+                { label: "Total receitas", value: couple.income },
+                { label: "Total despesas", value: couple.expenses },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex-1">
+                  <p className="text-[10px] text-white/30 mb-1">{label}</p>
+                  <span className="text-[14px] font-semibold text-white/75" style={mono}>{fmt(value, true)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Member breakdown */}
+        <div className="px-5 mt-6">
+          <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider mb-3">Por membro</h3>
+          <div className="flex flex-col gap-2">
+            {members.map(({ member, income, expenses }) => {
+              const saved = income - expenses;
+              const pct = Math.round((expenses / income) * 100);
+              return (
+                <div key={member.id} className="p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar member={member} size={36} />
+                    <div>
+                      <p className="text-[14px] font-semibold text-white/90">{member.name}</p>
+                      <p className="text-xs text-white/30">Guardou {fmt(saved, true)} este mês</p>
+                    </div>
+                    <div className="ml-auto text-right">
+                      <p className="text-[13px] font-semibold text-white/65" style={mono}>{fmt(expenses, true)}</p>
+                      <p className="text-[10px] text-white/30">gastos</p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: member.color }} />
+                  </div>
+                  <p className="text-[10px] text-white/25 mt-1.5">{pct}% da renda comprometida</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Categories */}
+        <div className="px-5 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider">Categorias</h3>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {categories.map(({ emoji, name, amount, pct, color }) => (
+              <div key={name} className="py-2.5">
+                <div className="flex items-center gap-3 mb-1.5">
+                  <span className="text-base">{emoji}</span>
+                  <p className="text-[14px] font-medium text-white/80 flex-1">{name}</p>
+                  <span className="text-[13px] font-semibold text-white/65" style={mono}>{fmt(amount)}</span>
+                </div>
+                <div className="h-1 bg-white/[0.05] rounded-full ml-8 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div className="px-5 mt-6">
+          <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider mb-3">Timeline</h3>
+          {TRANSACTIONS.slice(0, 3).map(tx => (
+            <TxRow key={tx.id} tx={tx} onTap={() => nav("transaction-detail")} wsColor={couple.color} />
+          ))}
+        </div>
+      </div>
+
+      <BottomNav active="dashboard-shared" onNavigate={nav} wsColor={couple.color} />
+      <FAB onPress={() => nav("transaction-new")} wsColor={couple.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// CARDS
+// ─────────────────────────────────────────────────────────
+
+function CardsScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const cards = [
+    { id: "1", name: "Nubank", last4: "4231", network: "VISA", limit: 12000, used: 4823.45, color1: "#7C3AED", color2: "#5B21B6", member: MATHEUS },
+    { id: "2", name: "Inter", last4: "8842", network: "MC", limit: 8000, used: 1240.80, color1: "#EC4899", color2: "#BE185D", member: ANA },
+    { id: "3", name: "C6 Bank", last4: "6621", network: "MC", limit: 5000, used: 320.00, color1: "#1D4ED8", color2: "#1E3A8A", member: MATHEUS },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar
+        title="Cartões"
+        wsColor={ws.color}
+        rightEl={
+          <button onClick={() => nav("card-new")} className="w-9 h-9 flex items-center justify-center rounded-xl" style={{ background: `${ws.color}20` }}>
+            <Plus size={18} strokeWidth={2.5} style={{ color: ws.color }} />
+          </button>
+        }
+      />
+
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+        {/* Feature card */}
+        <div className="px-5 mt-2">
+          <div
+            className="relative w-full rounded-3xl p-6 overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, ${cards[0].color1} 0%, ${cards[0].color2} 100%)`,
+              aspectRatio: "1.586/1",
+            }}
+          >
+            {/* Shine */}
+            <div className="absolute inset-0 opacity-20" style={{ background: "linear-gradient(115deg, rgba(255,255,255,0.4) 0%, transparent 50%)" }} />
+            {/* Chip */}
+            <div className="absolute top-6 left-6">
+              <div className="w-9 h-7 rounded-md bg-amber-300/80 flex items-center justify-center">
+                <div className="w-5 h-4 rounded-sm border-2 border-amber-600/60 flex items-center justify-center">
+                  <div className="w-2 h-2.5 border-r-2 border-amber-600/60" />
+                </div>
+              </div>
+            </div>
+            {/* Network */}
+            <div className="absolute top-5 right-5 flex">
+              <div className="w-7 h-7 rounded-full bg-red-500/80 -mr-2.5" />
+              <div className="w-7 h-7 rounded-full bg-yellow-400/70" />
+            </div>
+            {/* Member */}
+            <div className="absolute top-5 right-16">
+              <Avatar member={cards[0].member} size={26} />
+            </div>
+            {/* Number */}
+            <div className="absolute bottom-10 left-6 right-6">
+              <p className="text-[15px] font-semibold tracking-[0.2em] text-white/80" style={mono}>
+                •••• •••• •••• {cards[0].last4}
+              </p>
+            </div>
+            {/* Name */}
+            <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
+              <p className="text-[12px] font-semibold tracking-wider text-white/70 uppercase">{cards[0].name}</p>
+              <p className="text-[11px] text-white/50" style={mono}>07/28</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card limit bar */}
+        <div className="px-5 mt-5">
+          <div className="p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] font-medium text-white/60">Limite utilizado</p>
+              <p className="text-[13px] font-semibold text-white/80" style={mono}>
+                {fmt(cards[0].used)} / {fmt(cards[0].limit, true)}
+              </p>
+            </div>
+            <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${(cards[0].used / cards[0].limit) * 100}%`, background: `linear-gradient(90deg, ${cards[0].color1}, ${ws.color})` }} />
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-[11px] text-white/25">Fechamento 15 jul</span>
+              <span className="text-[11px] text-white/25">Vencimento 22 jul</span>
+            </div>
+          </div>
+        </div>
+
+        {/* All cards list */}
+        <div className="px-5 mt-6">
+          <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider mb-3">Todos os cartões</h3>
+          <div className="flex flex-col gap-2">
+            {cards.map((card) => (
+              <button
+                key={card.id}
+                onClick={() => nav("card-detail")}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-[#111113] border border-white/[0.06] hover:bg-[#141417] transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${card.color1}, ${card.color2})` }}>
+                  <CreditCard size={18} strokeWidth={1.75} className="text-white/80" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-white/90">{card.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-white/35">•••• {card.last4}</span>
+                    <span className="text-white/15 text-xs">·</span>
+                    <Avatar member={card.member} size={14} />
+                    <span className="text-xs text-white/35">{card.member.name}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-semibold text-white/65" style={mono}>{fmt(card.used)}</p>
+                  <p className="text-[11px] text-white/25">usado</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => nav("card-new")}
+            className="flex items-center justify-center gap-2 p-4 w-full mt-2 rounded-2xl border border-dashed border-white/[0.12] hover:border-white/25 transition-colors"
+          >
+            <Plus size={16} strokeWidth={2} className="text-white/30" />
+            <span className="text-sm text-white/35 font-medium">Adicionar cartão</span>
+          </button>
+        </div>
+      </div>
+
+      <BottomNav active="cards" onNavigate={nav} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// TRANSACTIONS
+// ─────────────────────────────────────────────────────────
+
+function TransactionsScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [search, setSearch] = useState("");
+
+  const filters: { id: typeof filter; label: string }[] = [
+    { id: "all", label: "Tudo" },
+    { id: "income", label: "Receitas" },
+    { id: "expense", label: "Despesas" },
+  ];
+
+  const filtered = TRANSACTIONS.filter(tx => {
+    if (filter !== "all" && tx.type !== filter) return false;
+    if (search && !tx.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const grouped = filtered.reduce<Record<string, Transaction[]>>((acc, tx) => {
+    if (!acc[tx.dateGroup]) acc[tx.dateGroup] = [];
+    acc[tx.dateGroup].push(tx);
+    return acc;
+  }, {});
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Histórico" rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <SlidersHorizontal size={16} strokeWidth={2} className="text-white/60" />
+        </button>
+      } />
+
+      {/* Search */}
+      <div className="px-5 pb-3 shrink-0">
+        <div className="relative flex items-center">
+          <Search size={15} className="absolute left-3.5 text-white/30" />
+          <input
+            type="text"
+            placeholder="Buscar transações..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full h-[42px] bg-[#18181B] border border-white/[0.07] rounded-xl text-white/80 text-sm placeholder:text-white/25 focus:outline-none focus:border-white/15 transition-colors"
+            style={{ paddingLeft: 38 }}
+          />
+        </div>
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex gap-2 px-5 pb-4 shrink-0">
+        {filters.map(f => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className="px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all"
+            style={{
+              background: filter === f.id ? `${ws.color}25` : "#18181B",
+              color: filter === f.id ? ws.color : "rgba(255,255,255,0.4)",
+              border: `1px solid ${filter === f.id ? `${ws.color}45` : "transparent"}`,
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-[90px] px-5">
+        {Object.entries(grouped).length === 0 ? (
+          <EmptyState
+            icon={<ArrowUpDown size={24} />}
+            title="Nenhuma transação"
+            desc="Adicione sua primeira transação para começar a organizar suas finanças."
+            cta="Nova transação"
+            onCta={() => nav("transaction-new")}
+            wsColor={ws.color}
+          />
+        ) : (
+          Object.entries(grouped).map(([group, txs]) => (
+            <div key={group} className="mb-4">
+              <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-1 py-1">{group}</p>
+              {txs.map(tx => (
+                <TxRow key={tx.id} tx={tx} onTap={() => nav("transaction-detail")} wsColor={ws.color} />
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      <BottomNav active="transactions" onNavigate={nav} wsColor={ws.color} />
+      <FAB onPress={() => nav("transaction-new")} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// TRANSACTION DETAIL
+// ─────────────────────────────────────────────────────────
+
+function TransactionDetail({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const tx = TRANSACTIONS[0];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <TopBar title="Detalhes" onBack={() => nav("transactions")} rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <MoreHorizontal size={18} strokeWidth={1.75} className="text-white/60" />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-8 px-5">
+        {/* Header */}
+        <div className="flex flex-col items-center py-8 gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-[#1C1C1F] flex items-center justify-center text-4xl">{tx.emoji}</div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-white/90">{tx.title}</p>
+            <p className="text-sm text-white/35 mt-0.5">{tx.category} · {tx.date}</p>
+          </div>
+          <MoneyDisplay amount={tx.amount} size="xl" color={tx.type === "income" ? "#22C55E" : undefined} />
+        </div>
+
+        {/* Attribution — the key section */}
+        <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden mb-4">
+          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider px-4 pt-4 pb-3">Atribuição</p>
+          <Divider />
+          {[
+            { label: "Quem consumiu", member: tx.consumer, desc: "Beneficiário da despesa" },
+            { label: "Quem pagou", member: tx.payer, desc: "Desembolsou o dinheiro" },
+            { label: "Dono do cartão", member: tx.cardOwner, desc: "Cartão utilizado" },
+          ].map(({ label, member, desc }, i) => (
+            <div key={i}>
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <Avatar member={member} size={36} />
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-white/90">{member.name}</p>
+                  <p className="text-xs text-white/35 mt-0.5">{desc}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-medium text-white/40 bg-white/[0.06] px-2 py-0.5 rounded-full">{label}</span>
+                </div>
+              </div>
+              {i < 2 && <Divider />}
+            </div>
+          ))}
+        </div>
+
+        {/* Meta */}
+        <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+          {[
+            { label: "Data", value: tx.date },
+            { label: "Categoria", value: tx.category },
+            { label: "Status", value: tx.status === "completed" ? "Concluída" : "Pendente" },
+            { label: "Workspace", value: ws.name },
+          ].map(({ label, value }, i) => (
+            <div key={i}>
+              <div className="flex items-center justify-between px-4 py-3.5">
+                <p className="text-sm text-white/40">{label}</p>
+                <p className="text-sm font-medium text-white/80">{value}</p>
+              </div>
+              {i < 3 && <Divider />}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <Btn variant="secondary" size="md" fullWidth icon={<Edit3 size={15} />}>Editar</Btn>
+          <Btn variant="destructive" size="md" fullWidth>Excluir</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// NEW TRANSACTION
+// ─────────────────────────────────────────────────────────
+
+function NewTransactionScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [type, setType] = useState<"expense" | "income">("expense");
+  const [amount, setAmount] = useState("");
+  const [title, setTitle] = useState("");
+  const [consumer, setConsumer] = useState(MATHEUS);
+  const [payer, setPayer] = useState(MATHEUS);
+  const [cardOwner, setCardOwner] = useState(MATHEUS);
+  const [selectedCat, setSelectedCat] = useState("Alimentação");
+
+  const categories = [
+    { id: "Alimentação", emoji: "🛒" }, { id: "Transporte", emoji: "⛽" },
+    { id: "Moradia", emoji: "🏠" }, { id: "Saúde", emoji: "💊" },
+    { id: "Lazer", emoji: "🎬" }, { id: "Receita", emoji: "💼" },
+    { id: "Streaming", emoji: "📺" }, { id: "Outros", emoji: "📦" },
+  ];
+
+  const members = ws.members.length > 1 ? ws.members : [MATHEUS, ANA];
+
+  const handleAmount = (v: string) => {
+    const clean = v.replace(/\D/g, "");
+    if (clean.length > 9) return;
+    const num = parseInt(clean || "0") / 100;
+    setAmount(num === 0 ? "" : num.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <div className="flex items-center justify-between px-5 py-3 shrink-0">
+        <button onClick={() => nav("transactions")} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <X size={16} strokeWidth={2} className="text-white/70" />
+        </button>
+        <span className="text-[15px] font-semibold text-white/90">Nova transação</span>
+        <div className="w-8" />
+      </div>
+
+      {/* Type toggle */}
+      <div className="flex gap-2 px-5 pb-4 shrink-0">
+        {(["expense", "income"] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setType(t)}
+            className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
+            style={{
+              background: type === t ? (t === "expense" ? "#EF444420" : "#22C55E20") : "#18181B",
+              color: type === t ? (t === "expense" ? "#EF4444" : "#22C55E") : "rgba(255,255,255,0.35)",
+            }}
+          >
+            {t === "expense" ? "Despesa" : "Receita"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-8">
+        {/* Amount */}
+        <div className="flex flex-col items-center py-6 px-5 gap-2">
+          <p className="text-xs text-white/35 font-medium uppercase tracking-wider">Valor</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xl text-white/40 font-semibold">R$</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="0,00"
+              value={amount}
+              onChange={e => handleAmount(e.target.value)}
+              className="text-[42px] font-bold text-white bg-transparent border-none outline-none w-48 text-center placeholder:text-white/15"
+              style={mono}
+            />
+          </div>
+        </div>
+
+        <div className="px-5 flex flex-col gap-4">
+          <InputField label="Descrição" placeholder="Ex: Supermercado Extra" value={title} onChange={setTitle} />
+
+          {/* Categories */}
+          <div>
+            <label className="text-xs text-white/40 font-medium uppercase tracking-wider">Categoria</label>
+            <div className="flex gap-2 mt-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+              {categories.map(({ id, emoji }) => (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCat(id)}
+                  className="flex flex-col items-center gap-1 shrink-0 w-[62px]"
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all"
+                    style={{
+                      background: selectedCat === id ? `${ws.color}25` : "#18181B",
+                      border: `1.5px solid ${selectedCat === id ? ws.color : "transparent"}`,
+                    }}
+                  >
+                    {emoji}
+                  </div>
+                  <span className="text-[10px] text-white/35 text-center leading-tight">{id}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Attribution — the key feature */}
+          <div>
+            <label className="text-xs text-white/40 font-medium uppercase tracking-wider mb-3 block">Atribuição</label>
+            <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+              {[
+                { label: "Quem consumiu?", value: consumer, onChange: setConsumer, desc: "Quem se beneficiou" },
+                { label: "Quem pagou?", value: payer, onChange: setPayer, desc: "Quem desembolsou" },
+                { label: "Dono do cartão?", value: cardOwner, onChange: setCardOwner, desc: "Qual cartão foi usado" },
+              ].map(({ label, value, onChange, desc }, i) => (
+                <div key={i}>
+                  <div className="px-4 py-3.5 flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-[13px] font-medium text-white/80">{label}</p>
+                      <p className="text-[11px] text-white/30 mt-0.5">{desc}</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {members.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => onChange(m)}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded-lg transition-all"
+                          style={{
+                            background: value.id === m.id ? `${m.color}22` : "#1C1C1F",
+                            border: `1.5px solid ${value.id === m.id ? m.color : "transparent"}`,
+                          }}
+                        >
+                          <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{ backgroundColor: m.color }}>
+                            {m.initials[0]}
+                          </div>
+                          <span className="text-[11px] font-medium" style={{ color: value.id === m.id ? m.color : "rgba(255,255,255,0.4)" }}>
+                            {m.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {i < 2 && <Divider />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Btn
+            variant="primary"
+            size="lg"
+            fullWidth
+            wsColor={ws.color}
+            disabled={!amount || !title}
+            onClick={() => nav("transactions")}
+          >
+            Salvar transação
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// SUBSCRIPTIONS
+// ─────────────────────────────────────────────────────────
+
+function SubscriptionsScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const subs = [
+    { emoji: "🎬", name: "Netflix", amount: 45.90, cycle: "Mensal", next: "14 jul", members: [MATHEUS, ANA], card: MATHEUS },
+    { emoji: "🎵", name: "Spotify Família", amount: 26.90, cycle: "Mensal", next: "18 jul", members: [MATHEUS, ANA, PEDRO, JULIA], card: MATHEUS },
+    { emoji: "🍎", name: "Apple One", amount: 59.90, cycle: "Mensal", next: "28 jul", members: [MATHEUS, ANA], card: ANA },
+    { emoji: "☁️", name: "Google One", amount: 6.99, cycle: "Mensal", next: "05 ago", members: [MATHEUS], card: MATHEUS },
+    { emoji: "🎮", name: "Xbox Game Pass", amount: 44.99, cycle: "Mensal", next: "10 ago", members: [MATHEUS], card: MATHEUS },
+  ];
+
+  const total = subs.reduce((s, sub) => s + sub.amount, 0);
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Assinaturas" rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl" style={{ background: `${ws.color}20` }}>
+          <Plus size={18} strokeWidth={2.5} style={{ color: ws.color }} />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-8 px-5">
+        {/* Summary */}
+        <div className="p-5 rounded-2xl mb-5" style={{ background: `linear-gradient(135deg, ${ws.color}18, ${ws.color}06)`, border: `1px solid ${ws.color}22` }}>
+          <p className="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Total mensal</p>
+          <MoneyDisplay amount={total} size="xl" />
+          <p className="text-xs text-white/30 mt-2">{subs.length} assinaturas ativas · Próxima: {subs[0].next}</p>
+        </div>
+
+        {/* List */}
+        <div className="flex flex-col gap-2">
+          {subs.map((sub) => (
+            <div key={sub.name} className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+              <div className="w-11 h-11 rounded-xl bg-[#1C1C1F] flex items-center justify-center text-xl shrink-0">{sub.emoji}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-white/90">{sub.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-white/30">{sub.cycle}</span>
+                  <span className="text-white/15 text-xs">·</span>
+                  <span className="text-xs text-white/30">Próxima: {sub.next}</span>
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  {sub.members.slice(0, 3).map(m => (
+                    <div key={m.id} className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white -ml-1 first:ml-0 border border-[#09090B]" style={{ backgroundColor: m.color }}>
+                      {m.initials[0]}
+                    </div>
+                  ))}
+                  {sub.members.length > 3 && <span className="text-[10px] text-white/25 ml-1">+{sub.members.length - 3}</span>}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[14px] font-semibold text-white/80" style={mono}>{fmt(sub.amount)}</p>
+                <div className="flex items-center gap-1 mt-0.5 justify-end">
+                  <div className="w-3 h-3 rounded-full flex items-center justify-center" style={{ backgroundColor: sub.card.color }}>
+                    <span className="text-[7px] text-white font-bold">{sub.card.initials[0]}</span>
+                  </div>
+                  <span className="text-[10px] text-white/30">{sub.card.name}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// LOANS
+// ─────────────────────────────────────────────────────────
+
+function LoansScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const loans = [
+    { id: "1", person: ANA, type: "owed", label: "Você deve para", amount: 247.40, desc: "Supermercado + iFood", dueDate: "Sem data", txCount: 3 },
+    { id: "2", person: PEDRO, type: "toReceive", label: "Te deve", amount: 180.00, desc: "Posto Shell - 10 jul", dueDate: "10 jul", txCount: 1 },
+    { id: "3", person: JULIA, type: "toReceive", label: "Te deve", amount: 85.50, desc: "Jantar e cinema", dueDate: "Sem data", txCount: 2 },
+  ];
+
+  const totalOwed = loans.filter(l => l.type === "owed").reduce((s, l) => s + l.amount, 0);
+  const totalToReceive = loans.filter(l => l.type === "toReceive").reduce((s, l) => s + l.amount, 0);
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Empréstimos" rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl" style={{ background: `${ws.color}20` }}>
+          <Plus size={18} strokeWidth={2.5} style={{ color: ws.color }} />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-8 px-5">
+        {/* Summary row */}
+        <div className="flex gap-3 mt-2 mb-5">
+          <div className="flex-1 p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+            <p className="text-[10px] text-white/35 font-medium uppercase tracking-wider">Você deve</p>
+            <span className="text-[20px] font-bold mt-1 block" style={{ ...mono, color: "#EF4444" }}>{fmt(totalOwed)}</span>
+          </div>
+          <div className="flex-1 p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+            <p className="text-[10px] text-white/35 font-medium uppercase tracking-wider">Te devem</p>
+            <span className="text-[20px] font-bold mt-1 block" style={{ ...mono, color: "#22C55E" }}>{fmt(totalToReceive)}</span>
+          </div>
+        </div>
+
+        {/* Loans list */}
+        <div className="flex flex-col gap-2">
+          {loans.map(loan => (
+            <button
+              key={loan.id}
+              onClick={() => nav("entre-nos")}
+              className="flex items-center gap-4 p-4 rounded-2xl bg-[#111113] border border-white/[0.06] text-left hover:bg-[#141417] transition-colors w-full"
+            >
+              <Avatar member={loan.person} size={44} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: loan.type === "owed" ? "#EF4444" : "#22C55E" }}>
+                    {loan.label}
+                  </span>
+                </div>
+                <p className="text-[15px] font-semibold text-white/90 mt-0.5">{loan.person.name}</p>
+                <p className="text-xs text-white/30 mt-0.5">{loan.desc} · {loan.txCount} transaç{loan.txCount === 1 ? "ão" : "ões"}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ ...mono, color: loan.type === "owed" ? "#EF4444" : "#22C55E" }}
+                >
+                  {fmt(loan.amount)}
+                </span>
+                <p className="text-[11px] text-white/25 mt-0.5">{loan.dueDate}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Empty state for no loans */}
+        {loans.length === 0 && (
+          <EmptyState
+            icon={<Landmark size={24} />}
+            title="Nenhum empréstimo"
+            desc="Quando você ou alguém dever dinheiro, aparecerá aqui."
+            cta="Registrar empréstimo"
+            wsColor={ws.color}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// ENTRE NÓS — must be the most beautiful screen
+// ─────────────────────────────────────────────────────────
+
+function EntreNosScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [settled, setSettled] = useState(false);
+  const netAmount = 247.40;
+  const debtor = MATHEUS;
+  const creditor = ANA;
+
+  const timeline = [
+    { emoji: "🛒", title: "Supermercado Extra", date: "Hoje", amount: 287.40, consumer: MATHEUS, payer: ANA },
+    { emoji: "🍱", title: "iFood — Sushi Aki", date: "30 jun", amount: 127.80, consumer: MATHEUS, payer: ANA },
+    { emoji: "⛽", title: "Posto Shell", date: "Ontem", amount: 180.00, consumer: PEDRO, payer: MATHEUS },
+    { emoji: "🎬", title: "Cinema Kinoplex", date: "28 jun", amount: 89.90, consumer: ANA, payer: MATHEUS },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Entre Nós" subtitle="Matheus & Ana" rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <Share2 size={16} strokeWidth={2} className="text-white/60" />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+        {/* Hero: member flow */}
+        <div className="px-5 mt-4">
+          <div className="relative p-6 rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #1A1A1F 0%, #111113 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
+
+            {/* Subtle glow behind debtors */}
+            <div className="absolute left-6 top-6 w-20 h-20 rounded-full blur-2xl opacity-20" style={{ background: debtor.color }} />
+            <div className="absolute right-6 top-6 w-20 h-20 rounded-full blur-2xl opacity-20" style={{ background: creditor.color }} />
+
+            {/* Members */}
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  <Avatar member={debtor} size={56} />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#EF4444] flex items-center justify-center border-2 border-[#09090B]">
+                    <ArrowUpRight size={10} strokeWidth={3} className="text-white" />
+                  </div>
+                </div>
+                <p className="text-[13px] font-semibold text-white/80">{debtor.name}</p>
+                <Badge label="Deve" color="#EF4444" bg="#EF444415" />
+              </div>
+
+              {/* Flow arrow */}
+              <div className="flex-1 flex flex-col items-center gap-2 px-4">
+                <div className="flex items-center w-full">
+                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${debtor.color}60, ${creditor.color}60)` }} />
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full" style={{ background: `linear-gradient(135deg, ${debtor.color}30, ${creditor.color}30)` }}>
+                    <ArrowRight size={12} strokeWidth={2.5} className="text-white/50" />
+                  </div>
+                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${debtor.color}60, ${creditor.color}60)` }} />
+                </div>
+                <span className="text-[10px] text-white/30 font-medium">transferência sugerida</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  <Avatar member={creditor} size={56} />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#22C55E] flex items-center justify-center border-2 border-[#09090B]">
+                    <ArrowDownLeft size={10} strokeWidth={3} className="text-white" />
+                  </div>
+                </div>
+                <p className="text-[13px] font-semibold text-white/80">{creditor.name}</p>
+                <Badge label="Recebe" color="#22C55E" bg="#22C55E15" />
+              </div>
+            </div>
+
+            {/* Net amount */}
+            <div className="flex flex-col items-center gap-1.5 py-5 border-t border-white/[0.06]">
+              <p className="text-xs text-white/35 font-medium uppercase tracking-wider">Saldo líquido</p>
+              <span className="text-[38px] font-bold" style={{ ...mono, color: "#EF4444" }}>
+                R$ {netAmount.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+              </span>
+              <p className="text-sm text-white/45 text-center">
+                <span className="font-semibold text-white/70">{debtor.name}</span> deve pagar para{" "}
+                <span className="font-semibold text-white/70">{creditor.name}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Balance breakdown */}
+        <div className="px-5 mt-4">
+          <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+            <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider px-4 pt-4 pb-3">Resumo</p>
+            <Divider />
+            {[
+              { label: `${creditor.name} pagou para ${debtor.name}`, amount: 594.80, color: "#EF4444", dir: "⬆" },
+              { label: `${debtor.name} pagou para ${creditor.name}`, amount: 347.40, color: "#22C55E", dir: "⬇" },
+            ].map(({ label, amount, color, dir }, i) => (
+              <div key={i}>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{dir === "⬆" ? "⬆️" : "⬇️"}</span>
+                    <p className="text-[13px] text-white/65">{label}</p>
+                  </div>
+                  <span className="text-[14px] font-semibold" style={{ ...mono, color }}>{fmt(amount)}</span>
+                </div>
+                {i === 0 && <Divider />}
+              </div>
+            ))}
+            <div className="flex items-center justify-between px-4 py-3.5 border-t border-white/[0.06]">
+              <p className="text-[13px] font-semibold text-white/80">Diferença</p>
+              <span className="text-[15px] font-bold" style={{ ...mono, color: "#EF4444" }}>{fmt(netAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div className="px-5 mt-5">
+          <p className="text-[13px] font-semibold text-white/60 uppercase tracking-wider mb-3">Histórico</p>
+          <div className="flex flex-col gap-0.5">
+            {timeline.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 py-3">
+                <div className="w-10 h-10 rounded-xl bg-[#1C1C1F] flex items-center justify-center text-base shrink-0">{item.emoji}</div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-medium text-white/85">{item.title}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: item.consumer.color }}>
+                      {item.consumer.initials[0]}
+                    </div>
+                    <span className="text-[11px] text-white/30">consumiu</span>
+                    <span className="text-white/15">·</span>
+                    <div className="w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: item.payer.color }}>
+                      {item.payer.initials[0]}
+                    </div>
+                    <span className="text-[11px] text-white/30">pagou · {item.date}</span>
+                  </div>
+                </div>
+                <span className="text-[14px] font-semibold text-white/60 shrink-0" style={mono}>{fmt(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="px-5 mt-6 flex flex-col gap-2">
+          {!settled ? (
+            <>
+              <Btn variant="primary" size="lg" fullWidth wsColor="#22C55E" icon={<Check size={18} strokeWidth={2.5} />} onClick={() => setSettled(true)}>
+                Registrar acerto
+              </Btn>
+              <Btn variant="secondary" size="md" fullWidth icon={<QrCode size={16} />}>
+                Gerar QR Code PIX
+              </Btn>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-6 rounded-2xl bg-[#22C55E10] border border-[#22C55E20]">
+              <div className="w-12 h-12 rounded-2xl bg-[#22C55E20] flex items-center justify-center">
+                <CheckCircle size={24} className="text-[#22C55E]" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-[#22C55E]">Acerto registrado!</p>
+                <p className="text-xs text-white/35 mt-1">Saldo zerado entre Matheus e Ana.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BottomNav active="entre-nos" onNavigate={nav} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// CHAT
+// ─────────────────────────────────────────────────────────
+
+function ChatScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([
+    { id: "1", role: "assistant", text: "Olá, Matheus! Como posso te ajudar com suas finanças hoje?" },
+    { id: "2", role: "user", text: "Quanto gastei com alimentação este mês?" },
+    { id: "3", role: "assistant", text: "Você gastou **R$ 1.240,50** com alimentação em julho, distribuídos em 8 transações. Esse valor representa 38% das suas despesas totais no mês. Comparado a junho, você gastou 12% mais." },
+  ]);
+
+  const suggestions = [
+    "Qual meu saldo atual?",
+    "Resumo de julho",
+    "Gastos com cartão",
+    "Quem me deve dinheiro?",
+  ];
+
+  const send = () => {
+    if (!input.trim()) return;
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now().toString(), role: "user", text: input },
+      { id: (Date.now() + 1).toString(), role: "assistant", text: "Deixa eu analisar isso para você... ✨" },
+    ]);
+    setInput("");
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B]">
+      <StatusBar />
+      <div className="flex items-center gap-3 px-5 py-3 shrink-0">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${ws.color}20` }}>
+          <Sparkles size={16} strokeWidth={2} style={{ color: ws.color }} />
+        </div>
+        <div>
+          <h3 className="text-[16px] font-semibold text-white/90" style={{ letterSpacing: "-0.015em" }}>Nivo AI</h3>
+          <p className="text-[11px] text-white/30">Seu assistente financeiro</p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-4">
+        {/* Suggestions */}
+        {messages.length <= 1 && (
+          <div className="py-4">
+            <p className="text-xs text-white/35 font-medium uppercase tracking-wider mb-3">Sugestões rápidas</p>
+            <div className="flex flex-col gap-2">
+              {suggestions.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setInput(s)}
+                  className="flex items-center gap-3 p-3.5 rounded-xl bg-[#111113] border border-white/[0.06] text-left hover:bg-[#141417] transition-colors"
+                >
+                  <Zap size={15} strokeWidth={2} className="text-white/30 shrink-0" />
+                  <span className="text-[14px] text-white/65">{s}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Messages */}
+        <div className="flex flex-col gap-3">
+          {messages.map(msg => (
+            <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              {msg.role === "assistant" && (
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1" style={{ background: `${ws.color}25` }}>
+                  <Sparkles size={12} strokeWidth={2} style={{ color: ws.color }} />
+                </div>
+              )}
+              <div
+                className="max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed"
+                style={{
+                  background: msg.role === "user" ? ws.color : "#18181B",
+                  color: "rgba(255,255,255,0.90)",
+                  borderBottomRightRadius: msg.role === "user" ? 6 : undefined,
+                  borderBottomLeftRadius: msg.role === "assistant" ? 6 : undefined,
+                }}
+              >
+                {msg.text.replace(/\*\*(.*?)\*\*/g, "$1")}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="px-4 pb-5 pt-3 border-t border-white/[0.06] shrink-0" style={{ background: "rgba(9,9,11,0.95)", backdropFilter: "blur(20px)" }}>
+        <div className="flex items-center gap-2">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && send()}
+            placeholder="Pergunte sobre suas finanças..."
+            className="flex-1 h-11 bg-[#18181B] border border-white/[0.07] rounded-xl text-white/80 text-sm placeholder:text-white/25 focus:outline-none focus:border-white/15 transition-colors px-4"
+          />
+          <button
+            onClick={send}
+            className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0"
+            style={{ background: input ? ws.color : "#18181B" }}
+          >
+            <Send size={16} strokeWidth={2} className={input ? "text-white" : "text-white/30"} />
+          </button>
+        </div>
+      </div>
+
+      <BottomNav active="chat" onNavigate={nav} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────────────────
+
+function ProfileScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const menuSections = [
+    {
+      title: "Conta",
+      items: [
+        { icon: User, label: "Informações pessoais" },
+        { icon: Bell, label: "Notificações" },
+        { icon: Lock, label: "Segurança e privacidade" },
+        { icon: Shield, label: "Autenticação em dois fatores" },
+      ],
+    },
+    {
+      title: "Preferências",
+      items: [
+        { icon: Globe, label: "Idioma", value: "Português" },
+        { icon: DollarSign, label: "Moeda", value: "BRL" },
+        { icon: BarChart2, label: "Exportar dados" },
+      ],
+    },
+    {
+      title: "Workspaces",
+      items: [
+        { icon: Users, label: "Gerenciar Workspaces", onTap: "workspace-switcher" as ScreenId },
+        { icon: Plus, label: "Criar Workspace", onTap: "workspace-create" as ScreenId },
+      ],
+    },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Perfil" rightEl={
+        <button onClick={() => nav("settings")} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <Settings size={16} strokeWidth={2} className="text-white/60" />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+        {/* Avatar section */}
+        <div className="flex flex-col items-center gap-3 py-6">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-3xl font-bold text-white" style={{ background: `linear-gradient(135deg, ${ws.color}, ${ws.color}99)` }}>
+              M
+            </div>
+            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#18181B] border-2 border-[#09090B] flex items-center justify-center">
+              <Edit3 size={12} strokeWidth={2} className="text-white/60" />
+            </button>
+          </div>
+          <div className="text-center">
+            <h3 className="text-[18px] font-semibold text-white/95">Matheus Santos</h3>
+            <p className="text-sm text-white/35 mt-0.5">matheus@email.com</p>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#18181B]">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ws.color }} />
+              <span className="text-xs text-white/50">{WORKSPACES.length} workspaces</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#18181B]">
+              <Receipt size={12} className="text-white/35" />
+              <span className="text-xs text-white/50">247 transações</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Menu sections */}
+        <div className="px-5 flex flex-col gap-5">
+          {menuSections.map(({ title, items }) => (
+            <div key={title}>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">{title}</p>
+              <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+                {items.map(({ icon: Icon, label, value, onTap }, i) => (
+                  <div key={label}>
+                    <button
+                      onClick={() => onTap && nav(onTap)}
+                      className="flex items-center gap-3 px-4 py-3.5 w-full hover:bg-white/[0.03] transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
+                        <Icon size={15} strokeWidth={1.75} className="text-white/50" />
+                      </div>
+                      <span className="flex-1 text-[14px] font-medium text-white/80">{label}</span>
+                      {value && <span className="text-sm text-white/35">{value}</span>}
+                      <ChevronRight size={15} strokeWidth={1.75} className="text-white/20" />
+                    </button>
+                    {i < items.length - 1 && <Divider />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Sign out */}
+          <button
+            onClick={() => nav("login")}
+            className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-[#EF444410] border border-[#EF444418] hover:bg-[#EF444418] transition-colors"
+          >
+            <LogOut size={16} strokeWidth={2} className="text-[#EF4444]" />
+            <span className="text-sm font-semibold text-[#EF4444]">Sair da conta</span>
+          </button>
+
+          <p className="text-center text-xs text-white/20 pb-2">Nivo v1.0.0 · Feito com carinho 🤍</p>
+        </div>
+      </div>
+
+      <BottomNav active="profile" onNavigate={nav} wsColor={ws.color} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────────────────────
+
+function SettingsScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const [notifs, setNotifs] = useState(true);
+  const [biometric, setBiometric] = useState(true);
+  const [darkMode, setDarkMode] = useState(true);
+
+  const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+    <button
+      onClick={() => onChange(!value)}
+      className="relative w-11 h-6 rounded-full transition-all"
+      style={{ backgroundColor: value ? ws.color : "rgba(255,255,255,0.1)" }}
+    >
+      <span
+        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+        style={{ left: value ? "calc(100% - 22px)" : 2 }}
+      />
+    </button>
+  );
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Configurações" onBack={() => nav("profile")} />
+
+      <div className="flex-1 overflow-y-auto pb-8 px-5 flex flex-col gap-5">
+        {/* Workspace */}
+        <div>
+          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Workspace atual</p>
+          <button
+            onClick={() => nav("workspace-switcher")}
+            className="flex items-center gap-3 p-4 w-full rounded-2xl bg-[#111113] border border-white/[0.06] text-left"
+          >
+            <WorkspaceAvatar ws={ws} size={40} />
+            <div className="flex-1">
+              <p className="text-[15px] font-semibold text-white/90">{ws.name}</p>
+              <p className="text-xs text-white/35">{ws.type} · {ws.members.length} membros</p>
+            </div>
+            <ChevronRight size={15} className="text-white/25" />
+          </button>
+        </div>
+
+        {/* Notifications */}
+        <div>
+          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Notificações</p>
+          <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+            {[
+              { label: "Ativar notificações", value: notifs, onChange: setNotifs },
+              { label: "Lembretes de vencimento", value: notifs, onChange: setNotifs },
+              { label: "Novas transações", value: notifs, onChange: setNotifs },
+            ].map(({ label, value, onChange }, i) => (
+              <div key={label}>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-[14px] font-medium text-white/80">{label}</span>
+                  <Toggle value={value} onChange={onChange} />
+                </div>
+                {i < 2 && <Divider />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Security */}
+        <div>
+          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Segurança</p>
+          <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+            {[
+              { label: "Face ID / Biometria", value: biometric, onChange: setBiometric },
+              { label: "Autenticação em 2 fatores", value: false, onChange: () => {} },
+            ].map(({ label, value, onChange }, i) => (
+              <div key={label}>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-[14px] font-medium text-white/80">{label}</span>
+                  <Toggle value={value} onChange={onChange} />
+                </div>
+                {i < 1 && <Divider />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div>
+          <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Aparência</p>
+          <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <span className="text-[14px] font-medium text-white/80">Modo escuro</span>
+              <Toggle value={darkMode} onChange={setDarkMode} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// CARD DETAIL
+// ─────────────────────────────────────────────────────────
+
+function CardDetailScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Nubank" onBack={() => nav("cards")} rightEl={
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06]">
+          <MoreHorizontal size={18} strokeWidth={1.75} className="text-white/60" />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-8">
+        {/* Card visual */}
+        <div className="px-5 mt-2">
+          <div
+            className="relative w-full rounded-3xl p-6 overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)", aspectRatio: "1.586/1" }}
+          >
+            <div className="absolute inset-0 opacity-20" style={{ background: "linear-gradient(115deg, rgba(255,255,255,0.5) 0%, transparent 50%)" }} />
+            <div className="absolute top-6 left-6">
+              <div className="w-9 h-7 rounded-md bg-amber-300/80" />
+            </div>
+            <div className="absolute top-5 right-5 flex">
+              <div className="w-7 h-7 rounded-full bg-red-500/80 -mr-2.5" />
+              <div className="w-7 h-7 rounded-full bg-yellow-400/70" />
+            </div>
+            <div className="absolute bottom-10 left-6">
+              <p className="text-[15px] font-semibold tracking-[0.2em] text-white/80" style={mono}>•••• •••• •••• 4231</p>
+            </div>
+            <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
+              <p className="text-[12px] font-semibold tracking-wider text-white/70 uppercase">Nubank</p>
+              <p className="text-[11px] text-white/50" style={mono}>07/28</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex gap-3 px-5 mt-4">
+          {[
+            { icon: Eye, label: "Ver número" },
+            { icon: Copy, label: "Copiar" },
+            { icon: Lock, label: "Bloquear" },
+            { icon: QrCode, label: "QR Code" },
+          ].map(({ icon: Icon, label }) => (
+            <button key={label} className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#18181B]">
+              <Icon size={18} strokeWidth={1.75} className="text-white/50" />
+              <span className="text-[10px] text-white/35 font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Info */}
+        <div className="px-5 mt-4 flex flex-col gap-3">
+          <div className="rounded-2xl bg-[#111113] border border-white/[0.06] overflow-hidden">
+            {[
+              { label: "Limite total", value: "R$ 12.000,00" },
+              { label: "Utilizado", value: "R$ 4.823,45" },
+              { label: "Disponível", value: "R$ 7.176,55" },
+              { label: "Fechamento", value: "Dia 15" },
+              { label: "Vencimento", value: "Dia 22" },
+              { label: "Titular", value: "Matheus Santos" },
+            ].map(({ label, value }, i, arr) => (
+              <div key={label}>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <p className="text-sm text-white/40">{label}</p>
+                  <p className="text-sm font-semibold text-white/80" style={i < 3 ? mono : undefined}>{value}</p>
+                </div>
+                {i < arr.length - 1 && <Divider />}
+              </div>
+            ))}
+          </div>
+
+          {/* Recent on this card */}
+          <h3 className="text-[13px] font-semibold text-white/60 uppercase tracking-wider mt-2">Transações recentes</h3>
+          {TRANSACTIONS.filter(t => t.cardOwner.id === "matheus").slice(0, 3).map(tx => (
+            <TxRow key={tx.id} tx={tx} wsColor={ws.color} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// ACCOUNTS
+// ─────────────────────────────────────────────────────────
+
+function AccountsScreen({ nav, ws }: { nav: (s: ScreenId) => void; ws: WorkspaceData }) {
+  const accounts = [
+    { id: "1", bank: "Nubank", type: "Conta corrente", balance: 4820.32, color: "#7C3AED", emoji: "💜", member: MATHEUS },
+    { id: "2", bank: "Inter", type: "Conta corrente", balance: 2340.80, color: "#EC4899", emoji: "🧡", member: ANA },
+    { id: "3", bank: "Itaú", type: "Poupança", balance: 5686.20, color: "#F59E0B", emoji: "🏦", member: MATHEUS },
+  ];
+  const total = accounts.reduce((s, a) => s + a.balance, 0);
+
+  return (
+    <div className="flex flex-col h-full bg-[#09090B] overflow-hidden">
+      <StatusBar />
+      <TopBar title="Contas" rightEl={
+        <button onClick={() => nav("account-new")} className="w-9 h-9 flex items-center justify-center rounded-xl" style={{ background: `${ws.color}20` }}>
+          <Plus size={18} strokeWidth={2.5} style={{ color: ws.color }} />
+        </button>
+      } />
+
+      <div className="flex-1 overflow-y-auto pb-8 px-5">
+        {/* Total */}
+        <div className="p-5 rounded-2xl mb-5" style={{ background: `linear-gradient(135deg, ${ws.color}18, ${ws.color}06)`, border: `1px solid ${ws.color}22` }}>
+          <p className="text-xs text-white/40 font-medium uppercase tracking-wider mb-1">Total em contas</p>
+          <MoneyDisplay amount={total} size="xl" />
+          <p className="text-xs text-white/30 mt-2">{accounts.length} contas vinculadas</p>
+        </div>
+
+        {/* List */}
+        <div className="flex flex-col gap-2">
+          {accounts.map(acc => (
+            <div key={acc.id} className="flex items-center gap-4 p-4 rounded-2xl bg-[#111113] border border-white/[0.06]">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl bg-[#1C1C1F]">{acc.emoji}</div>
+              <div className="flex-1">
+                <p className="text-[15px] font-semibold text-white/90">{acc.bank}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-white/30">{acc.type}</span>
+                  <span className="text-white/15 text-xs">·</span>
+                  <Avatar member={acc.member} size={14} />
+                  <span className="text-xs text-white/30">{acc.member.name}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <MoneyDisplay amount={acc.balance} size="sm" />
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={() => nav("account-new")}
+            className="flex items-center justify-center gap-2 p-4 w-full rounded-2xl border border-dashed border-white/[0.12] hover:border-white/25 transition-colors"
+          >
+            <Plus size={16} strokeWidth={2} className="text-white/30" />
+            <span className="text-sm text-white/35 font-medium">Vincular conta</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// SCREEN NAVIGATOR (desktop chrome)
+// ─────────────────────────────────────────────────────────
+
+const SCREEN_GROUPS = [
+  { label: "Auth", screens: [
+    { id: "login" as ScreenId, label: "Login" },
+    { id: "signup" as ScreenId, label: "Cadastro" },
+    { id: "forgot-password" as ScreenId, label: "Esqueci senha" },
+    { id: "email-confirm" as ScreenId, label: "Confirmar email" },
+    { id: "onboarding" as ScreenId, label: "Onboarding" },
+  ]},
+  { label: "Workspace", screens: [
+    { id: "workspace-switcher" as ScreenId, label: "Trocar WS" },
+    { id: "workspace-create" as ScreenId, label: "Criar WS" },
+    { id: "workspace-members" as ScreenId, label: "Membros" },
+  ]},
+  { label: "Dashboard", screens: [
+    { id: "dashboard" as ScreenId, label: "Pessoal" },
+    { id: "dashboard-shared" as ScreenId, label: "Compartilhado" },
+  ]},
+  { label: "Financeiro", screens: [
+    { id: "cards" as ScreenId, label: "Cartões" },
+    { id: "card-detail" as ScreenId, label: "Cartão" },
+    { id: "accounts" as ScreenId, label: "Contas" },
+    { id: "transactions" as ScreenId, label: "Transações" },
+    { id: "transaction-detail" as ScreenId, label: "Detalhe TX" },
+    { id: "transaction-new" as ScreenId, label: "Nova TX" },
+  ]},
+  { label: "Gestão", screens: [
+    { id: "subscriptions" as ScreenId, label: "Assinaturas" },
+    { id: "loans" as ScreenId, label: "Empréstimos" },
+    { id: "entre-nos" as ScreenId, label: "Entre Nós ✨" },
+  ]},
+  { label: "Pessoal", screens: [
+    { id: "chat" as ScreenId, label: "Chat AI" },
+    { id: "profile" as ScreenId, label: "Perfil" },
+    { id: "settings" as ScreenId, label: "Configurações" },
+  ]},
+];
+
+// ─────────────────────────────────────────────────────────
+// MAIN APP
+// ─────────────────────────────────────────────────────────
+
+export default function App() {
+  const [screen, setScreen] = useState<ScreenId>("login");
+  const [wsIndex, setWsIndex] = useState(0);
+  const ws = WORKSPACES[wsIndex];
+
+  const nav = (s: ScreenId) => setScreen(s);
+  const selectWs = (w: WorkspaceData) => {
+    const i = WORKSPACES.findIndex(x => x.id === w.id);
+    if (i >= 0) setWsIndex(i);
+  };
+
+  const renderScreen = () => {
+    switch (screen) {
+      case "login": return <LoginScreen nav={nav} />;
+      case "signup": return <SignupScreen nav={nav} />;
+      case "forgot-password": return <ForgotScreen nav={nav} />;
+      case "email-confirm": return <EmailConfirmScreen nav={nav} />;
+      case "onboarding": return <OnboardingScreen nav={nav} />;
+      case "workspace-switcher": return <WorkspaceSwitcher current={ws} nav={nav} onSelect={selectWs} />;
+      case "workspace-create": return <CreateWorkspaceScreen nav={nav} />;
+      case "workspace-members": return <WorkspaceMembersScreen nav={nav} ws={ws} />;
+      case "workspace-edit": return <WorkspaceMembersScreen nav={nav} ws={ws} />;
+      case "dashboard": return <PersonalDashboard nav={nav} ws={ws} onSwitchWs={() => nav("workspace-switcher")} />;
+      case "dashboard-shared": return <SharedDashboard nav={nav} ws={WORKSPACES[1]} />;
+      case "cards": return <CardsScreen nav={nav} ws={ws} />;
+      case "card-detail": return <CardDetailScreen nav={nav} ws={ws} />;
+      case "card-new": return <CreateWorkspaceScreen nav={nav} />;
+      case "accounts": return <AccountsScreen nav={nav} ws={ws} />;
+      case "account-new": return <AccountsScreen nav={nav} ws={ws} />;
+      case "transactions": return <TransactionsScreen nav={nav} ws={ws} />;
+      case "transaction-detail": return <TransactionDetail nav={nav} ws={ws} />;
+      case "transaction-new": return <NewTransactionScreen nav={nav} ws={ws} />;
+      case "subscriptions": return <SubscriptionsScreen nav={nav} ws={ws} />;
+      case "loans": return <LoansScreen nav={nav} ws={ws} />;
+      case "entre-nos": return <EntreNosScreen nav={nav} ws={ws} />;
+      case "chat": return <ChatScreen nav={nav} ws={ws} />;
+      case "profile": return <ProfileScreen nav={nav} ws={ws} />;
+      case "settings": return <SettingsScreen nav={nav} ws={ws} />;
+      default: return <LoginScreen nav={nav} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050507] flex flex-col items-center justify-start py-6 px-4 gap-6">
+      {/* Background glow */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-[0.06] blur-3xl" style={{ background: ws.color }} />
+      </div>
+
+      {/* App identity */}
+      <div className="flex items-center gap-3 relative z-10">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)" }}>
+          <span className="text-white text-sm font-bold" style={{ letterSpacing: "-0.04em" }}>N</span>
+        </div>
+        <span className="text-white/60 text-sm font-semibold tracking-tight">Nivo</span>
+        <span className="text-white/20 text-sm">·</span>
+        <span className="text-white/30 text-xs">Design Prototype</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full ml-2" style={{ background: `${ws.color}20`, border: `1px solid ${ws.color}35` }}>
+          <span className="text-sm">{ws.emoji}</span>
+          <span className="text-[11px] font-semibold" style={{ color: ws.color }}>{ws.name}</span>
+        </div>
+      </div>
+
+      {/* Screen navigator */}
+      <div className="flex flex-wrap gap-3 justify-center max-w-[900px] relative z-10">
+        {SCREEN_GROUPS.map(({ label, screens }) => (
+          <div key={label} className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            <span className="text-[9px] text-white/25 font-semibold uppercase tracking-wider px-2">{label}</span>
+            {screens.map(({ id, label: sl }) => (
+              <button
+                key={id}
+                onClick={() => nav(id)}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                style={{
+                  background: screen === id ? `${ws.color}25` : "transparent",
+                  color: screen === id ? ws.color : "rgba(255,255,255,0.35)",
+                  border: `1px solid ${screen === id ? `${ws.color}40` : "transparent"}`,
+                }}
+              >
+                {sl}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Phone frame */}
+      <div className="relative z-10 flex-shrink-0">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            width: 390,
+            height: 844,
+            borderRadius: 50,
+            background: "#09090B",
+            boxShadow: "0 40px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.04)",
+          }}
+        >
+          {/* Side buttons */}
+          <div className="absolute -left-[3px] top-28 w-[3px] h-8 rounded-l-full bg-white/10" />
+          <div className="absolute -left-[3px] top-44 w-[3px] h-12 rounded-l-full bg-white/10" />
+          <div className="absolute -left-[3px] top-60 w-[3px] h-12 rounded-l-full bg-white/10" />
+          <div className="absolute -right-[3px] top-40 w-[3px] h-16 rounded-r-full bg-white/10" />
+          {/* Screen content */}
+          <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: 50 }}>
+            {renderScreen()}
+          </div>
+        </div>
+      </div>
+
+      {/* Workspace quick-switch */}
+      <div className="flex gap-2 relative z-10">
+        {WORKSPACES.map((w, i) => (
+          <button
+            key={w.id}
+            onClick={() => { setWsIndex(i); if (!["login","signup","forgot-password","email-confirm","onboarding"].includes(screen)) setScreen("dashboard"); }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-medium"
+            style={{
+              background: wsIndex === i ? `${w.color}20` : "rgba(255,255,255,0.04)",
+              border: `1px solid ${wsIndex === i ? `${w.color}40` : "rgba(255,255,255,0.07)"}`,
+              color: wsIndex === i ? w.color : "rgba(255,255,255,0.35)",
+            }}
+          >
+            <span>{w.emoji}</span>
+            <span className="hidden sm:inline text-[12px]">{w.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

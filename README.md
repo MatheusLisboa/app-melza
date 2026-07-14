@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FinançasCasa
 
-## Getting Started
+App de finanças pessoais e compartilhadas (workspaces).
 
-First, run the development server:
+## Setup rápido
 
 ```bash
+cp .env.local.example .env.local
+# Preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
+# (opcional) OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY (exclusão de conta)
+
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Crie o projeto e habilite Auth (Email + Google)
+2. Redirect URLs: `http://localhost:3000/auth/callback` e `…/reset-password`
+3. SQL:
+   - **Novo:** [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
+   - **Upgrade de families:** [`002_family_to_workspace.sql`](supabase/migrations/002_family_to_workspace.sql)
+4. Detalhes em [`supabase/README.md`](supabase/README.md)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Comando | Uso |
+|---------|-----|
+| `npm run dev` | Dev server |
+| `npm run build` | Build produção |
+| `npm run lint` | ESLint |
+| `npm test` | Testes unitários (vitest) |
 
-To learn more about Next.js, take a look at the following resources:
+## Domínio (workspaces)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Tipos: `PERSONAL`, `COUPLE`, `FAMILY`, `SHARED`
+- Todo usuário ganha `PERSONAL` no signup
+- Multi-membership + switcher + cookie `active_workspace_id`
+- Onboarding opcional (continuar sozinho ou criar compartilhado)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Produção
 
-## Deploy on Vercel
+- Checklist: [`docs/SMOKE_CHECKLIST.md`](docs/SMOKE_CHECKLIST.md)
+- CI: GitHub Actions (`.github/workflows/ci.yml`)
+- Headers: `vercel.json`
+- LGPD: export/delete em Configurações; páginas `/privacy` e `/terms`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## PWA
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Manifest + service worker + ícones em `public/icons/`. No celular (HTTPS/localhost): Adicionar à tela inicial.
