@@ -87,9 +87,13 @@ export function parseBankCsv(text: string): NubankParsedRow[] {
   }
 
   // Fatura de cartão Nubank: valores positivos = compras (despesa)
+  // Headers típicos: date,title,amount,category  |  Data,Estabelecimento,Valor
   const isCardBill =
     headers.some((h) => h.includes("estabelecimento")) ||
-    headers.some((h) => h.includes("categoria"));
+    headers.some((h) => h.includes("categoria") || h === "category") ||
+    (headers.includes("title") &&
+      headers.includes("amount") &&
+      (headers.includes("date") || headers.some((h) => h.includes("data"))));
 
   const rows: NubankParsedRow[] = [];
 

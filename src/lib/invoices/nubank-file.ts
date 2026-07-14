@@ -5,13 +5,13 @@ import {
 } from "@/lib/invoices/nubank-pdf";
 
 function isPaymentDescription(description: string): boolean {
-  return /pagamento\s+recebido|pagamento\s+de\s+fatura|pagto\s+recebido|payment\s+received/i.test(
+  return /pagamento\s+recebido|pagamento\s+de\s+fatura|pagto\s+recebido|payment\s+received|bill\s+payment/i.test(
     description
   );
 }
 
 function isRefundDescription(description: string): boolean {
-  return /^estorno\b|refund/i.test(description.trim());
+  return /^estorno\b|\brefund\b/i.test(description.trim());
 }
 
 /** Converte linhas CSV/OFX parseadas em compras da fatura (com parcela). */
@@ -59,8 +59,8 @@ export function parseNubankInvoiceCsv(text: string): NubankInvoiceLine[] {
 }
 
 /**
- * Parser OFX/QFX Nubank (fatura ou conta).
- * Lê blocos <STMTTRN> com DTPOSTED, TRNAMT, MEMO/NAME.
+ * Parser OFX/QFX Nubank (fatura cartão ou conta).
+ * Aceita OFX 1.x SGML e 2.x XML (com tags de fechamento).
  */
 export function parseNubankOfx(text: string): NubankInvoiceLine[] {
   const raw = text.replace(/^\uFEFF/, "");
@@ -68,12 +68,15 @@ export function parseNubankOfx(text: string): NubankInvoiceLine[] {
     throw new Error("Arquivo OFX inválido.");
   }
 
-  const blocks = raw.split(/<STMTTRN>/i).slice(1);
+  const isCreditCardStatement =
+    /CREDITCARDMSGSRSV1|CCSTMTRS|CCACCTFROM/i.test(raw);
+
+  const blocks = raw.split(/<STMTTRN[\s>]/i).slice(1);
   const rows: Array<{ date: string; description: string; amount: number }> =
     [];
 
   for (const block of blocks) {
-    const chunk = block.split(/<\/STMTTRN>/i)[0] ?? block;
+    const chunk = block.split(/<\/STMTTRN\s*>/i)[0] ?? block;
     const dateRaw = ofxField(chunk, "DTPOSTED");
     const amountRaw = ofxField(chunk, "TRNAMT");
     const memo =
@@ -83,17 +86,30 @@ export function parseNubankOfx(text: string): NubankInvoiceLine[] {
       "";
     if (!dateRaw || !amountRaw || !memo.trim()) continue;
 
-    const amountNum = Number(amountRaw.replace(",", "."));
-    if (!Number.isFinite(amountNum) || amountNum === 0) continue;
+    const amountNum = parseOfxAmount(amountRaw);
+    if (amountNum == null || amountNum === 0) continue;
 
     const trnType = (ofxField(chunk, "TRNTYPE") || "").toUpperCase();
     const description = memo.trim();
 
-    // Pagamento / crédito → ignora (não é compra)
+    if (isPaymentDescription(description) || isRefundDescription(description)) {
+      continue;
+    }
+
+    // Pagamento clássico OFX: CREDIT com valor positivo
+    if (trnType === "CREDIT" && amountNum > 0) {
+      continue;
+    }
+
+    // Fatura cartão: valor positivo sem DEBIT e sem parecer compra
+    // (ex.: crédito avulso). Compras Nubank às vezes vêm positivas + DEBIT.
     if (
-      isPaymentDescription(description) ||
-      isRefundDescription(description) ||
-      trnType === "CREDIT"
+      isCreditCardStatement &&
+      amountNum > 0 &&
+      trnType !== "DEBIT" &&
+      trnType !== "POS" &&
+      trnType !== "OTHER" &&
+      trnType !== ""
     ) {
       continue;
     }
@@ -112,10 +128,36 @@ export function parseNubankOfx(text: string): NubankInvoiceLine[] {
   return bankRowsToInvoiceLines(rows);
 }
 
-function ofxField(block: string, tag: string): string | null {
-  const re = new RegExp(`<${tag}>([^\\n\\r<]+)`, "i");
-  const m = block.match(re);
-  return m ? m[1].trim() : null;
+/** Lê <TAG>valor</TAG> (XML) ou <TAG>valor (SGML). */
+export function ofxField(block: string, tag: string): string | null {
+  const closed = new RegExp(
+    `<${tag}\\b[^>]*>\\s*([\\s\\S]*?)\\s*</${tag}\\s*>`,
+    "i"
+  );
+  const closedMatch = block.match(closed);
+  if (closedMatch) {
+    return closedMatch[1].replace(/\s+/g, " ").trim();
+  }
+
+  const open = new RegExp(`<${tag}\\b[^>]*>\\s*([^<\\n\\r]*)`, "i");
+  const openMatch = block.match(open);
+  if (openMatch) {
+    return openMatch[1].replace(/\s+/g, " ").trim();
+  }
+  return null;
+}
+
+export function parseOfxAmount(raw: string): number | null {
+  let s = raw.trim().replace(/\s/g, "").replace(/R\$/gi, "");
+  if (!s) return null;
+  // BR: -1.234,56
+  if (s.includes(",") && s.includes(".")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (s.includes(",")) {
+    s = s.replace(",", ".");
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
 
 function ofxDateToISO(value: string): string {

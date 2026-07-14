@@ -11,7 +11,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 import {
   cardAvailableLimit,
   getCurrentInvoiceCycle,
-  sumCardCycleSpend,
+  sumCardCommittedLimit,
   type CardCycleTx,
 } from "@/lib/finance/card-cycle";
 import { cn } from "@/lib/utils";
@@ -64,21 +64,24 @@ export function DashboardCardsSection({
     staleTime: 30_000,
     queryFn: async () => {
       const supabase = createClient();
+      // Ciclo atual + parcelas futuras (scheduled) p/ compromisso de limite
       const { data, error } = await supabase
         .from("transactions")
         .select(
           `
           id, amount, transaction_type, status, card_id, description,
-          transaction_date, is_installment, installment_number, total_installments
+          transaction_date, is_installment, installment_number,
+          total_installments, installment_group_id
         `
         )
         .eq("workspace_id", member.workspace_id)
         .not("card_id", "is", null)
-        .gte("transaction_date", range.from)
-        .lte("transaction_date", range.to)
         .neq("status", "cancelled")
+        .or(
+          `status.eq.scheduled,and(transaction_date.gte.${range.from},transaction_date.lte.${range.to})`
+        )
         .order("transaction_date", { ascending: false })
-        .limit(800);
+        .limit(1500);
       if (error) throw error;
       return (data ?? []) as CardCycleTx[];
     },
@@ -88,13 +91,16 @@ export function DashboardCardsSection({
     return activeCards.map((card) => {
       const cycle = cyclesByCard.get(card.id) ?? null;
       const txs = cardTx.filter((t) => t.card_id === card.id);
-      const used = cycle ? sumCardCycleSpend(txs, cycle) : 0;
+      const { cycleSpend, futureCommitted, committed } = sumCardCommittedLimit(
+        txs,
+        cycle
+      );
       const limit =
         card.credit_limit != null ? Number(card.credit_limit) : null;
-      const available = cardAvailableLimit(limit, used);
+      const available = cardAvailableLimit(limit, committed);
       const usedPct =
         limit != null && limit > 0
-          ? Math.min(100, Math.round((used / limit) * 100))
+          ? Math.min(100, Math.round((committed / limit) * 100))
           : null;
       const recent = cycle
         ? txs
@@ -106,10 +112,19 @@ export function DashboardCardsSection({
             )
             .slice(0, 3)
         : [];
-      return { card, cycle, used, limit, available, usedPct, recent };
+      return {
+        card,
+        cycle,
+        cycleSpend,
+        futureCommitted,
+        committed,
+        limit,
+        available,
+        usedPct,
+        recent,
+      };
     });
   }, [activeCards, cardTx, cyclesByCard]);
-
   if (cardsLoading) {
     return (
       <div className="px-5 mt-6">
@@ -164,7 +179,7 @@ export function DashboardCardsSection({
             Cartões
           </h3>
           <p className="mt-0.5 text-xs text-white/30">
-            Ciclo atual da fatura · limite
+            Ciclo atual da fatura · limite com parcelas
           </p>
         </div>
         <Link
@@ -177,7 +192,16 @@ export function DashboardCardsSection({
 
       <div className="flex flex-col gap-2.5">
         {rows.map(
-          ({ card, cycle, used, limit, available, usedPct, recent }) => {
+          ({
+            card,
+            cycle,
+            cycleSpend,
+            futureCommitted,
+            limit,
+            available,
+            usedPct,
+            recent,
+          }) => {
             const color = card.color || "#6366F1";
             return (
               <div
@@ -208,12 +232,17 @@ export function DashboardCardsSection({
                   <div className="mb-3 grid grid-cols-3 gap-2">
                     <Metric
                       label="Neste ciclo"
-                      value={formatCurrency(used)}
+                      value={formatCurrency(cycleSpend)}
                       muted={txLoading}
                     />
                     <Metric
-                      label="Limite"
-                      value={limit != null ? formatCurrency(limit) : "—"}
+                      label="Parcelas a vencer"
+                      value={
+                        futureCommitted > 0
+                          ? formatCurrency(futureCommitted)
+                          : "—"
+                      }
+                      muted={txLoading}
                     />
                     <Metric
                       label="Disponível"
@@ -230,10 +259,19 @@ export function DashboardCardsSection({
                     />
                   </div>
 
+                  {limit != null && (
+                    <p className="mb-2 text-[10px] text-white/25">
+                      Limite {formatCurrency(limit)}
+                      {futureCommitted > 0
+                        ? " · disponível já desconta parcelas futuras"
+                        : ""}
+                    </p>
+                  )}
+
                   {usedPct != null && (
                     <div className="mb-2">
                       <div className="mb-1 flex items-center justify-between text-[10px] text-white/30">
-                        <span>Uso do limite</span>
+                        <span>Limite comprometido</span>
                         <span className="font-mono">{usedPct}%</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -304,8 +342,7 @@ export function DashboardCardsSection({
             );
           }
         )}
-      </div>
-    </div>
+      </div>    </div>
   );
 }
 

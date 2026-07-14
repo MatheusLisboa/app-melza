@@ -29,7 +29,7 @@ import {
 import {
   cardAvailableLimit,
   getCurrentInvoiceCycle,
-  sumCardCycleSpend,
+  sumCardCommittedLimit,
 } from "@/lib/finance/card-cycle";
 import { getBankName } from "@/lib/utils/banks";
 
@@ -116,21 +116,28 @@ export function CardDetailClient({
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, amount, transaction_type, status, card_id, description, transaction_date"
+          `
+          id, amount, transaction_type, status, card_id, description,
+          transaction_date, is_installment, installment_number,
+          total_installments, installment_group_id
+        `
         )
         .eq("workspace_id", member.workspace_id)
         .eq("card_id", cardId)
-        .gte("transaction_date", cycle!.from)
-        .lte("transaction_date", cycle!.to)
-        .neq("status", "cancelled");
+        .neq("status", "cancelled")
+        .or(
+          `status.eq.scheduled,and(transaction_date.gte.${cycle!.from},transaction_date.lte.${cycle!.to})`
+        );
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const usedInCycle = useMemo(() => {
-    if (!cycle) return 0;
-    return sumCardCycleSpend(cycleTx, cycle);
+  const { cycleSpend, futureCommitted, committed } = useMemo(() => {
+    if (!cycle) {
+      return { cycleSpend: 0, futureCommitted: 0, committed: 0 };
+    }
+    return sumCardCommittedLimit(cycleTx, cycle);
   }, [cycle, cycleTx]);
 
   if (isLoading || !card) {
@@ -146,7 +153,7 @@ export function CardDetailClient({
   const c2 = darken(c1);
   const owner = members.find((m) => m.id === card.owner_member_id);
   const limit = card.credit_limit != null ? Number(card.credit_limit) : null;
-  const available = cardAvailableLimit(limit, usedInCycle);
+  const available = cardAvailableLimit(limit, committed);
 
   return (
     <div className="pb-8">
@@ -268,10 +275,17 @@ export function CardDetailClient({
             },
             {
               label: "Neste ciclo",
-              value: formatCurrency(usedInCycle),
+              value: formatCurrency(cycleSpend),
             },
             {
-              label: "Disponível*",
+              label: "Parcelas a vencer",
+              value:
+                futureCommitted > 0
+                  ? formatCurrency(futureCommitted)
+                  : "—",
+            },
+            {
+              label: "Disponível",
               value: available != null ? formatCurrency(available) : "—",
             },
             {
@@ -299,7 +313,8 @@ export function CardDetailClient({
           ))}
         </div>
         <p className="mt-1.5 px-1 text-[11px] text-white/25">
-          *Disponível = limite − compras no ciclo atual (aprox.)
+          Disponível = limite − ciclo atual − parcelas futuras (ex.: 3/12
+          compromete as 9 restantes).
         </p>
 
         <h3 className="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wider text-white/60">
