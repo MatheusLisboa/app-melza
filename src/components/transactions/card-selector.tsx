@@ -1,6 +1,6 @@
 "use client";
 
-import type { Account, Card } from "@/types";
+import type { Account, AccountType, Card } from "@/types";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
+import { cn } from "@/lib/utils";
 
 export { encodePaymentMethod, parsePaymentMethod } from "@/lib/utils/payment-method";
 
@@ -20,7 +21,10 @@ interface CardSelectorProps {
   value?: string;
   onChange: (value: string) => void;
   accountsOnly?: boolean;
+  cardsOnly?: boolean;
+  accountTypes?: AccountType[];
   placeholder?: string;
+  triggerClassName?: string;
 }
 
 export function CardSelector({
@@ -29,18 +33,42 @@ export function CardSelector({
   value,
   onChange,
   accountsOnly = false,
+  cardsOnly = false,
+  accountTypes,
   placeholder = "Cartão ou conta",
+  triggerClassName,
 }: CardSelectorProps) {
-  const activeCards = cards.filter((c) => c.is_active);
-  const activeAccounts = accounts.filter((a) => a.is_active);
+  const showCards = !accountsOnly;
+  const showAccounts = !cardsOnly;
+
+  const activeCards = showCards ? cards.filter((c) => c.is_active) : [];
+  const activeAccounts = showAccounts
+    ? accounts.filter((a) => {
+        if (!a.is_active) return false;
+        if (accountTypes?.length && !accountTypes.includes(a.account_type)) {
+          return false;
+        }
+        return true;
+      })
+    : [];
+
+  const accountsLabel =
+    accountTypes?.length === 1 && accountTypes[0] === "cash"
+      ? "Dinheiro"
+      : "Contas";
 
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger>
+    <Select value={value || undefined} onValueChange={onChange}>
+      <SelectTrigger
+        className={cn(
+          "h-12 rounded-xl border-border/80 bg-muted/40 px-3.5 text-sm",
+          triggerClassName
+        )}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {!accountsOnly && activeCards.length > 0 && (
+        {activeCards.length > 0 && (
           <SelectGroup>
             <SelectLabel>Cartões</SelectLabel>
             {activeCards.map((card) => (
@@ -61,7 +89,7 @@ export function CardSelector({
         )}
         {activeAccounts.length > 0 && (
           <SelectGroup>
-            <SelectLabel>Contas</SelectLabel>
+            <SelectLabel>{accountsLabel}</SelectLabel>
             {activeAccounts.map((account) => (
               <SelectItem
                 key={account.id}

@@ -17,6 +17,10 @@ import {
 } from "@/components/design-system";
 import { formatDate } from "@/lib/utils/format";
 import { getBankName } from "@/lib/utils/banks";
+import {
+  paymentChannelFromTags,
+  paymentChannelLabel,
+} from "@/lib/utils/payment-channel";
 
 export function TransactionDetailClient({
   member,
@@ -103,6 +107,15 @@ export function TransactionDetailClient({
           ? "Cancelada"
           : tx.status;
 
+  const channel = paymentChannelFromTags(tx.tags);
+  const channelLabel = paymentChannelLabel(channel);
+  const instrumentName = tx.card?.name ?? tx.account?.name ?? null;
+  const meioLabel = channelLabel
+    ? instrumentName
+      ? `${channelLabel} · ${instrumentName}`
+      : channelLabel
+    : instrumentName ?? "—";
+
   return (
     <div className="pb-8">
       <TopBar title="Detalhes" onBack={() => router.back()} />
@@ -182,7 +195,7 @@ export function TransactionDetailClient({
             { label: "Status", value: statusLabel },
             {
               label: "Meio",
-              value: tx.card?.name ?? tx.account?.name ?? "—",
+              value: meioLabel,
             },
             {
               label: "Workspace",

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const paymentChannelSchema = z.enum(["card", "pix", "account", "cash"]);
+export type PaymentChannel = z.infer<typeof paymentChannelSchema>;
+
 export const transactionSchema = z
   .object({
     description: z.string().min(1, "Descrição obrigatória"),
@@ -16,7 +19,8 @@ export const transactionSchema = z
     category_id: z.string().uuid().optional().nullable(),
     paid_by_member_id: z.string().uuid().optional().nullable(),
     consumer_member_id: z.string().uuid().optional().nullable(),
-    payment_method: z.string().min(1, "Selecione cartão ou conta"),
+    payment_method: z.string().min(1, "Selecione o meio de pagamento"),
+    payment_channel: paymentChannelSchema.optional().nullable(),
     notes: z.string().optional().nullable(),
     is_installment: z.boolean(),
     total_installments: z.number().int().min(2).max(48).nullable().optional(),
@@ -48,6 +52,30 @@ export const transactionSchema = z
         code: "custom",
         message: "Informe o terceiro",
         path: ["third_party_name"],
+      });
+    }
+    if (
+      data.transaction_type !== "transfer" &&
+      data.payment_channel === "card" &&
+      !data.payment_method.startsWith("card:")
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Selecione um cartão",
+        path: ["payment_method"],
+      });
+    }
+    if (
+      data.transaction_type !== "transfer" &&
+      (data.payment_channel === "pix" ||
+        data.payment_channel === "account" ||
+        data.payment_channel === "cash") &&
+      !data.payment_method.startsWith("account:")
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Selecione uma conta",
+        path: ["payment_method"],
       });
     }
   });

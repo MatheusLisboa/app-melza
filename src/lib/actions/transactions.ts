@@ -8,6 +8,7 @@ import {
 } from "@/lib/validations/transaction";
 import { addMonths, toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
+import { tagsForPaymentChannel } from "@/lib/utils/payment-channel";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 
@@ -28,6 +29,7 @@ export async function createTransactionAction(raw: TransactionInput) {
 
   const card_id = payment.kind === "card" ? payment.id : null;
   const account_id = payment.kind === "account" ? payment.id : null;
+  const tags = tagsForPaymentChannel(input.payment_channel);
 
   let third_party_id: string | null = null;
   let loan_id: string | null = null;
@@ -167,6 +169,7 @@ export async function createTransactionAction(raw: TransactionInput) {
         category_id: input.category_id || null,
         card_id,
         account_id,
+        tags,
         third_party_id,
         loan_id,
         is_installment: true,
@@ -204,6 +207,7 @@ export async function createTransactionAction(raw: TransactionInput) {
     category_id: input.category_id || null,
     card_id,
     account_id,
+    tags,
     third_party_id,
     loan_id,
     transaction_date: input.transaction_date,
