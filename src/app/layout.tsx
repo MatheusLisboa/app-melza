@@ -17,14 +17,14 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FinançasCasa",
+  title: "Melza",
   description: "Finanças pessoais e compartilhadas por workspace",
-  applicationName: "FinançasCasa",
+  applicationName: "Melza",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FinançasCasa",
+    title: "Melza",
   },
   icons: {
     icon: [

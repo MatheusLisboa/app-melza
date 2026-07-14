@@ -81,7 +81,7 @@ export function SignupForm() {
               className="text-[26px] font-semibold tracking-tight text-foreground"
               style={{ letterSpacing: "-0.025em" }}
             >
-              Bem-vindo ao FinançasCasa
+              Bem-vindo ao Melza
             </h2>
             <p className="mt-1.5 text-sm text-foreground/35">
               Crie sua conta em 30 segundos.

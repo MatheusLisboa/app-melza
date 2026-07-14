@@ -1,6 +1,6 @@
 {
-  "name": "FinançasCasa",
-  "short_name": "FinançasCasa",
+  "name": "Melza",
+  "short_name": "Melza",
   "description": "Finanças pessoais e compartilhadas por workspace",
   "start_url": "/dashboard",
   "scope": "/",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "display_override": ["standalone", "browser"],
   "orientation": "portrait-primary",
-  "background_color": "#09090B",
+  "background_color": "#000000",
   "theme_color": "#09090B",
   "lang": "pt-BR",
   "dir": "ltr",

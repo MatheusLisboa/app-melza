@@ -201,7 +201,7 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         t.status,
       ])
     );
-    downloadCsv(`financas-casa-${from}_${to}.csv`, csv);
+    downloadCsv(`melza-${from}_${to}.csv`, csv);
   }
 
   return (

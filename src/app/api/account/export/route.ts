@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     status: 200,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="financas-casa-export.json"`,
+      "Content-Disposition": `attachment; filename="melza-export.json"`,
     },
   });
 }

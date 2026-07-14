@@ -48,7 +48,7 @@ export function SettingsClient({
   member: WorkspaceMember & { workspace?: Workspace | null };
 }) {
   const router = useRouter();
-  const { refreshShell, memberships } = useAppShell();
+  const { memberships } = useAppShell();
   const alertDays = useUiStore((s) => s.subscriptionAlertDays);
   const setAlertDays = useUiStore((s) => s.setSubscriptionAlertDays);
   const [displayName, setDisplayName] = useState(member.display_name);
@@ -158,7 +158,7 @@ export function SettingsClient({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `financas-casa-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `melza-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       setMessage("Exportação baixada");
@@ -209,7 +209,7 @@ export function SettingsClient({
       setDeletingWs(false);
       return;
     }
-    await refreshShell();
+    // Hard reload limpa shell com staleTime: Infinity
     window.location.assign("/dashboard");
   }
 

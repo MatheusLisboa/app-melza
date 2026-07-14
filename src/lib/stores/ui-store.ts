@@ -25,6 +25,6 @@ export const useUiStore = create<UiState>()(
       setSubscriptionAlertDays: (subscriptionAlertDays) =>
         set({ subscriptionAlertDays }),
     }),
-    { name: "financas-casa-ui" }
+    { name: "melza-ui" }
   )
 );

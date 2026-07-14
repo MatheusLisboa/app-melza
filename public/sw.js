@@ -1,7 +1,7 @@
-/* FinançasCasa — PWA service worker
+/* Melza — PWA service worker
  * network-first para app shell; auto-update via skipWaiting + clients.claim
  */
-const CACHE = "financas-casa-v4";
+const CACHE = "melza-v1";
 const PRECACHE = [
   "/manifest.webmanifest",
   "/favicon.ico",

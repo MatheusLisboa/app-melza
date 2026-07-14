@@ -9,6 +9,6 @@ export async function GET() {
   }
   return NextResponse.json({
     member: shell.member,
-    memberships: shell.memberships,
+    memberships: shell.memberships.filter((m) => Boolean(m.workspace?.id)),
   });
 }

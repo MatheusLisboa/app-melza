@@ -9,7 +9,7 @@ export default function TermsPage() {
       </p>
       <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
         <p>
-          O FinançasCasa é um aplicativo de gestão financeira pessoal e
+          O Melza é um aplicativo de gestão financeira pessoal e
           compartilhada. Ao criar uma conta, você concorda em usar o serviço de
           forma lícita e responsável.
         </p>

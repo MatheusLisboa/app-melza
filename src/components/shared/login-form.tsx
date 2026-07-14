@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import { BrandMark, Btn, InputField } from "@/components/design-system";
+import { BrandWordmark, Btn, InputField } from "@/components/design-system";
 
 function safeRedirect(path: string | null): string {
   if (path && path.startsWith("/") && !path.startsWith("//")) return path;
@@ -81,15 +81,10 @@ export function LoginForm() {
     <div className="flex min-h-[100dvh] flex-col bg-background px-5 sm:px-6">
       <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center gap-7 py-10 sm:gap-8 sm:py-12">
         <div className="flex flex-col items-center gap-3 pb-1">
-          <BrandMark />
-          <div className="text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              FinançasCasa
-            </h1>
-            <p className="mt-1 text-sm text-foreground/35">
-              Finanças que fazem sentido.
-            </p>
-          </div>
+          <BrandWordmark size="md" />
+          <p className="text-center text-sm text-foreground/35">
+            Finanças que fazem sentido.
+          </p>
         </div>
 
         <form

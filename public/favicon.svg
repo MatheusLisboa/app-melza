@@ -1,26 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FinançasCasa">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#312E81"/>
-    </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff" stop-opacity="0.28"/>
-      <stop offset="55%" stop-color="#fff" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14.5" fill="url(#g)"/>
-  <rect width="64" height="64" rx="14.5" fill="url(#shine)"/>
-  <rect x="1.25" y="1.25" width="61.5" height="61.5" rx="13.4" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="1.5"/>
-  <text
-    x="32"
-    y="37.5"
-    text-anchor="middle"
-    font-family="ui-rounded, -apple-system, system-ui, 'Segoe UI', sans-serif"
-    font-size="24"
-    font-weight="700"
-    letter-spacing="-0.5"
-    fill="#fff"
-  >FC</text>
-  <rect x="24" y="44" width="16" height="2.5" rx="1.25" fill="#fff" fill-opacity="0.85"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Melza">
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <!-- M itálico (skew ~12°) -->
+  <g transform="skewX(-10) translate(4,0)">
+    <path
+      fill="#fff"
+      d="M9.2 49.2 18.6 14.4h7.1L36 35.6 45.1 14.4h7.1L43.4 49.2h-7.3l5.6-20.4L33.4 49.2h-5.1L20 28.8l-4.1 20.4H9.2Z"
+    />
+  </g>
 </svg>

@@ -1,4 +1,4 @@
-# FinançasCasa
+# Melza
 
 App de finanças pessoais e compartilhadas (workspaces).
 

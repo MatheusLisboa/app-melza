@@ -226,7 +226,10 @@ export function DashboardClient({
   const recent = confirmedMonth.slice(0, 4);
 
   const sharedMemberships = memberships.filter(
-    (m) => m.workspace?.type && m.workspace.type !== "PERSONAL"
+    (m) =>
+      m.workspace?.id &&
+      m.workspace_id !== member.workspace_id &&
+      m.workspace.type !== "PERSONAL"
   );
   const sharedCta =
     member.workspace?.type === "PERSONAL"

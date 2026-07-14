@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   const result = streamText({
     model: openai("gpt-4o-mini"),
     maxRetries: 0,
-    system: `Você é o assistente financeiro do FinançasCasa (workspaces pessoais e compartilhados, Brasil).
+    system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
 Responda em português, de forma objetiva, com valores em R$.
 Use as tools para consultar dados reais do workspace antes de afirmar números.`,
     messages: messages.map((m) => ({

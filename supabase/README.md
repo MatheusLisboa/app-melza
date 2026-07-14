@@ -1,4 +1,4 @@
--- FinançasCasa — como aplicar o schema
+-- Melza — como aplicar o schema
 
 1. Crie um projeto no Supabase + Auth (Email/Google)
 2. Redirect URLs: `/auth/callback` e `/reset-password`

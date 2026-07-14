@@ -34,7 +34,7 @@ const AVATAR_COLORS = [
 const INTRO_STEPS = [
   {
     title: "Seu dinheiro.\nCada contexto.",
-    desc: "O FinançasCasa organiza suas finanças em Workspaces. Pessoal, Casal, Família ou Compartilhado.",
+    desc: "O Melza organiza suas finanças em Workspaces. Pessoal, Casal, Família ou Compartilhado.",
   },
   {
     title: "Transações com\ncontexto real.",

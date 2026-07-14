@@ -59,10 +59,12 @@ export async function deleteWorkspaceAction(workspaceId: string) {
     .eq("user_id", user.id)
     .neq("workspace_id", workspaceId);
 
-  const { error: delError } = await supabase
+  // .select() garante erro se RLS bloquear (0 linhas ≠ sucesso)
+  const { data: deleted, error: delError } = await supabase
     .from("workspaces")
     .delete()
-    .eq("id", workspaceId);
+    .eq("id", workspaceId)
+    .select("id");
 
   if (delError) {
     return {
@@ -71,6 +73,23 @@ export async function deleteWorkspaceAction(workspaceId: string) {
           ? "Sem permissão para apagar. Rode a migration 006 no Supabase."
           : delError.message,
     };
+  }
+
+  if (!deleted?.length) {
+    return {
+      error:
+        "Workspace não foi apagado (RLS). Rode a migration 006_workspaces_delete_policy.sql no Supabase SQL Editor.",
+    };
+  }
+
+  // Confirma que sumiu (evita CTA fantasma no dashboard)
+  const { data: stillThere } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (stillThere) {
+    return { error: "Falha ao confirmar exclusão do workspace" };
   }
 
   const next =
@@ -84,5 +103,8 @@ export async function deleteWorkspaceAction(workspaceId: string) {
   }
 
   revalidatePath("/", "layout");
+  revalidatePath("/dashboard");
+  revalidatePath("/settings");
+  revalidatePath("/api/shell");
   return { success: true, nextWorkspaceId: next?.workspace_id ?? null };
 }

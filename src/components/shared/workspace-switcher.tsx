@@ -69,7 +69,7 @@ export function WorkspaceSwitcher({
           >
             <span className="min-w-0 text-left">
               <span className="block truncate text-sm font-semibold">
-                {compact ? title : "FinançasCasa"}
+                {compact ? title : "Melza"}
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 {compact ? subtitle : `${title} · ${subtitle}`}

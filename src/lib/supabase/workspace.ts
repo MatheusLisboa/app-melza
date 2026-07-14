@@ -58,7 +58,10 @@ export const listUserMemberships = cache(
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
-    return (data as MemberWithWorkspace[] | null) ?? [];
+    // Ignora memberships órfãs (workspace apagado / join nulo)
+    return ((data as MemberWithWorkspace[] | null) ?? []).filter(
+      (m) => Boolean(m.workspace?.id)
+    );
   }
 );
 
@@ -89,7 +92,9 @@ export const getAppShell = cache(async () => {
       .select("*, workspace:workspaces(*)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
-    memberships = (data as MemberWithWorkspace[] | null) ?? [];
+    memberships = ((data as MemberWithWorkspace[] | null) ?? []).filter(
+      (m) => Boolean(m.workspace?.id)
+    );
   }
 
   const cookieStore = await cookies();
