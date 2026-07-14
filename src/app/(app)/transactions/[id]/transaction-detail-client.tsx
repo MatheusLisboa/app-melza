@@ -68,7 +68,7 @@ export function TransactionDetailClient({
       alert(res.error);
       return;
     }
-    await invalidateFinanceQueries(qc);
+    invalidateFinanceQueries(qc);
     router.push("/transactions");
   }
 

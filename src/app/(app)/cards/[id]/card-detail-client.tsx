@@ -4,9 +4,12 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, Eye, Lock, QrCode } from "lucide-react";
+import { Copy, Eye, Lock, Pencil, QrCode } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
+import {
+  useCardMutations,
+  useWorkspaceMembers,
+} from "@/lib/hooks/use-finance";
 import type {
   Card,
   TransactionWithRelations,
@@ -18,6 +21,7 @@ import {
   TxRow,
   toDsMember,
 } from "@/components/design-system";
+import { CardFormDialog } from "@/components/cards/card-form-dialog";
 import {
   formatCurrency,
   formatDate,
@@ -44,6 +48,7 @@ export function CardDetailClient({
 }) {
   const router = useRouter();
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
+  const cardMutations = useCardMutations(member.workspace_id);
   const [showNumber, setShowNumber] = useState(false);
 
   const { data: card, isLoading } = useQuery({
@@ -129,7 +134,31 @@ export function CardDetailClient({
 
   return (
     <div className="pb-8">
-      <TopBar title={card.name} onBack={() => router.back()} />
+      <TopBar
+        title={card.name}
+        onBack={() => router.back()}
+        rightEl={
+          <CardFormDialog
+            members={members}
+            initial={card}
+            trigger={
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] text-foreground/50"
+                aria-label="Editar cartão"
+              >
+                <Pencil size={16} />
+              </button>
+            }
+            onSubmit={async (values) => {
+              await cardMutations.update.mutateAsync({
+                id: card.id,
+                ...values,
+              });
+            }}
+          />
+        }
+      />
 
       <div className="px-5">
         <div

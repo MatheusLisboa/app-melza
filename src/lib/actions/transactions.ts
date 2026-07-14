@@ -13,7 +13,6 @@ import {
   accountBalanceDelta,
   adjustAccountBalance,
 } from "@/lib/finance/account-balance";
-import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 
 export async function createTransactionAction(raw: TransactionInput) {
@@ -133,15 +132,15 @@ export async function createTransactionAction(raw: TransactionInput) {
     });
     if (inError) return { error: inError.message };
 
-    await adjustAccountBalance(supabase, payment.id, -input.amount);
-    await adjustAccountBalance(
-      supabase,
-      input.transfer_to_account_id,
-      input.amount
-    );
+    void Promise.all([
+      adjustAccountBalance(supabase, payment.id, -input.amount),
+      adjustAccountBalance(
+        supabase,
+        input.transfer_to_account_id,
+        input.amount
+      ),
+    ]);
 
-    revalidatePath("/transactions");
-    revalidatePath("/dashboard");
     return { success: true };
   }
 
@@ -197,16 +196,13 @@ export async function createTransactionAction(raw: TransactionInput) {
     if (error) return { error: error.message };
 
     if (account_id) {
-      await adjustAccountBalance(
+      void adjustAccountBalance(
         supabase,
         account_id,
         accountBalanceDelta(input.transaction_type, input.amount)
       );
     }
 
-    revalidatePath("/transactions");
-    revalidatePath("/dashboard");
-    revalidatePath("/invoices");
     return { success: true };
   }
 
@@ -237,16 +233,13 @@ export async function createTransactionAction(raw: TransactionInput) {
   if (error) return { error: error.message };
 
   if (account_id) {
-    await adjustAccountBalance(
+    void adjustAccountBalance(
       supabase,
       account_id,
       accountBalanceDelta(input.transaction_type, input.amount)
     );
   }
 
-  revalidatePath("/transactions");
-  revalidatePath("/dashboard");
-  revalidatePath("/invoices");
   return { success: true };
 }
 
@@ -280,18 +273,20 @@ export async function deleteTransactionAction(transactionId: string) {
       existing.transaction_type === "transfer" &&
       existing.transfer_to_account_id
     ) {
-      await adjustAccountBalance(
-        supabase,
-        existing.account_id,
-        Number(existing.amount)
-      );
-      await adjustAccountBalance(
-        supabase,
-        existing.transfer_to_account_id,
-        -Number(existing.amount)
-      );
+      void Promise.all([
+        adjustAccountBalance(
+          supabase,
+          existing.account_id,
+          Number(existing.amount)
+        ),
+        adjustAccountBalance(
+          supabase,
+          existing.transfer_to_account_id,
+          -Number(existing.amount)
+        ),
+      ]);
     } else if (existing.transaction_type !== "transfer") {
-      await adjustAccountBalance(
+      void adjustAccountBalance(
         supabase,
         existing.account_id,
         -accountBalanceDelta(
@@ -302,8 +297,5 @@ export async function deleteTransactionAction(transactionId: string) {
     }
   }
 
-  revalidatePath("/transactions");
-  revalidatePath("/dashboard");
-  revalidatePath("/invoices");
   return { success: true };
 }

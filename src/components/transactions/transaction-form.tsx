@@ -170,6 +170,7 @@ export function TransactionFormDialog({
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", member.workspace_id],
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error: qError } = await supabase
@@ -323,10 +324,11 @@ export function TransactionFormDialog({
       return;
     }
 
-    await invalidateFinanceQueries(qc);
+    // Fecha na hora; atualiza listas em background
     setOpen(false);
     setAiHint(null);
     form.reset(defaults);
+    invalidateFinanceQueries(qc);
   }
 
   const showPaymentChannels = txType !== "transfer";

@@ -6,6 +6,7 @@ import type { Account, Card, WorkspaceMember } from "@/types";
 import { parseBankCsv, type NubankParsedRow } from "@/lib/utils/csv";
 import { formatCurrency } from "@/lib/utils/format";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
+import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,14 +92,7 @@ export function CsvImportCard({
           (data.skipped ? ` (${data.skipped} ignoradas)` : "")
       );
       setRows([]);
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["transactions"] }),
-        qc.invalidateQueries({ queryKey: ["reports"] }),
-        qc.invalidateQueries({ queryKey: ["dashboard"] }),
-        qc.invalidateQueries({ queryKey: ["accounts"] }),
-      ]);
-      await qc.refetchQueries({ queryKey: ["dashboard"], type: "active" });
-    } catch {
+      invalidateFinanceQueries(qc);    } catch {
       setParseError("Erro de rede na importação");
     } finally {
       setImporting(false);

@@ -13,14 +13,16 @@ function clean(value: string | undefined): string {
   return v;
 }
 
+type BrowserClient = ReturnType<typeof createBrowserClient>;
+let browserClient: BrowserClient | null = null;
+
 /**
  * Cliente Supabase para Client Components (browser).
- *
- * Importante: NEXT_PUBLIC_* precisam ser acessados com literal
- * (`process.env.NEXT_PUBLIC_…`), não via `process.env[name]` —
- * o bundler só injeta o valor no acesso estático.
+ * Reutiliza a mesma instância (evita recriar a cada query).
  */
 export function createClient() {
+  if (browserClient) return browserClient;
+
   const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
@@ -30,5 +32,6 @@ export function createClient() {
     );
   }
 
-  return createBrowserClient(url, key);
+  browserClient = createBrowserClient(url, key);
+  return browserClient;
 }

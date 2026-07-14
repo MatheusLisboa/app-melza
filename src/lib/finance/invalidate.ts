@@ -1,14 +1,20 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-/** Atualiza cache do app após criar/editar/excluir lançamentos. */
-export async function invalidateFinanceQueries(qc: QueryClient) {
-  await Promise.all([
-    qc.invalidateQueries({ queryKey: ["dashboard"] }),
-    qc.invalidateQueries({ queryKey: ["transactions"] }),
-    qc.invalidateQueries({ queryKey: ["invoices"] }),
-    qc.invalidateQueries({ queryKey: ["accounts"] }),
-    qc.invalidateQueries({ queryKey: ["reports"] }),
-  ]);
-  // força refetch imediato das queries do dashboard (staleTime global é 60s)
-  await qc.refetchQueries({ queryKey: ["dashboard"], type: "active" });
+const FINANCE_ROOTS = new Set([
+  "dashboard",
+  "transactions",
+  "invoices",
+  "accounts",
+  "reports",
+  "transaction",
+]);
+
+/**
+ * Marca dados financeiros como stale e refetch em background.
+ * Não bloqueia a UI — chame com `void invalidateFinanceQueries(qc)`.
+ */
+export function invalidateFinanceQueries(qc: QueryClient): void {
+  void qc.invalidateQueries({
+    predicate: (q) => FINANCE_ROOTS.has(String(q.queryKey[0] ?? "")),
+  });
 }

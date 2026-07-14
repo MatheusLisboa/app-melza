@@ -98,60 +98,61 @@ export function DashboardClient({
 
   const { data: monthTx = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", member.workspace_id, from, to],
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 30_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("transactions")
         .select(
           `
-          *,
-          category:categories(*),
-          card:cards(*),
-          account:accounts(*),
-          paid_by:workspace_members!paid_by_member_id(*),
-          consumer:workspace_members!consumer_member_id(*)
+          id, amount, transaction_type, status, card_id, account_id, tags,
+          category_id, paid_by_member_id, consumer_member_id, description,
+          transaction_date, is_installment, installment_number, total_installments,
+          category:categories(name, icon, color),
+          card:cards(id, name, owner_member_id),
+          account:accounts(id, name)
         `
         )
         .eq("workspace_id", member.workspace_id)
         .gte("transaction_date", from)
         .lte("transaction_date", to)
         .neq("status", "cancelled")
-        .order("transaction_date", { ascending: false });
+        .order("transaction_date", { ascending: false })
+        .limit(200);
       if (error) throw error;
       return data as TransactionWithRelations[];
     },
   });
 
+  /** Saldo nas contas a partir do cached accounts (rápido); fallback leve por txs. */
   const { data: allAccountTx = [] } = useQuery({
     queryKey: ["dashboard", "balances", member.workspace_id],
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "amount, transaction_type, account_id, transfer_to_account_id, status"
+          "amount, transaction_type, account_id, transfer_to_account_id"
         )
         .eq("workspace_id", member.workspace_id)
         .not("account_id", "is", null)
         .neq("status", "cancelled")
-        .neq("status", "scheduled");
+        .neq("status", "scheduled")
+        .limit(2000);
       if (error) throw error;
       return data as {
         amount: number;
         transaction_type: string;
         account_id: string;
         transfer_to_account_id: string | null;
-        status: string;
       }[];
     },
   });
 
   const { data: upcoming = [] } = useQuery({
     queryKey: ["dashboard", "subs", member.workspace_id],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -195,11 +196,17 @@ export function DashboardClient({
     [confirmedMonth]
   );
 
-  /** Dinheiro nas contas (PIX/débito/dinheiro). Cartão NÃO entra — fatura ainda não saiu. */
+  /** Preferência: soma dos saldos das contas (barato). Se todos zerados e há txs, usa txs. */
   const consolidatedBalance = useMemo(() => {
-    const activeIds = new Set(
-      accounts.filter((a) => a.is_active).map((a) => a.id)
+    const active = accounts.filter((a) => a.is_active);
+    const fromAccounts = active.reduce(
+      (s, a) => s + Number(a.current_balance ?? 0),
+      0
     );
+    const anySeeded = active.some((a) => Number(a.current_balance ?? 0) !== 0);
+    if (anySeeded || allAccountTx.length === 0) return fromAccounts;
+
+    const activeIds = new Set(active.map((a) => a.id));
     let balance = 0;
     for (const tx of allAccountTx) {
       if (!tx.account_id || !activeIds.has(tx.account_id)) continue;
@@ -214,12 +221,8 @@ export function DashboardClient({
       ) {
         balance -= amount;
       } else if (type === "transfer") {
-        // saída (tem destino): −origem; entrada (sem destino): +conta
-        if (tx.transfer_to_account_id) {
-          balance -= amount;
-        } else {
-          balance += amount;
-        }
+        if (tx.transfer_to_account_id) balance -= amount;
+        else balance += amount;
       }
     }
     return balance;
@@ -653,9 +656,15 @@ export function DashboardClient({
           <p className="py-2 text-sm text-white/30">Nenhum lançamento este mês.</p>
         ) : (
           recent.map((tx) => {
-            const payer = tx.paid_by ? toDsMember(tx.paid_by) : null;
-            const consumer = tx.consumer
-              ? toDsMember(tx.consumer)
+            const payerMember = members.find(
+              (m) => m.id === tx.paid_by_member_id
+            );
+            const consumerMember = members.find(
+              (m) => m.id === tx.consumer_member_id
+            );
+            const payer = payerMember ? toDsMember(payerMember) : null;
+            const consumer = consumerMember
+              ? toDsMember(consumerMember)
               : payer;
             const cardOwnerMember = members.find(
               (m) => m.id === tx.card?.owner_member_id

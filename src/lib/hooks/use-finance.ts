@@ -8,6 +8,7 @@ import type { AccountInput, CardInput } from "@/lib/validations/card";
 export function useWorkspaceMembers(workspaceId: string) {
   return useQuery({
     queryKey: ["workspace-members", workspaceId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -24,6 +25,7 @@ export function useWorkspaceMembers(workspaceId: string) {
 export function useCards(workspaceId: string) {
   return useQuery({
     queryKey: ["cards", workspaceId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -40,6 +42,7 @@ export function useCards(workspaceId: string) {
 export function useAccounts(workspaceId: string) {
   return useQuery({
     queryKey: ["accounts", workspaceId],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -81,7 +84,10 @@ export function useCardMutations(workspaceId: string) {
       if (error) throw error;
       return data as Card;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cards", workspaceId] }),
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ["cards", workspaceId] });
+      void qc.invalidateQueries({ queryKey: ["card", data.id] });
+    },
   });
 
   const deactivate = useMutation({
@@ -112,7 +118,10 @@ export function useAccountMutations(workspaceId: string) {
       if (error) throw error;
       return data as Account;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts", workspaceId] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["accounts", workspaceId] });
+      void qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 
   const update = useMutation({
@@ -126,7 +135,10 @@ export function useAccountMutations(workspaceId: string) {
       if (error) throw error;
       return data as Account;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts", workspaceId] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["accounts", workspaceId] });
+      void qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 
   const deactivate = useMutation({
@@ -137,7 +149,10 @@ export function useAccountMutations(workspaceId: string) {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts", workspaceId] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["accounts", workspaceId] });
+      void qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 
   return { create, update, deactivate };

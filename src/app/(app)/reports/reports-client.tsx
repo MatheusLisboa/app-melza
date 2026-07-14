@@ -49,6 +49,7 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", member.workspace_id],
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -56,7 +57,13 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         .select("id, name, icon, color, type")
         .eq("workspace_id", member.workspace_id);
       if (error) throw error;
-      return data;
+      return (data ?? []) as {
+        id: string;
+        name: string;
+        icon: string | null;
+        color: string;
+        type: string;
+      }[];
     },
   });
 

@@ -30,6 +30,7 @@ export function accountBalanceDelta(
   return 0;
 }
 
+/** Atualiza saldo sem bloquear o fluxo do lançamento (fire-and-forget no caller). */
 export async function adjustAccountBalance(
   supabase: SupabaseClient,
   accountId: string,

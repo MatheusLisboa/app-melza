@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const STORAGE_KEY = "melza-app-version";
-const CHECK_MS = 30_000;
+const CHECK_MS = 3 * 60_000;
 
 async function clearAppCaches() {
   if (!("caches" in window)) return;

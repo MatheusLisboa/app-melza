@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Users,
   User,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const SIDEBAR_NAV: {
   { href: "/dashboard", label: "Início", icon: Home },
   { href: "/transactions", label: "Histórico", icon: ArrowUpDown },
   { href: "/cards", label: "Cartões", icon: CreditCard },
+  { href: "/accounts", label: "Contas", icon: Wallet },
   { href: "/entre-nos", label: "Entre Nós", icon: Users, sharedOnly: true },
   { href: "/invoices", label: "Faturas", icon: Receipt },
   { href: "/subscriptions", label: "Assinaturas", icon: Repeat },
