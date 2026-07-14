@@ -26,8 +26,12 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/utils/format";
+import {
+  cardAvailableLimit,
+  getCurrentInvoiceCycle,
+  sumCardCycleSpend,
+} from "@/lib/finance/card-cycle";
 import { getBankName } from "@/lib/utils/banks";
-import { buildInvoiceCycle } from "@/lib/utils/invoice-cycle";
 
 function darken(hex: string, amount = 0.3): string {
   const h = hex.replace("#", "");
@@ -68,14 +72,7 @@ export function CardDetailClient({
 
   const cycle = useMemo(() => {
     if (!card) return null;
-    const now = new Date();
-    const closing = card.closing_day ?? 1;
-    return buildInvoiceCycle(
-      now.getFullYear(),
-      now.getMonth(),
-      closing,
-      card.due_day
-    );
+    return getCurrentInvoiceCycle(card);
   }, [card]);
 
   const { data: recent = [] } = useQuery({
@@ -104,17 +101,37 @@ export function CardDetailClient({
     },
   });
 
+  const { data: cycleTx = [] } = useQuery({
+    queryKey: [
+      "card-cycle",
+      cardId,
+      member.workspace_id,
+      cycle?.from,
+      cycle?.to,
+    ],
+    enabled: Boolean(card && cycle),
+    staleTime: 30_000,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          "id, amount, transaction_type, status, card_id, description, transaction_date"
+        )
+        .eq("workspace_id", member.workspace_id)
+        .eq("card_id", cardId)
+        .gte("transaction_date", cycle!.from)
+        .lte("transaction_date", cycle!.to)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const usedInCycle = useMemo(() => {
     if (!cycle) return 0;
-    return recent
-      .filter(
-        (t) =>
-          t.transaction_date >= cycle.from &&
-          t.transaction_date <= cycle.to &&
-          t.transaction_type !== "income"
-      )
-      .reduce((s, t) => s + Number(t.amount), 0);
-  }, [recent, cycle]);
+    return sumCardCycleSpend(cycleTx, cycle);
+  }, [cycle, cycleTx]);
 
   if (isLoading || !card) {
     return (
@@ -129,8 +146,7 @@ export function CardDetailClient({
   const c2 = darken(c1);
   const owner = members.find((m) => m.id === card.owner_member_id);
   const limit = card.credit_limit != null ? Number(card.credit_limit) : null;
-  const available =
-    limit != null ? Math.max(0, limit - usedInCycle) : null;
+  const available = cardAvailableLimit(limit, usedInCycle);
 
   return (
     <div className="pb-8">

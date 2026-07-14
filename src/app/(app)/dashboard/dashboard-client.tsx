@@ -34,6 +34,7 @@ import {
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form";
+import { DashboardCardsSection } from "@/components/dashboard/cards-overview";
 import {
   paymentMethodCaption,
   resolvePaymentChannel,
@@ -390,6 +391,8 @@ export function DashboardClient({
           </button>
         </div>
       )}
+
+      <DashboardCardsSection member={member} />
 
       {/* Como pagou este mês */}
       {(spendByChannel.cashOut > 0 ||
