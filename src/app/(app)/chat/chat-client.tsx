@@ -41,7 +41,7 @@ export function ChatClient() {
         };
         if (data.code === "MISSING_API_KEY") {
           setError(
-            "Configure OPENAI_API_KEY no .env.local para usar o chat."
+            "Configure GROQ_API_KEY (grátis em console.groq.com) no .env.local ou Vercel."
           );
         } else if (data.code === "INSUFFICIENT_QUOTA") {
           setError(

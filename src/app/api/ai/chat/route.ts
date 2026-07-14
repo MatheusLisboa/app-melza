@@ -1,15 +1,14 @@
 import { streamText, tool, stepCountIs } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/supabase/workspace";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { mapAiProviderError } from "@/lib/ai/errors";
+import { getAiLanguageModel } from "@/lib/ai/provider";
 
 /**
  * POST /api/ai/chat — streaming de texto
- * Sem OPENAI_API_KEY → 503 JSON (a UI trata).
- * Erros de quota/auth → JSON com status adequado (não 200 vazio).
+ * Preferência: GROQ_API_KEY (free) → OPENAI_API_KEY
  */
 export async function POST(request: Request) {
   const limited = rateLimit({
@@ -30,12 +29,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
+  const ai = getAiLanguageModel("chat");
+  if (!ai.ok) {
     return new Response(
       JSON.stringify({
-        error: "OPENAI_API_KEY não configurada",
-        code: "MISSING_API_KEY",
+        error: ai.error,
+        code: ai.code,
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -72,10 +71,9 @@ export async function POST(request: Request) {
   }
 
   const workspaceId = member.workspace_id;
-  const openai = createOpenAI({ apiKey });
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: ai.model,
     maxRetries: 0,
     system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
 Responda em português, de forma objetiva, com valores em R$.
@@ -299,6 +297,7 @@ Use as tools para consultar dados reais do workspace antes de afirmar números.`
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Melza-AI-Provider": ai.provider,
     },
   });
 }

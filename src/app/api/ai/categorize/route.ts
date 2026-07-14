@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { getAiLanguageModel } from "@/lib/ai/provider";
 
 const bodySchema = z.object({
   description: z.string().min(1),
@@ -13,7 +13,7 @@ const bodySchema = z.object({
 
 /**
  * POST /api/ai/categorize
- * Sem OPENAI_API_KEY → 503 com mensagem amigável (não quebra o form).
+ * Preferência: GROQ_API_KEY (free) → OPENAI_API_KEY
  */
 export async function POST(request: Request) {
   try {
@@ -38,12 +38,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    const ai = getAiLanguageModel("categorize");
+    if (!ai.ok) {
       return NextResponse.json(
         {
-          error: "OPENAI_API_KEY não configurada",
-          code: "MISSING_API_KEY",
+          error: ai.error,
+          code: ai.code,
         },
         { status: 503 }
       );
@@ -81,13 +81,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const openai = createOpenAI({ apiKey: apiKey.trim() });
     const list = categories
       .map((c) => `${c.id} | ${c.icon ?? ""} ${c.name}`)
       .join("\n");
 
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: ai.model,
       maxRetries: 0,
       schema: z.object({
         categoryId: z.string(),
@@ -115,6 +114,7 @@ export async function POST(request: Request) {
         categoryId: byName.id,
         categoryName: byName.name,
         confidence: object.confidence,
+        provider: ai.provider,
       });
     }
 
@@ -122,6 +122,7 @@ export async function POST(request: Request) {
       categoryId: match.id,
       categoryName: match.name,
       confidence: object.confidence,
+      provider: ai.provider,
     });
   } catch (err) {
     console.error("[ai/categorize]", err);

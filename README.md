@@ -7,7 +7,8 @@ App de finanças pessoais e compartilhadas (workspaces).
 ```bash
 cp .env.local.example .env.local
 # Preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
-# (opcional) OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY (exclusão de conta)
+# (opcional) GROQ_API_KEY (IA grátis), OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+
 
 npm install
 npm run dev
