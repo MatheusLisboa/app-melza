@@ -77,13 +77,95 @@ export async function POST(request: Request) {
     maxRetries: 0,
     system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
 Responda em português, de forma objetiva, com valores em R$.
-Use as tools para consultar dados reais do workspace antes de afirmar números.`,
+SEMPRE use as tools para consultar dados reais antes de responder sobre:
+assinaturas, gastos, cartões, contas, empréstimos ou saldos.
+Se a tool retornar lista vazia, diga que não há registros — não invente.`,
     messages: messages.map((m) => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(6),
     tools: {
+      listSubscriptions: tool({
+        description:
+          "Lista assinaturas/recorrências do workspace (Netflix, Spotify, etc.). Use quando perguntarem sobre assinaturas, mensalidades ou recorrentes.",
+        inputSchema: z.object({
+          activeOnly: z
+            .boolean()
+            .optional()
+            .describe("true = só ativas (padrão); false = todas"),
+        }),
+        execute: async ({ activeOnly = true }) => {
+          let q = supabase
+            .from("subscriptions")
+            .select(
+              "name, amount, billing_cycle, next_billing_date, is_active, notes, cards(name), accounts(name), categories(name)"
+            )
+            .eq("workspace_id", workspaceId)
+            .order("name", { ascending: true });
+          if (activeOnly) q = q.eq("is_active", true);
+          const { data, error } = await q;
+          if (error) return { error: error.message };
+          const items = (data ?? []).map((s) => {
+            const card = s.cards as { name?: string } | null;
+            const account = s.accounts as { name?: string } | null;
+            const category = s.categories as { name?: string } | null;
+            return {
+              name: s.name,
+              amount: Number(s.amount),
+              cycle: s.billing_cycle,
+              nextBilling: s.next_billing_date,
+              active: s.is_active,
+              paidWith: card?.name ?? account?.name ?? null,
+              category: category?.name ?? null,
+              notes: s.notes,
+            };
+          });
+          const monthlyTotal = items
+            .filter((i) => i.active)
+            .reduce((sum, i) => {
+              if (i.cycle === "yearly") return sum + i.amount / 12;
+              if (i.cycle === "weekly") return sum + i.amount * 4.33;
+              return sum + i.amount;
+            }, 0);
+          return {
+            count: items.length,
+            monthlyEstimate: Math.round(monthlyTotal * 100) / 100,
+            subscriptions: items,
+          };
+        },
+      }),
+      listCards: tool({
+        description: "Lista cartões cadastrados no workspace.",
+        inputSchema: z.object({
+          activeOnly: z.boolean().optional(),
+        }),
+        execute: async ({ activeOnly = true }) => {
+          let q = supabase
+            .from("cards")
+            .select(
+              "name, bank, last_four, card_type, closing_day, due_day, credit_limit, is_active"
+            )
+            .eq("workspace_id", workspaceId)
+            .order("name");
+          if (activeOnly) q = q.eq("is_active", true);
+          const { data, error } = await q;
+          if (error) return { error: error.message };
+          return {
+            count: data?.length ?? 0,
+            cards: (data ?? []).map((c) => ({
+              name: c.name,
+              bank: c.bank,
+              lastFour: c.last_four,
+              type: c.card_type,
+              closingDay: c.closing_day,
+              dueDay: c.due_day,
+              limit: c.credit_limit != null ? Number(c.credit_limit) : null,
+              active: c.is_active,
+            })),
+          };
+        },
+      }),
       queryExpenses: tool({
         description:
           "Soma despesas/receitas no período. Datas em YYYY-MM-DD.",
