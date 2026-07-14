@@ -1,13 +1,18 @@
 {
   "name": "FinançasCasa",
   "short_name": "FinançasCasa",
-  "description": "Finanças pessoais para casal",
+  "description": "Finanças pessoais e compartilhadas por workspace",
   "start_url": "/dashboard",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "orientation": "portrait-primary",
-  "background_color": "#0f0f12",
-  "theme_color": "#6366f1",
+  "background_color": "#09090B",
+  "theme_color": "#09090B",
   "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -22,7 +27,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
