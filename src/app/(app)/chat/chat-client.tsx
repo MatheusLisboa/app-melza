@@ -46,7 +46,7 @@ export function ChatClient() {
         } else if (data.code === "INSUFFICIENT_QUOTA") {
           setError(
             data.error ??
-              "Conta OpenAI sem créditos. Adicione billing em platform.openai.com."
+              "Quota da OpenAI esgotada. Configure GROQ_API_KEY na Vercel (padrão do Melza)."
           );
         } else {
           setError(data.error ?? "Falha ao falar com a IA");
@@ -78,8 +78,13 @@ export function ChatClient() {
       }
 
       if (!assistant.trim()) {
+        const provider = res.headers.get("x-melza-ai-provider");
         setError(
-          "A IA não retornou resposta. Verifique créditos/quota da OpenAI."
+          provider === "groq"
+            ? "A IA (Groq) não retornou texto. Tente de novo ou confirme a GROQ_API_KEY."
+            : provider === "openai"
+              ? "A IA (OpenAI) não retornou texto — quota/créditos ou chave inválida."
+              : "A IA não retornou resposta. Confirme GROQ_API_KEY na Vercel e faça redeploy."
         );
       }
     } catch {

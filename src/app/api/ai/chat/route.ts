@@ -279,17 +279,34 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
+        let full = "";
         for await (const delta of result.textStream) {
+          full += delta;
           sent = true;
           controller.enqueue(encoder.encode(delta));
+        }
+        // tools às vezes terminam sem texto — força o texto final
+        if (!full.trim()) {
+          const fallback = (await result.text).trim();
+          if (fallback) {
+            sent = true;
+            controller.enqueue(encoder.encode(fallback));
+          } else {
+            controller.enqueue(
+              encoder.encode(
+                `\n__AI_ERROR__${JSON.stringify({
+                  error:
+                    "A IA não gerou texto após consultar os dados. Tente perguntar de novo.",
+                  code: "EMPTY_RESPONSE",
+                })}`
+              )
+            );
+          }
         }
         controller.close();
       } catch (err) {
         const mapped = mapAiProviderError(err);
         if (!sent) {
-          // Resposta ainda não começou de verdade para o client com texto —
-          // fecha e deixa o handler externo... mas já estamos no stream.
-          // Envia marcador JSON que o client reconhece.
           controller.enqueue(
             encoder.encode(
               `\n__AI_ERROR__${JSON.stringify({
@@ -299,11 +316,7 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
             )
           );
         } else {
-          controller.enqueue(
-            encoder.encode(
-              `\n\n⚠️ ${mapped.message}`
-            )
-          );
+          controller.enqueue(encoder.encode(`\n\n⚠️ ${mapped.message}`));
         }
         controller.close();
       }

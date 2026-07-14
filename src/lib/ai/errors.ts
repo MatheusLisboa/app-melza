@@ -1,4 +1,4 @@
-/** Mensagens amigáveis a partir de erros da OpenAI / AI SDK */
+/** Mensagens amigáveis a partir de erros Groq / OpenAI / AI SDK */
 
 export function mapAiProviderError(error: unknown): {
   message: string;
@@ -24,19 +24,25 @@ export function mapAiProviderError(error: unknown): {
   if (
     lower.includes("insufficient_quota") ||
     lower.includes("exceeded your current quota") ||
-    lower.includes("billing")
+    (lower.includes("billing") && lower.includes("openai"))
   ) {
     return {
       message:
-        "A conta OpenAI está sem créditos/quota. Adicione pagamento em platform.openai.com/account/billing ou troque a OPENAI_API_KEY.",
+        "A conta OpenAI está sem créditos. O Melza usa Groq por padrão — configure GROQ_API_KEY na Vercel e remova a dependência da OpenAI.",
       code: "INSUFFICIENT_QUOTA",
       status: 402,
     };
   }
 
-  if (statusCode === 401 || lower.includes("incorrect api key") || lower.includes("invalid_api_key")) {
+  if (
+    statusCode === 401 ||
+    lower.includes("invalid api key") ||
+    lower.includes("invalid_api_key") ||
+    lower.includes("incorrect api key")
+  ) {
     return {
-      message: "OPENAI_API_KEY inválida. Verifique o .env.local e reinicie o servidor.",
+      message:
+        "Chave de IA inválida. Verifique GROQ_API_KEY (console.groq.com) no .env.local / Vercel e reinicie.",
       code: "INVALID_API_KEY",
       status: 401,
     };
@@ -44,7 +50,8 @@ export function mapAiProviderError(error: unknown): {
 
   if (statusCode === 429 || lower.includes("rate limit")) {
     return {
-      message: "Limite de requisições da OpenAI. Aguarde alguns segundos e tente de novo.",
+      message:
+        "Limite de requisições da IA (Groq/OpenAI). Aguarde alguns segundos e tente de novo.",
       code: "RATE_LIMIT",
       status: 429,
     };
