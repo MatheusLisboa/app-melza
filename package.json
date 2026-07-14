@@ -37,6 +37,7 @@
     "recharts": "^3.9.2",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "unpdf": "^1.6.2",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

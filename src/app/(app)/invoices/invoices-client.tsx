@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { NubankInvoiceImport } from "@/components/invoices/nubank-invoice-import";
 
 export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const { data: cards = [] } = useCards(member.workspace_id);
@@ -144,6 +145,13 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="max-w-xl">
+        <NubankInvoiceImport
+          cards={cards}
+          defaultCardId={effectiveCardId || undefined}
+        />
       </div>
 
       {!effectiveCardId ? (

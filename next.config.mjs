@@ -7,6 +7,7 @@ const nextConfig = {
       dynamic: 30,
       static: 180,
     },
+    serverComponentsExternalPackages: ["unpdf"],
   },
   async headers() {
     return [
