@@ -1,7 +1,7 @@
 /* FinançasCasa — PWA service worker
  * network-first para app shell; auto-update via skipWaiting + clients.claim
  */
-const CACHE = "financas-casa-v3";
+const CACHE = "financas-casa-v4";
 const PRECACHE = [
   "/manifest.webmanifest",
   "/favicon.ico",

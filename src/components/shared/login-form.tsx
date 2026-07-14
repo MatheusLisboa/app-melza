@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,16 +15,23 @@ function safeRedirect(path: string | null): string {
 }
 
 export function LoginForm() {
-  const searchParams = useSearchParams();
-  const redirectTo = safeRedirect(searchParams.get("redirectTo"));
-  const authErrorParam = searchParams.get("error");
-  const [error, setError] = useState<string | null>(
-    authErrorParam === "auth_callback"
-      ? "Não foi possível concluir o login. Tente de novo."
-      : null
-  );
+  const [redirectTo, setRedirectTo] = useState("/dashboard");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    setRedirectTo(safeRedirect(sp.get("redirectTo")));
+    const err = sp.get("error");
+    if (err === "auth_callback") {
+      setError("Não foi possível concluir o login. Tente de novo.");
+    } else if (err === "missing_env") {
+      setError(
+        "Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no Vercel (Settings → Environment Variables) e faça redeploy."
+      );
+    }
+  }, []);
 
   const form = useForm<LoginInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

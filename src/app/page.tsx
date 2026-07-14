@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
+
+/** Fallback se o middleware não rodar (ex.: env ausente no Edge). */
 export default function HomePage() {
-  // O middleware redireciona "/" para /dashboard ou /login
-  return null;
+  redirect("/login");
 }

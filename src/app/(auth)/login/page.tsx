@@ -1,16 +1,8 @@
-import { Suspense } from "react";
+"use client";
+
 import { LoginForm } from "@/components/shared/login-form";
 
+/** Sem Suspense boundary — evita tela só com “Carregando…” se o JS demorar. */
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-          Carregando…
-        </main>
-      }
-    >
-      <LoginForm />
-    </Suspense>
-  );
+  return <LoginForm />;
 }
