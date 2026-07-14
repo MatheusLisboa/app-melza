@@ -11,6 +11,7 @@ import {
   type TransactionInput,
 } from "@/lib/validations/transaction";
 import { createTransactionAction } from "@/lib/actions/transactions";
+import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { MoneyInput } from "@/components/transactions/money-input";
 import { CardSelector } from "@/components/transactions/card-selector";
 import { useAccounts, useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
@@ -322,11 +323,7 @@ export function TransactionFormDialog({
       return;
     }
 
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["transactions"] }),
-      qc.invalidateQueries({ queryKey: ["dashboard"] }),
-      qc.invalidateQueries({ queryKey: ["invoices"] }),
-    ]);
+    await invalidateFinanceQueries(qc);
     setOpen(false);
     setAiHint(null);
     form.reset(defaults);

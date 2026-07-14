@@ -95,7 +95,9 @@ export function CsvImportCard({
         qc.invalidateQueries({ queryKey: ["transactions"] }),
         qc.invalidateQueries({ queryKey: ["reports"] }),
         qc.invalidateQueries({ queryKey: ["dashboard"] }),
+        qc.invalidateQueries({ queryKey: ["accounts"] }),
       ]);
+      await qc.refetchQueries({ queryKey: ["dashboard"], type: "active" });
     } catch {
       setParseError("Erro de rede na importação");
     } finally {

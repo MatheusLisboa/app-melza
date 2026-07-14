@@ -9,6 +9,7 @@ export function TxRow({
   title,
   category,
   dateLabel,
+  paymentLabel,
   amount,
   type,
   pending,
@@ -23,6 +24,8 @@ export function TxRow({
   title: string;
   category?: string | null;
   dateLabel?: string;
+  /** Ex.: "PIX · Nubank" ou "Cartão · Inter" */
+  paymentLabel?: string | null;
   amount: number;
   type: "income" | "expense" | "other";
   pending?: boolean;
@@ -38,6 +41,8 @@ export function TxRow({
     showTrio &&
     consumer.id === payer.id &&
     payer.id === cardOwner.id;
+
+  const meta = [paymentLabel, category, dateLabel].filter(Boolean).join(" · ");
 
   const content = (
     <>
@@ -67,10 +72,8 @@ export function TxRow({
             cardOwner={cardOwner}
           />
         )}
-        {(!showTrio || allSame) && (
-          <span className="text-xs text-foreground/30">
-            {[category, dateLabel].filter(Boolean).join(" · ")}
-          </span>
+        {(!showTrio || allSame) && meta && (
+          <span className="text-xs text-foreground/30">{meta}</span>
         )}
       </div>
       <span

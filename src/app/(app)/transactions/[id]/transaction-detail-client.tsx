@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import { deleteTransactionAction } from "@/lib/actions/transactions";
+import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import type { TransactionWithRelations, WorkspaceMember } from "@/types";
 import {
   Avatar,
@@ -67,8 +68,7 @@ export function TransactionDetailClient({
       alert(res.error);
       return;
     }
-    await qc.invalidateQueries({ queryKey: ["transactions"] });
-    await qc.invalidateQueries({ queryKey: ["dashboard"] });
+    await invalidateFinanceQueries(qc);
     router.push("/transactions");
   }
 

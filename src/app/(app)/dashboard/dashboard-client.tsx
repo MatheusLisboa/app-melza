@@ -18,6 +18,7 @@ import type { MembershipOption } from "@/components/shared/workspace-switcher";
 import {
   formatCurrency,
   formatDate,
+  formatMonthYear,
   endOfMonth,
   startOfMonth,
   toISODate,
@@ -33,6 +34,50 @@ import {
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form";
+import {
+  paymentMethodCaption,
+  resolvePaymentChannel,
+} from "@/lib/utils/payment-channel";
+import type { PaymentChannel } from "@/lib/validations/transaction";
+import { Banknote, CreditCard, QrCode, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const SPEND_CHANNELS: {
+  id: PaymentChannel;
+  label: string;
+  hint: string;
+  color: string;
+  icon: typeof QrCode;
+}[] = [
+  {
+    id: "pix",
+    label: "PIX",
+    hint: "Saiu da conta na hora",
+    color: "#22C55E",
+    icon: QrCode,
+  },
+  {
+    id: "card",
+    label: "Cartão",
+    hint: "Vai na fatura",
+    color: "#6366F1",
+    icon: CreditCard,
+  },
+  {
+    id: "account",
+    label: "Conta",
+    hint: "Débito / transferência",
+    color: "#06B6D4",
+    icon: Wallet,
+  },
+  {
+    id: "cash",
+    label: "Dinheiro",
+    hint: "Em espécie",
+    color: "#F59E0B",
+    icon: Banknote,
+  },
+];
 
 /** Dashboard Make — PersonalDashboard (+ shared sections) */
 export function DashboardClient({
@@ -53,6 +98,8 @@ export function DashboardClient({
 
   const { data: monthTx = [], isLoading } = useQuery({
     queryKey: ["dashboard", "month", member.workspace_id, from, to],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -79,11 +126,15 @@ export function DashboardClient({
 
   const { data: allAccountTx = [] } = useQuery({
     queryKey: ["dashboard", "balances", member.workspace_id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("transactions")
-        .select("amount, transaction_type, account_id, status")
+        .select(
+          "amount, transaction_type, account_id, transfer_to_account_id, status"
+        )
         .eq("workspace_id", member.workspace_id)
         .not("account_id", "is", null)
         .neq("status", "cancelled")
@@ -93,6 +144,7 @@ export function DashboardClient({
         amount: number;
         transaction_type: string;
         account_id: string;
+        transfer_to_account_id: string | null;
         status: string;
       }[];
     },
@@ -114,7 +166,10 @@ export function DashboardClient({
     },
   });
 
-  const confirmedMonth = monthTx.filter((t) => t.status !== "scheduled");
+  const confirmedMonth = useMemo(
+    () => monthTx.filter((t) => t.status !== "scheduled"),
+    [monthTx]
+  );
 
   const monthExpense = useMemo(
     () =>
@@ -140,6 +195,7 @@ export function DashboardClient({
     [confirmedMonth]
   );
 
+  /** Dinheiro nas contas (PIX/débito/dinheiro). Cartão NÃO entra — fatura ainda não saiu. */
   const consolidatedBalance = useMemo(() => {
     const activeIds = new Set(
       accounts.filter((a) => a.is_active).map((a) => a.id)
@@ -148,20 +204,28 @@ export function DashboardClient({
     for (const tx of allAccountTx) {
       if (!tx.account_id || !activeIds.has(tx.account_id)) continue;
       const amount = Number(tx.amount);
-      if (
-        tx.transaction_type === "income" ||
-        tx.transaction_type === "loan_received"
-      ) {
+      const type = tx.transaction_type;
+      if (type === "income" || type === "loan_received") {
         balance += amount;
       } else if (
-        tx.transaction_type === "expense" ||
-        tx.transaction_type === "loan_given"
+        type === "expense" ||
+        type === "loan_given" ||
+        type === "loan_repayment"
       ) {
         balance -= amount;
+      } else if (type === "transfer") {
+        // saída (tem destino): −origem; entrada (sem destino): +conta
+        if (tx.transfer_to_account_id) {
+          balance -= amount;
+        } else {
+          balance += amount;
+        }
       }
     }
     return balance;
   }, [allAccountTx, accounts]);
+
+  const monthResult = monthIncome - monthExpense;
 
   const byPerson = useMemo(() => {
     const map = new Map<string, { income: number; expenses: number }>();
@@ -223,7 +287,41 @@ export function DashboardClient({
     }));
   }, [confirmedMonth]);
 
-  const recent = confirmedMonth.slice(0, 4);
+  /** Despesas do mês agrupadas por forma de pagamento */
+  const spendByChannel = useMemo(() => {
+    const totals: Record<PaymentChannel, number> = {
+      pix: 0,
+      card: 0,
+      account: 0,
+      cash: 0,
+    };
+    let uncategorized = 0;
+
+    for (const tx of confirmedMonth) {
+      if (
+        tx.transaction_type !== "expense" &&
+        tx.transaction_type !== "loan_given"
+      ) {
+        continue;
+      }
+      const channel = resolvePaymentChannel(tx);
+      if (channel) totals[channel] += Number(tx.amount);
+      else uncategorized += Number(tx.amount);
+    }
+
+    const rows = SPEND_CHANNELS.map((c) => ({
+      ...c,
+      total: totals[c.id],
+    })).filter((r) => r.total > 0);
+
+    const cashOut = totals.pix + totals.account + totals.cash;
+    const onCard = totals.card;
+
+    return { rows, cashOut, onCard, uncategorized };
+  }, [confirmedMonth]);
+
+  const recent = confirmedMonth.slice(0, 5);
+  const monthLabel = formatMonthYear(monthAnchor);
 
   const sharedMemberships = memberships.filter(
     (m) =>
@@ -237,9 +335,11 @@ export function DashboardClient({
       : null;
 
   const trendLabel =
-    monthIncome > 0
-      ? `${formatCurrency(monthIncome - monthExpense)} líquidos`
-      : "Sem movimento ainda";
+    monthIncome === 0 && monthExpense === 0
+      ? "Sem movimento este mês"
+      : monthResult >= 0
+        ? `Resultado do mês +${formatCurrency(monthResult)}`
+        : `Resultado do mês −${formatCurrency(Math.abs(monthResult))}`;
 
   return (
     <div className="relative pb-28 md:pb-8">
@@ -249,9 +349,11 @@ export function DashboardClient({
           income={monthIncome}
           expenses={monthExpense}
           accentColor={accent.color}
-          loading={isLoading}
+          loading={isLoading && monthTx.length === 0}
           trendLabel={trendLabel}
-          title={isShared ? "Saldo consolidado" : "Saldo total"}
+          trendPositive={monthResult >= 0}
+          title={isShared ? "Nas contas" : "Nas contas"}
+          subtitle="PIX, débito e dinheiro · cartão não abate o saldo"
         />
       </div>
 
@@ -283,6 +385,109 @@ export function DashboardClient({
             </div>
             <ChevronRight size={16} className="text-white/25" />
           </button>
+        </div>
+      )}
+
+      {/* Como pagou este mês */}
+      {(spendByChannel.cashOut > 0 ||
+        spendByChannel.onCard > 0 ||
+        spendByChannel.rows.length > 0) && (
+        <div className="px-5 mt-6">
+          <div className="mb-3 flex items-end justify-between gap-2">
+            <div>
+              <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
+                Como você pagou
+              </h3>
+              <p className="mt-0.5 text-xs capitalize text-white/30">
+                {monthLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#111113] p-3.5">
+              <div className="mb-2 flex items-center gap-1.5">
+                <QrCode className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">
+                  Saiu da conta
+                </span>
+              </div>
+              <p className="font-mono text-[17px] font-semibold text-white/90">
+                {formatCurrency(spendByChannel.cashOut)}
+              </p>
+              <p className="mt-1 text-[11px] text-white/30">
+                PIX, débito e dinheiro
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-[#111113] p-3.5">
+              <div className="mb-2 flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
+                <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">
+                  No cartão
+                </span>
+              </div>
+              <p className="font-mono text-[17px] font-semibold text-white/90">
+                {formatCurrency(spendByChannel.onCard)}
+              </p>
+              <p className="mt-1 text-[11px] text-white/30">
+                Compras na fatura
+              </p>
+            </div>
+          </div>
+
+          {spendByChannel.rows.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]">
+              {spendByChannel.rows.map((row, i) => {
+                const Icon = row.icon;
+                const pct =
+                  monthExpense > 0
+                    ? Math.round((row.total / monthExpense) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "px-4 py-3.5",
+                      i > 0 && "border-t border-white/[0.05]"
+                    )}
+                  >
+                    <div className="mb-2 flex items-center gap-3">
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${row.color}18` }}
+                      >
+                        <Icon
+                          className="h-3.5 w-3.5"
+                          style={{ color: row.color }}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-medium text-white/85">
+                          {row.label}
+                        </p>
+                        <p className="text-[11px] text-white/30">{row.hint}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-[13px] font-semibold text-white/75">
+                          {formatCurrency(row.total)}
+                        </p>
+                        <p className="text-[10px] text-white/30">{pct}%</p>
+                      </div>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-white/[0.05]">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(pct, 100)}%`,
+                          backgroundColor: row.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -345,8 +550,8 @@ export function DashboardClient({
         </div>
       )}
 
-      {/* Shared: categorias */}
-      {isShared && byCategory.length > 0 && (
+      {/* Categorias — pessoal e compartilhado */}
+      {byCategory.length > 0 && (
         <div className="px-5 mt-6">
           <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-white/60">
             Categorias
@@ -471,6 +676,7 @@ export function DashboardClient({
                   emoji={tx.category?.icon}
                   title={tx.description}
                   category={tx.category?.name}
+                  paymentLabel={paymentMethodCaption(tx)}
                   dateLabel={formatDate(tx.transaction_date)}
                   amount={Number(tx.amount)}
                   type={isIncome ? "income" : isExpense ? "expense" : "other"}

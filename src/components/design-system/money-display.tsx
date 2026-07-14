@@ -15,12 +15,16 @@ export function MoneyDisplay({
   size = "xl",
   className,
   color,
+  /** Se true, valores negativos usam tom de despesa quando não há `color`. */
+  signed = true,
 }: {
   amount: number;
   size?: MoneySize;
   className?: string;
   color?: string;
+  signed?: boolean;
 }) {
+  const negative = signed && amount < 0;
   const [int, dec] = Math.abs(amount).toFixed(2).split(".");
   const formatted = parseInt(int, 10).toLocaleString("pt-BR");
 
@@ -29,10 +33,12 @@ export function MoneyDisplay({
       className={cn(
         "font-money font-semibold tracking-tight leading-none",
         SIZE[size],
+        !color && negative && "text-destructive",
         className
       )}
       style={color ? { color } : undefined}
     >
+      {negative && <span className="mr-0.5">−</span>}
       <span className="mr-0.5 text-[0.55em] opacity-60">R$</span>
       {formatted}
       <span className="text-[0.65em] opacity-60">,{dec}</span>

@@ -9,6 +9,10 @@ import {
 import { addMonths, toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
 import { tagsForPaymentChannel } from "@/lib/utils/payment-channel";
+import {
+  accountBalanceDelta,
+  adjustAccountBalance,
+} from "@/lib/finance/account-balance";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 
@@ -129,6 +133,13 @@ export async function createTransactionAction(raw: TransactionInput) {
     });
     if (inError) return { error: inError.message };
 
+    await adjustAccountBalance(supabase, payment.id, -input.amount);
+    await adjustAccountBalance(
+      supabase,
+      input.transfer_to_account_id,
+      input.amount
+    );
+
     revalidatePath("/transactions");
     revalidatePath("/dashboard");
     return { success: true };
@@ -185,6 +196,14 @@ export async function createTransactionAction(raw: TransactionInput) {
     const { error } = await supabase.from("transactions").insert(rows);
     if (error) return { error: error.message };
 
+    if (account_id) {
+      await adjustAccountBalance(
+        supabase,
+        account_id,
+        accountBalanceDelta(input.transaction_type, input.amount)
+      );
+    }
+
     revalidatePath("/transactions");
     revalidatePath("/dashboard");
     revalidatePath("/invoices");
@@ -217,6 +236,14 @@ export async function createTransactionAction(raw: TransactionInput) {
 
   if (error) return { error: error.message };
 
+  if (account_id) {
+    await adjustAccountBalance(
+      supabase,
+      account_id,
+      accountBalanceDelta(input.transaction_type, input.amount)
+    );
+  }
+
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/invoices");
@@ -226,12 +253,55 @@ export async function createTransactionAction(raw: TransactionInput) {
 export async function deleteTransactionAction(transactionId: string) {
   const member = await requireMember();
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("transactions")
+    .select(
+      "id, amount, transaction_type, account_id, transfer_to_account_id, status"
+    )
+    .eq("id", transactionId)
+    .eq("workspace_id", member.workspace_id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("transactions")
     .update({ status: "cancelled" })
     .eq("id", transactionId)
     .eq("workspace_id", member.workspace_id);
   if (error) return { error: error.message };
+
+  if (
+    existing &&
+    existing.status !== "cancelled" &&
+    existing.account_id &&
+    existing.status !== "scheduled"
+  ) {
+    if (
+      existing.transaction_type === "transfer" &&
+      existing.transfer_to_account_id
+    ) {
+      await adjustAccountBalance(
+        supabase,
+        existing.account_id,
+        Number(existing.amount)
+      );
+      await adjustAccountBalance(
+        supabase,
+        existing.transfer_to_account_id,
+        -Number(existing.amount)
+      );
+    } else if (existing.transaction_type !== "transfer") {
+      await adjustAccountBalance(
+        supabase,
+        existing.account_id,
+        -accountBalanceDelta(
+          existing.transaction_type,
+          Number(existing.amount)
+        )
+      );
+    }
+  }
+
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/invoices");

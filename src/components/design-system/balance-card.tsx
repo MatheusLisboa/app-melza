@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Eye,
   EyeOff,
+  TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -21,8 +22,10 @@ export function BalanceCard({
   expenses,
   accentColor = "hsl(var(--primary))",
   loading = false,
-  trendLabel = "+0% este mês",
-  title = "Saldo total",
+  trendLabel,
+  trendPositive,
+  title = "Nas contas",
+  subtitle = "Dinheiro disponível em contas",
   className,
 }: {
   balance: number;
@@ -30,12 +33,16 @@ export function BalanceCard({
   expenses: number;
   accentColor?: string;
   loading?: boolean;
+  /** Ex.: resultado do mês (receitas − despesas) */
   trendLabel?: string;
+  trendPositive?: boolean;
   title?: string;
+  subtitle?: string;
   className?: string;
 }) {
   const [hide, setHide] = useState(false);
   const saved = income - expenses;
+  const trendOk = trendPositive ?? saved >= 0;
 
   return (
     <div
@@ -55,9 +62,12 @@ export function BalanceCard({
           transform: "translate(30%, -30%)",
         }}
       />
-      <p className="mb-3 text-xs font-medium uppercase tracking-wider text-foreground/40">
+      <p className="mb-1 text-xs font-medium uppercase tracking-wider text-foreground/40">
         {title}
       </p>
+      {subtitle && (
+        <p className="mb-3 text-[11px] text-foreground/30">{subtitle}</p>
+      )}
       {loading ? (
         <DsSkeleton h="h-9" w="w-48" className="rounded-xl" />
       ) : (
@@ -67,7 +77,11 @@ export function BalanceCard({
               ••••••
             </span>
           ) : (
-            <MoneyDisplay amount={balance} size="xl" />
+            <MoneyDisplay
+              amount={balance}
+              size="xl"
+              color={balance < 0 ? "#EF4444" : undefined}
+            />
           )}
           <button
             type="button"
@@ -79,10 +93,21 @@ export function BalanceCard({
           </button>
         </div>
       )}
-      {!loading && (
+      {!loading && trendLabel && (
         <div className="mt-2 flex items-center gap-1.5">
-          <TrendingUp className="h-3.5 w-3.5 text-success" />
-          <span className="text-xs font-medium text-success">{trendLabel}</span>
+          {trendOk ? (
+            <TrendingUp className="h-3.5 w-3.5 text-success" />
+          ) : (
+            <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+          )}
+          <span
+            className={cn(
+              "text-xs font-medium",
+              trendOk ? "text-success" : "text-destructive"
+            )}
+          >
+            {trendLabel}
+          </span>
         </div>
       )}
 
@@ -105,7 +130,7 @@ export function BalanceCard({
                 icon: ArrowUpRight,
               },
               {
-                label: "Guardado",
+                label: "Resultado",
                 value: saved,
                 color: accentColor,
                 icon: Wallet,
