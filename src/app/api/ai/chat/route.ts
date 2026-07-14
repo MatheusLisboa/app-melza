@@ -6,6 +6,19 @@ import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { mapAiProviderError } from "@/lib/ai/errors";
 import { getAiLanguageModel } from "@/lib/ai/provider";
 
+/** Groq/LLMs often pass booleans as "true"/"false" strings — schema must accept both. */
+const looseBool = z
+  .union([
+    z.boolean(),
+    z.enum(["true", "false", "1", "0"]),
+  ])
+  .optional()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    if (typeof v === "boolean") return v;
+    return v === "true" || v === "1";
+  });
+
 /**
  * POST /api/ai/chat — resposta em texto (generateText + tools)
  * Padrão: GROQ_API_KEY
@@ -91,10 +104,9 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
         description:
           "Lista assinaturas/recorrências do workspace (Netflix, Spotify, etc.). Use quando perguntarem sobre assinaturas, mensalidades ou recorrentes.",
         inputSchema: z.object({
-          activeOnly: z
-            .boolean()
-            .optional()
-            .describe("true = só ativas (padrão); false = todas"),
+          activeOnly: looseBool.describe(
+            "true = só ativas (padrão); false = todas"
+          ),
         }),
         execute: async ({ activeOnly = true }) => {
           let q = supabase
@@ -139,7 +151,7 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
       listCards: tool({
         description: "Lista cartões cadastrados no workspace.",
         inputSchema: z.object({
-          activeOnly: z.boolean().optional(),
+          activeOnly: looseBool,
         }),
         execute: async ({ activeOnly = true }) => {
           let q = supabase
