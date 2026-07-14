@@ -71,9 +71,7 @@ export function CardsAccountsPage({ member }: { member: WorkspaceMember }) {
     () => cards.filter((c) => c.is_active),
     [cards]
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const featured: CardType | undefined =
-    activeCards.find((c) => c.id === selectedId) ?? activeCards[0];
+  const featured: CardType | undefined = activeCards[0];
   const accent = workspaceAccent(member.workspace?.type);
 
   return (
