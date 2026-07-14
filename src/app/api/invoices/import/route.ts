@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { requireMember } from "@/lib/supabase/workspace";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { expandInstallmentRows } from "@/lib/invoices/nubank-pdf";
+import {
+  chargeMatchKey,
+  indexExistingCardTxs,
+  installmentMatchKey,
+  type ExistingCardTx,
+} from "@/lib/invoices/match";
 
 export const runtime = "nodejs";
 
@@ -25,8 +31,8 @@ const bodySchema = z.object({
 
 /**
  * POST /api/invoices/import
- * Confirma linhas da fatura Nubank no cartão.
- * Parcelas futuras (após a atual) são criadas como scheduled.
+ * Upsert da fatura: não duplica compras já existentes.
+ * Parcelas já lançadas (mesmo nº/total) são atualizadas (ex.: scheduled → confirmed).
  */
 export async function POST(request: Request) {
   try {
@@ -71,23 +77,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existing } = await supabase
+    const { data: existingRaw } = await supabase
       .from("transactions")
-      .select("transaction_date, description, amount, card_id")
+      .select(
+        "id, transaction_date, description, amount, status, is_installment, installment_number, total_installments, installment_group_id"
+      )
       .eq("workspace_id", member.workspace_id)
       .eq("card_id", cardId)
       .neq("status", "cancelled");
 
-    const existingKeys = new Set(
-      (existing ?? []).map(
-        (t) =>
-          `${t.transaction_date}|${t.description}|${Number(t.amount).toFixed(2)}`
-      )
-    );
+    const existing = (existingRaw ?? []) as ExistingCardTx[];
+    const index = indexExistingCardTxs(existing);
 
     const toInsert: Record<string, unknown>[] = [];
     let skipped = 0;
+    let updated = 0;
     let futureCreated = 0;
+    let imported = 0;
 
     for (const line of lines) {
       if (line.kind === "payment") {
@@ -105,27 +111,117 @@ export async function POST(request: Request) {
         kind: "charge",
       });
 
-      const groupId =
-        line.installmentTotal &&
-        line.installmentTotal > 1 &&
-        line.installmentCurrent
-          ? randomUUID()
-          : null;
+      const isMulti =
+        Boolean(line.installmentTotal && line.installmentTotal > 1) &&
+        Boolean(line.installmentCurrent);
+
+      // Reusa grupo existente se a parcela atual já existir
+      let groupId: string | null = null;
+      if (isMulti) {
+        const currentKey = installmentMatchKey(
+          line.description,
+          line.amount,
+          line.installmentCurrent!,
+          line.installmentTotal!
+        );
+        const hit = index.byInstallment.get(currentKey);
+        if (hit?.installment_group_id) {
+          groupId = hit.installment_group_id;
+        }
+        if (!groupId) groupId = randomUUID();
+      }
 
       for (const row of expanded) {
         if (!createFutureInstallments && row.status === "scheduled") {
           continue;
         }
-        const key = `${row.date}|${row.description}|${row.amount.toFixed(2)}`;
-        if (existingKeys.has(key)) {
-          skipped++;
+
+        const isInstallment = Boolean(groupId && row.totalInstallments > 1);
+        const instKey = isInstallment
+          ? installmentMatchKey(
+              row.description,
+              row.amount,
+              row.installmentNumber,
+              row.totalInstallments
+            )
+          : null;
+        const chargeKey = chargeMatchKey(
+          row.date,
+          row.description,
+          row.amount
+        );
+
+        const found =
+          (instKey ? index.byInstallment.get(instKey) : undefined) ??
+          index.byCharge.get(chargeKey);
+
+        if (found) {
+          const needsUpdate =
+            found.status !== row.status ||
+            found.transaction_date !== row.date ||
+            Number(found.amount) !== row.amount;
+
+          if (!needsUpdate) {
+            skipped++;
+            continue;
+          }
+
+          const { error: updErr } = await supabase
+            .from("transactions")
+            .update({
+              transaction_date: row.date,
+              amount: row.amount,
+              description: row.description,
+              status: row.status,
+              paid_at:
+                row.status === "confirmed" ? new Date().toISOString() : null,
+              is_installment: isInstallment,
+              installment_number: isInstallment
+                ? row.installmentNumber
+                : null,
+              total_installments: isInstallment
+                ? row.totalInstallments
+                : null,
+              installment_group_id: groupId,
+              notes: "Atualizado via fatura Nubank (CSV/OFX)",
+              tags: ["import", "nubank", "invoice"],
+            })
+            .eq("id", found.id)
+            .eq("workspace_id", member.workspace_id);
+
+          if (updErr) {
+            return NextResponse.json(
+              {
+                error: updErr.message,
+                imported,
+                updated,
+                skipped,
+                futureCreated,
+              },
+              { status: 500 }
+            );
+          }
+
+          const refreshed: ExistingCardTx = {
+            ...found,
+            transaction_date: row.date,
+            description: row.description,
+            amount: row.amount,
+            status: row.status,
+            is_installment: isInstallment,
+            installment_number: isInstallment
+              ? row.installmentNumber
+              : null,
+            total_installments: isInstallment
+              ? row.totalInstallments
+              : null,
+          };
+          index.byCharge.set(chargeKey, refreshed);
+          if (instKey) index.byInstallment.set(instKey, refreshed);
+          updated++;
           continue;
         }
-        existingKeys.add(key);
 
-        const isInstallment = Boolean(
-          groupId && row.totalInstallments > 1
-        );
         toInsert.push({
           workspace_id: member.workspace_id,
           created_by_member_id: member.id,
@@ -148,34 +244,69 @@ export async function POST(request: Request) {
             row.status === "confirmed" ? new Date().toISOString() : null,
           tags: ["import", "nubank", "invoice"],
         });
+
+        // evita duplicar no mesmo batch
+        const placeholder: ExistingCardTx = {
+          id: `pending-${toInsert.length}`,
+          transaction_date: row.date,
+          description: row.description,
+          amount: row.amount,
+          status: row.status,
+          is_installment: isInstallment,
+          installment_number: isInstallment ? row.installmentNumber : null,
+          total_installments: isInstallment ? row.totalInstallments : null,
+        };
+        index.byCharge.set(chargeKey, placeholder);
+        if (instKey) index.byInstallment.set(instKey, placeholder);
+
         if (row.status === "scheduled") futureCreated++;
       }
     }
 
-    if (toInsert.length === 0) {
+    if (toInsert.length > 0) {
+      const chunkSize = 80;
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        const chunk = toInsert.slice(i, i + chunkSize);
+        const { error } = await supabase.from("transactions").insert(chunk);
+        if (error) {
+          return NextResponse.json(
+            { error: error.message, imported, updated, skipped, futureCreated },
+            { status: 500 }
+          );
+        }
+        imported += chunk.length;
+      }
+    }
+
+    if (imported === 0 && updated === 0) {
       return NextResponse.json({
         imported: 0,
+        updated: 0,
         skipped,
         futureCreated: 0,
-        message: "Nada novo para importar (já cadastrado ou vazio).",
+        message:
+          skipped > 0
+            ? `Nada novo — ${skipped} compra${skipped === 1 ? "" : "s"} já existia${skipped === 1 ? "" : "m"}.`
+            : "Nada para importar.",
       });
     }
 
-    const chunkSize = 80;
-    let imported = 0;
-    for (let i = 0; i < toInsert.length; i += chunkSize) {
-      const chunk = toInsert.slice(i, i + chunkSize);
-      const { error } = await supabase.from("transactions").insert(chunk);
-      if (error) {
-        return NextResponse.json(
-          { error: error.message, imported, skipped, futureCreated },
-          { status: 500 }
-        );
-      }
-      imported += chunk.length;
-    }
-
-    return NextResponse.json({ imported, skipped, futureCreated });
+    return NextResponse.json({
+      imported,
+      updated,
+      skipped,
+      futureCreated,
+      message: [
+        imported ? `${imported} nova${imported === 1 ? "" : "s"}` : null,
+        updated ? `${updated} atualizada${updated === 1 ? "" : "s"}` : null,
+        skipped ? `${skipped} já existente${skipped === 1 ? "" : "s"}` : null,
+        futureCreated
+          ? `${futureCreated} parcela${futureCreated === 1 ? "" : "s"} futura${futureCreated === 1 ? "" : "s"}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    });
   } catch (err) {
     console.error("[invoices/import]", err);
     return NextResponse.json(

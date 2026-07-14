@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Download, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { WorkspaceMember, TransactionWithRelations } from "@/types";
@@ -11,8 +12,10 @@ import {
   defaultCycleKey,
   listInvoiceCycles,
 } from "@/lib/utils/invoice-cycle";
+import { downloadInvoicePdf } from "@/lib/invoices/download-pdf";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -20,13 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { NubankInvoiceImport } from "@/components/invoices/nubank-invoice-import";
+import { NubankInvoiceImportDialog } from "@/components/invoices/nubank-invoice-import";
 
 export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const { data: cards = [] } = useCards(member.workspace_id);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
   const activeCards = cards.filter((c) => c.is_active);
   const [cardId, setCardId] = useState<string>("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const effectiveCardId = cardId || activeCards[0]?.id || "";
   const selectedCard = activeCards.find((c) => c.id === effectiveCardId);
@@ -80,26 +85,87 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     },
   });
 
-  const total = useMemo(
-    () =>
-      transactions
-        .filter((t) => t.transaction_type !== "income")
-        .reduce((sum, t) => sum + Number(t.amount), 0),
+  const expenseTx = useMemo(
+    () => transactions.filter((t) => t.transaction_type !== "income"),
     [transactions]
+  );
+
+  const total = useMemo(
+    () => expenseTx.reduce((sum, t) => sum + Number(t.amount), 0),
+    [expenseTx]
   );
 
   const owner = members.find((m) => m.id === selectedCard?.owner_member_id);
 
+  function onDownloadPdf() {
+    if (!selectedCard || !cycle) return;
+    setPdfError(null);
+    try {
+      downloadInvoicePdf({
+        cardName: selectedCard.name,
+        cycleLabel: cycle.label,
+        from: cycle.from,
+        to: cycle.to,
+        total,
+        ownerName: owner?.display_name,
+        lines: expenseTx.map((tx) => ({
+          date: tx.transaction_date,
+          description: tx.description,
+          amount: Number(tx.amount),
+          installment:
+            tx.is_installment &&
+            tx.installment_number &&
+            tx.total_installments
+              ? `${tx.installment_number}/${tx.total_installments}`
+              : null,
+        })),
+      });
+    } catch (e) {
+      setPdfError(
+        e instanceof Error ? e.message : "Não foi possível gerar o PDF"
+      );
+    }
+  }
+
   return (
     <div className="page-pad space-y-5 md:px-6">
-      <div>
-        <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
-          Faturas
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Ciclo pelo dia de fechamento do cartão (não o mês civil)
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
+            Faturas
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Ciclo pelo dia de fechamento do cartão (não o mês civil)
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={!effectiveCardId || !cycle}
+            onClick={onDownloadPdf}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Baixar PDF
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5"
+            disabled={activeCards.length === 0}
+            onClick={() => setImportOpen(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Importar
+          </Button>
+        </div>
       </div>
+
+      {pdfError && (
+        <p className="text-sm text-destructive">{pdfError}</p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
         <div className="space-y-1">
@@ -145,13 +211,6 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="max-w-xl">
-        <NubankInvoiceImport
-          cards={cards}
-          defaultCardId={effectiveCardId || undefined}
-        />
       </div>
 
       {!effectiveCardId ? (
@@ -211,13 +270,13 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
 
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
-          ) : transactions.length === 0 ? (
+          ) : expenseTx.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Nenhuma compra neste ciclo neste cartão.
             </p>
           ) : (
             <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06]">
-              {transactions.map((tx) => (
+              {expenseTx.map((tx) => (
                 <li key={tx.id}>
                   <Link
                     href={`/transactions/${tx.id}`}
@@ -247,6 +306,13 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
           )}
         </>
       ) : null}
+
+      <NubankInvoiceImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        cards={cards}
+        defaultCardId={effectiveCardId || undefined}
+      />
     </div>
   );
 }
