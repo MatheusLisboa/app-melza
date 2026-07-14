@@ -10,7 +10,12 @@ export function getCurrentInvoiceCycle(
   card: Pick<Card, "closing_day" | "due_day">,
   today = new Date()
 ): InvoiceCycle | null {
-  const cycles = listInvoiceCycles(card.closing_day, card.due_day, 4, today);
+  const cycles = listInvoiceCycles(
+    card.closing_day,
+    card.due_day,
+    { past: 3, future: 3 },
+    today
+  );
   if (cycles.length === 0) return null;
   const key = defaultCycleKey(cycles);
   return cycles.find((c) => c.key === key) ?? cycles[0] ?? null;

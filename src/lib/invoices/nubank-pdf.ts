@@ -55,32 +55,82 @@ function parseBrDate(day: string, mon: string, yearHint?: number): string | null
   return toISODate(new Date(year, m, d));
 }
 
-/** Detecta “3/12”, “parcela 3 de 12”, etc. */
+/** Detecta “3/12”, “parcela 3 de 12”, etc. Prefere o padrão no fim do texto. */
 export function parseInstallmentHints(text: string): {
   current: number | null;
   total: number | null;
   cleanDescription: string;
 } {
-  let current: number | null = null;
-  let total: number | null = null;
-  let clean = text;
+  const cleanBase = text.replace(/\s+/g, " ").trim();
 
-  const patterns = [
-    /(\d{1,2})\s*\/\s*(\d{1,2})\b/,
-    /parcela\s*(\d{1,2})\s*(?:de|\/)\s*(\d{1,2})/i,
-  ];
-  for (const re of patterns) {
-    const m = clean.match(re);
-    if (m) {
-      current = parseInt(m[1], 10);
-      total = parseInt(m[2], 10);
-      if (current >= 1 && total >= 2 && current <= total) {
-        clean = clean.replace(m[0], " ").replace(/\s+/g, " ").trim();
-        return { current, total, cleanDescription: clean };
-      }
+  function valid(current: number, total: number): boolean {
+    return (
+      current >= 1 &&
+      total >= 2 &&
+      total <= 48 &&
+      current <= total
+    );
+  }
+
+  function stripMatch(full: string, matched: string): string {
+    return full.replace(matched, " ").replace(/\s+/g, " ").trim();
+  }
+
+  // 1) Forma explícita “parcela 3 de 10” / “parc. 3/10”
+  const explicit =
+    cleanBase.match(
+      /parcela\s*(\d{1,2})\s*(?:de|\/)\s*(\d{1,2})/i
+    ) ||
+    cleanBase.match(/\bparc\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/i);
+  if (explicit) {
+    const current = parseInt(explicit[1], 10);
+    const total = parseInt(explicit[2], 10);
+    if (valid(current, total)) {
+      return {
+        current,
+        total,
+        cleanDescription: stripMatch(cleanBase, explicit[0]),
+      };
     }
   }
-  return { current: null, total: null, cleanDescription: clean.trim() };
+
+  // 2) Sufixo no fim: “Loja 3/10” ou “Loja (3/10)” — o mais comum no Nubank
+  const trailing = cleanBase.match(
+    /(?:^|[\s\-–—(])(\d{1,2})\s*\/\s*(\d{1,2})\)?\s*$/
+  );
+  if (trailing) {
+    const current = parseInt(trailing[1], 10);
+    const total = parseInt(trailing[2], 10);
+    if (valid(current, total)) {
+      return {
+        current,
+        total,
+        cleanDescription: stripMatch(cleanBase, trailing[0]).replace(
+          /[\-–—(]\s*$/,
+          ""
+        ).trim(),
+      };
+    }
+  }
+
+  // 3) Qualquer X/Y válido — usa o ÚLTIMO (parcela costuma vir depois de datas)
+  const all = Array.from(cleanBase.matchAll(/(\d{1,2})\s*\/\s*(\d{1,2})\b/g));
+  for (let i = all.length - 1; i >= 0; i--) {
+    const m = all[i];
+    const current = parseInt(m[1], 10);
+    const total = parseInt(m[2], 10);
+    // Evita interpretar dia/mês comum (ex.: 15/03) como parcela
+    if (current > 12 && total <= 12) continue;
+    if (valid(current, total)) {
+      return {
+        current,
+        total,
+        cleanDescription: stripMatch(cleanBase, m[0]),
+      };
+    }
+  }
+
+  return { current: null, total: null, cleanDescription: cleanBase };
 }
 
 /**

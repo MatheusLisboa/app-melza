@@ -38,10 +38,10 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
 
   const cycles = useMemo(
     () =>
-      listInvoiceCycles(
-        selectedCard?.closing_day,
-        selectedCard?.due_day
-      ),
+      listInvoiceCycles(selectedCard?.closing_day, selectedCard?.due_day, {
+        past: 12,
+        future: 12,
+      }),
     [selectedCard?.closing_day, selectedCard?.due_day]
   );
 
@@ -135,7 +135,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             Faturas
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Ciclo pelo dia de fechamento do cartão (não o mês civil)
+            Ciclo pelo fechamento (00:01 do dia · compras nesse dia vão à próxima)
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -205,7 +205,8 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                 <SelectItem key={c.key} value={c.key}>
                   {c.label}
                   {c.isCurrent ? " · atual" : ""}
-                  {c.isNext ? " · próximo" : ""}
+                  {c.isNext ? " · próxima" : ""}
+                  {c.isFuture && !c.isNext ? " · futura" : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -236,7 +237,12 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                 )}
                 {cycle.isNext && (
                   <Badge className="bg-amber-500/15 text-amber-400 hover:bg-amber-500/15">
-                    Próximo ciclo
+                    Próxima fatura
+                  </Badge>
+                )}
+                {cycle.isFuture && !cycle.isNext && (
+                  <Badge className="bg-sky-500/15 text-sky-400 hover:bg-sky-500/15">
+                    Fatura futura
                   </Badge>
                 )}
               </div>
@@ -272,7 +278,9 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : expenseTx.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhuma compra neste ciclo neste cartão.
+              {cycle.isFuture
+                ? "Nenhuma parcela agendada neste ciclo ainda."
+                : "Nenhuma compra neste ciclo neste cartão."}
             </p>
           ) : (
             <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06]">
@@ -288,6 +296,12 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                       </p>
                       <p className="text-xs text-white/35">
                         {formatDate(tx.transaction_date)}
+                        {tx.is_installment &&
+                        tx.installment_number &&
+                        tx.total_installments
+                          ? ` · parcela ${tx.installment_number}/${tx.total_installments}`
+                          : ""}
+                        {tx.status === "scheduled" ? " · agendada" : ""}
                         {tx.consumer
                           ? ` · consumiu ${tx.consumer.display_name}`
                           : ""}
