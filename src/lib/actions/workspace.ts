@@ -1,8 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setActiveWorkspaceId } from "@/lib/supabase/workspace";
+import {
+  setActiveWorkspaceId,
+  ACTIVE_WORKSPACE_COOKIE,
+} from "@/lib/supabase/workspace";
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 
 export async function setActiveWorkspaceAction(workspaceId: string) {
   const supabase = await createClient();
@@ -15,21 +19,48 @@ export async function setActiveWorkspaceAction(workspaceId: string) {
 
   const { data } = await supabase
     .from("workspace_members")
-    .select("id")
+    .select("id, workspace:workspaces(id)")
     .eq("user_id", user.id)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
 
-  if (!data) {
+  if (!data?.workspace) {
     throw new Error("Workspace inválido");
   }
 
   await setActiveWorkspaceId(workspaceId);
 }
 
+/** Define o cookie ativo para o workspace PERSONAL do usuário. */
+export async function activatePersonalWorkspaceAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Não autenticado" };
+  }
+
+  const { data: rows } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, workspace:workspaces(id, type)")
+    .eq("user_id", user.id);
+
+  const personal = (rows ?? []).find(
+    (m) => (m.workspace as { type?: string } | null)?.type === "PERSONAL"
+  );
+
+  if (!personal?.workspace_id) {
+    return { error: "Workspace pessoal não encontrado" };
+  }
+
+  await setActiveWorkspaceId(personal.workspace_id);
+  return { success: true, workspaceId: personal.workspace_id };
+}
+
 /**
- * Apaga o workspace se o usuário for owner. Troca o cookie
- * para outro workspace restante (preferência: PERSONAL).
+ * Apaga o workspace se o usuário for owner (RPC SECURITY DEFINER).
+ * Sempre volta para o workspace pessoal.
  */
 export async function deleteWorkspaceAction(workspaceId: string) {
   const supabase = await createClient();
@@ -53,36 +84,51 @@ export async function deleteWorkspaceAction(workspaceId: string) {
     return { error: "Só quem criou o workspace pode apagá-lo" };
   }
 
-  const { data: remaining } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, workspace:workspaces(type)")
-    .eq("user_id", user.id)
-    .neq("workspace_id", workspaceId);
-
-  // .select() garante erro se RLS bloquear (0 linhas ≠ sucesso)
-  const { data: deleted, error: delError } = await supabase
-    .from("workspaces")
-    .delete()
-    .eq("id", workspaceId)
-    .select("id");
-
-  if (delError) {
-    return {
-      error:
-        delError.message.includes("policy") || delError.code === "42501"
-          ? "Sem permissão para apagar. Rode a migration 006 no Supabase."
-          : delError.message,
-    };
+  const ws = membership.workspace as { type?: string } | null;
+  if (ws?.type === "PERSONAL") {
+    const { count } = await supabase
+      .from("workspace_members")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if ((count ?? 0) <= 1) {
+      return {
+        error: "Não é possível apagar o workspace pessoal quando é o único.",
+      };
+    }
   }
 
-  if (!deleted?.length) {
-    return {
-      error:
-        "Workspace não foi apagado (RLS). Rode a migration 006_workspaces_delete_policy.sql no Supabase SQL Editor.",
-    };
+  const { data: ok, error: rpcError } = await supabase.rpc(
+    "delete_workspace_as_owner",
+    { p_workspace_id: workspaceId }
+  );
+
+  if (rpcError) {
+    const msg = rpcError.message ?? "";
+    if (msg.includes("not_owner")) {
+      return { error: "Só quem criou o workspace pode apagá-lo" };
+    }
+    if (msg.includes("cannot_delete_only_personal")) {
+      return {
+        error: "Não é possível apagar o workspace pessoal quando é o único.",
+      };
+    }
+    if (
+      msg.includes("function") &&
+      msg.toLowerCase().includes("does not exist")
+    ) {
+      return {
+        error:
+          "Função de exclusão ausente. Rode a migration 007_delete_workspace_rpc.sql no Supabase.",
+      };
+    }
+    return { error: rpcError.message };
   }
 
-  // Confirma que sumiu (evita CTA fantasma no dashboard)
+  if (!ok) {
+    return { error: "Workspace não encontrado ou já apagado" };
+  }
+
+  // Confirma remoção
   const { data: stillThere } = await supabase
     .from("workspaces")
     .select("id")
@@ -92,19 +138,27 @@ export async function deleteWorkspaceAction(workspaceId: string) {
     return { error: "Falha ao confirmar exclusão do workspace" };
   }
 
-  const next =
-    remaining?.find(
-      (m) =>
-        (m.workspace as { type?: string } | null)?.type === "PERSONAL"
-    ) ?? remaining?.[0];
+  // Volta sempre para o pessoal
+  const { data: personalRows } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, workspace:workspaces(type)")
+    .eq("user_id", user.id);
 
-  if (next?.workspace_id) {
-    await setActiveWorkspaceId(next.workspace_id);
+  const personal = (personalRows ?? []).find(
+    (m) => (m.workspace as { type?: string } | null)?.type === "PERSONAL"
+  );
+  const nextId = personal?.workspace_id ?? personalRows?.[0]?.workspace_id;
+
+  if (nextId) {
+    await setActiveWorkspaceId(nextId);
+  } else {
+    const cookieStore = await cookies();
+    cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
   }
 
   revalidatePath("/", "layout");
   revalidatePath("/dashboard");
   revalidatePath("/settings");
   revalidatePath("/api/shell");
-  return { success: true, nextWorkspaceId: next?.workspace_id ?? null };
+  return { success: true, nextWorkspaceId: nextId ?? null };
 }

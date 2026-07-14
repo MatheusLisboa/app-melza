@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
+import { activatePersonalWorkspaceAction } from "@/lib/actions/workspace";
 import { BrandWordmark, Btn, InputField } from "@/components/design-system";
 
 function safeRedirect(path: string | null): string {
@@ -60,6 +61,8 @@ export function LoginForm() {
       }
 
       // Hard nav garante cookie da sessão no middleware
+      // Sempre entra no workspace pessoal
+      await activatePersonalWorkspaceAction();
       window.location.assign(redirectTo);
     } catch (err) {
       setError(

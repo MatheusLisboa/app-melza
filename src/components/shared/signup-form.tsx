@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ChevronLeft, Lock, Mail, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
+import { activatePersonalWorkspaceAction } from "@/lib/actions/workspace";
 import { Btn, InputField } from "@/components/design-system";
 
 function safeRedirect(path: string | null): string {
@@ -46,6 +47,7 @@ export function SignupForm() {
         return;
       }
 
+      await activatePersonalWorkspaceAction();
       window.location.assign(redirectTo);
     } catch (err) {
       setError(

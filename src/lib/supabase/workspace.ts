@@ -17,16 +17,13 @@ function pickPreferredMembership(
 ): MemberWithWorkspace | null {
   if (!memberships.length) return null;
 
+  // Cookie válido = troca explícita do usuário nesta sessão
   if (activeId) {
     const active = memberships.find((m) => m.workspace_id === activeId);
     if (active) return active;
   }
 
-  const shared = memberships.find((m) =>
-    m.workspace ? SHARED_TYPES.includes(m.workspace.type) : false
-  );
-  if (shared) return shared;
-
+  // Padrão sempre: workspace pessoal
   const personal = memberships.find((m) => m.workspace?.type === "PERSONAL");
   return personal ?? memberships[0];
 }
