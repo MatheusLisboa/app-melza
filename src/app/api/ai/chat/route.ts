@@ -1,4 +1,4 @@
-import { streamText, tool, stepCountIs } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/supabase/workspace";
@@ -7,8 +7,8 @@ import { mapAiProviderError } from "@/lib/ai/errors";
 import { getAiLanguageModel } from "@/lib/ai/provider";
 
 /**
- * POST /api/ai/chat — streaming de texto
- * Preferência: GROQ_API_KEY (free) → OPENAI_API_KEY
+ * POST /api/ai/chat — resposta em texto (generateText + tools)
+ * Padrão: GROQ_API_KEY
  */
 export async function POST(request: Request) {
   const limited = rateLimit({
@@ -72,19 +72,20 @@ export async function POST(request: Request) {
 
   const workspaceId = member.workspace_id;
 
-  const result = streamText({
-    model: ai.model,
-    maxRetries: 0,
-    system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
+  try {
+    const { text } = await generateText({
+      model: ai.model,
+      maxRetries: 1,
+      system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
 Responda em português, de forma objetiva, com valores em R$.
 SEMPRE use as tools para consultar dados reais antes de responder sobre:
 assinaturas, gastos, cartões, contas, empréstimos ou saldos.
 Se a tool retornar lista vazia, diga que não há registros — não invente.`,
-    messages: messages.map((m) => ({
-      role: m.role as "user" | "assistant" | "system",
-      content: m.content,
-    })),
-    stopWhen: stepCountIs(6),
+      messages: messages.map((m) => ({
+        role: m.role as "user" | "assistant" | "system",
+        content: m.content,
+      })),
+      stopWhen: stepCountIs(6),
     tools: {
       listSubscriptions: tool({
         description:
@@ -271,65 +272,29 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
         },
       }),
     },
-  });
+    });
 
-  const encoder = new TextEncoder();
-  let sent = false;
+    const answer = (text ?? "").trim();
+    if (!answer) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "A IA consultou os dados mas não gerou texto. Tente perguntar de novo.",
+          code: "EMPTY_RESPONSE",
+        }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        let full = "";
-        for await (const delta of result.textStream) {
-          full += delta;
-          sent = true;
-          controller.enqueue(encoder.encode(delta));
-        }
-        // tools às vezes terminam sem texto — força o texto final
-        if (!full.trim()) {
-          const fallback = (await result.text).trim();
-          if (fallback) {
-            sent = true;
-            controller.enqueue(encoder.encode(fallback));
-          } else {
-            controller.enqueue(
-              encoder.encode(
-                `\n__AI_ERROR__${JSON.stringify({
-                  error:
-                    "A IA não gerou texto após consultar os dados. Tente perguntar de novo.",
-                  code: "EMPTY_RESPONSE",
-                })}`
-              )
-            );
-          }
-        }
-        controller.close();
-      } catch (err) {
-        const mapped = mapAiProviderError(err);
-        if (!sent) {
-          controller.enqueue(
-            encoder.encode(
-              `\n__AI_ERROR__${JSON.stringify({
-                error: mapped.message,
-                code: mapped.code,
-              })}`
-            )
-          );
-        } else {
-          controller.enqueue(encoder.encode(`\n\n⚠️ ${mapped.message}`));
-        }
-        controller.close();
-      }
-    },
-  });
-
-  // Pré-checa falha imediata (quota) antes de devolver 200:
-  // o AI SDK só falha ao consumir o stream; então usamos um peek.
-  const reader = stream.getReader();
-  let first: ReadableStreamReadResult<Uint8Array>;
-  try {
-    first = await reader.read();
+    return new Response(answer, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Melza-AI-Provider": ai.provider,
+      },
+    });
   } catch (err) {
+    console.error("[ai/chat]", err);
     const mapped = mapAiProviderError(err);
     return new Response(
       JSON.stringify({ error: mapped.message, code: mapped.code }),
@@ -339,60 +304,4 @@ Se a tool retornar lista vazia, diga que não há registros — não invente.`,
       }
     );
   }
-
-  if (first.value) {
-    const preview = new TextDecoder().decode(first.value);
-    if (preview.startsWith("\n__AI_ERROR__") || preview.startsWith("__AI_ERROR__")) {
-      try {
-        const json = JSON.parse(
-          preview.replace(/^\n?__AI_ERROR__/, "")
-        ) as { error: string; code: string };
-        const mapped = mapAiProviderError(json.error);
-        return new Response(JSON.stringify(json), {
-          status:
-            json.code === "INSUFFICIENT_QUOTA"
-              ? 402
-              : json.code === "RATE_LIMIT"
-                ? 429
-                : mapped.status,
-          headers: { "Content-Type": "application/json" },
-        });
-      } catch {
-        /* fall through to stream */
-      }
-    }
-  }
-
-  const out = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      if (first.value) controller.enqueue(first.value);
-      if (first.done) {
-        controller.close();
-        return;
-      }
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) controller.enqueue(value);
-        }
-        controller.close();
-      } catch (err) {
-        const mapped = mapAiProviderError(err);
-        controller.enqueue(encoder.encode(`\n\n⚠️ ${mapped.message}`));
-        controller.close();
-      }
-    },
-    cancel(reason) {
-      void reader.cancel(reason);
-    },
-  });
-
-  return new Response(out, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Melza-AI-Provider": ai.provider,
-    },
-  });
 }
