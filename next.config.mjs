@@ -8,6 +8,7 @@ const nextConfig = {
       static: 180,
     },
     serverComponentsExternalPackages: ["unpdf"],
+    optimizePackageImports: ["lucide-react", "date-fns"],
   },
   async headers() {
     return [

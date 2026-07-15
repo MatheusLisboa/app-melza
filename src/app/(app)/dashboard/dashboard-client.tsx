@@ -185,10 +185,17 @@ export function DashboardClient({
     },
   });
 
-  /** Saldo nas contas a partir do cached accounts (rápido); fallback leve por txs. */
+  /** Saldo: usa current_balance das contas. Fallback (txs) só se algum saldo for null. */
+  const needsBalanceFallback = useMemo(() => {
+    const active = accounts.filter((a) => a.is_active);
+    if (!active.length) return false;
+    return active.some((a) => a.current_balance == null);
+  }, [accounts]);
+
   const { data: allAccountTx = [] } = useQuery({
     queryKey: ["dashboard", "balances", member.workspace_id],
     staleTime: 60_000,
+    enabled: needsBalanceFallback,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -293,15 +300,16 @@ export function DashboardClient({
     [confirmedMonth]
   );
 
-  /** Preferência: soma dos saldos das contas (barato). Se todos zerados e há txs, usa txs. */
+  /** Preferência: soma dos saldos das contas. Fallback por txs só se current_balance null. */
   const consolidatedBalance = useMemo(() => {
     const active = accounts.filter((a) => a.is_active);
     const fromAccounts = active.reduce(
       (s, a) => s + Number(a.current_balance ?? 0),
       0
     );
-    const anySeeded = active.some((a) => Number(a.current_balance ?? 0) !== 0);
-    if (anySeeded || allAccountTx.length === 0) return fromAccounts;
+    if (!needsBalanceFallback || allAccountTx.length === 0) {
+      return fromAccounts;
+    }
 
     const activeIds = new Set(active.map((a) => a.id));
     let balance = 0;
@@ -323,7 +331,7 @@ export function DashboardClient({
       }
     }
     return balance;
-  }, [allAccountTx, accounts]);
+  }, [allAccountTx, accounts, needsBalanceFallback]);
 
   const byPerson = useMemo(() => {
     const map = new Map<string, { income: number; expenses: number }>();

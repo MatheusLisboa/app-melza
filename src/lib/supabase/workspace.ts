@@ -41,23 +41,26 @@ export async function setActiveWorkspaceId(workspaceId: string) {
 
 /** Dedupa por request (layout + pages). */
 export const listUserMemberships = cache(
-  async (): Promise<MemberWithWorkspace[]> => {
+  async (userId?: string): Promise<MemberWithWorkspace[]> => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return [];
+    let uid = userId;
+    if (!uid) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+      uid = user.id;
+    }
 
     const { data } = await supabase
       .from("workspace_members")
       .select("*, workspace:workspaces(*)")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .order("created_at", { ascending: true });
 
     // Ignora memberships órfãs (workspace apagado / join nulo)
-    return ((data as MemberWithWorkspace[] | null) ?? []).filter(
-      (m) => Boolean(m.workspace?.id)
+    return ((data as MemberWithWorkspace[] | null) ?? []).filter((m) =>
+      Boolean(m.workspace?.id)
     );
   }
 );
@@ -71,7 +74,7 @@ export const getAppShell = cache(async () => {
 
   if (!user) return null;
 
-  let memberships = await listUserMemberships();
+  let memberships = await listUserMemberships(user.id);
 
   if (!memberships.length) {
     const display =

@@ -1,10 +1,24 @@
 import { AppShellProvider } from "@/components/shared/app-shell";
+import { getAppShell } from "@/lib/supabase/workspace";
+import { redirect } from "next/navigation";
 
-/** Layout fino — shell no client (sem Supabase a cada troca de aba). */
-export default function AppLayout({
+/** Resolve shell no servidor — evita waterfall client /api/shell no cold start. */
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShellProvider>{children}</AppShellProvider>;
+  const shell = await getAppShell();
+  if (!shell?.member) {
+    redirect("/login");
+  }
+
+  const initialData = {
+    member: shell.member,
+    memberships: shell.memberships,
+  };
+
+  return (
+    <AppShellProvider initialData={initialData}>{children}</AppShellProvider>
+  );
 }

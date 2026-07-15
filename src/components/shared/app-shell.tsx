@@ -43,11 +43,19 @@ async function fetchShell(): Promise<ShellData> {
   return body;
 }
 
-export function AppShellProvider({ children }: { children: ReactNode }) {
+export function AppShellProvider({
+  children,
+  initialData,
+}: {
+  children: ReactNode;
+  /** Seed do layout server — first paint sem esperar /api/shell */
+  initialData?: ShellData;
+}) {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["app-shell"],
     queryFn: fetchShell,
+    initialData,
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
@@ -64,20 +72,21 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     return { ...data, refreshShell };
   }, [data, refreshShell]);
 
-  if (isLoading) {
+  // Só bloqueia tela cheia se não veio seed do servidor
+  if (isLoading && !initialData) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-background">
+      <div className="flex h-dvh items-center justify-center bg-[var(--color-page)]">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 animate-pulse rounded-2xl bg-[var(--color-chip)]" />
-          <p className="text-sm text-foreground/35">Carregando…</p>
+          <p className="text-sm text-[var(--color-text-3)]">Carregando…</p>
         </div>
       </div>
     );
   }
 
-  if (isError || !value) {
+  if ((isError && !data) || !value) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-background px-6 text-center text-sm text-destructive">
+      <div className="flex h-dvh items-center justify-center bg-[var(--color-page)] px-6 text-center text-sm text-[var(--color-expense)]">
         Não foi possível carregar o app. Recarregue a página.
       </div>
     );
@@ -98,6 +107,12 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
             member={value.member}
             memberships={value.memberships}
           />
+          {isFetching && !isLoading ? (
+            <div
+              className="h-0.5 w-full animate-pulse bg-[var(--color-chip)]"
+              aria-hidden
+            />
+          ) : null}
           <main className="app-main min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
             {children}
           </main>

@@ -35,7 +35,6 @@
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.81.0",
-    "recharts": "^3.9.2",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "unpdf": "^1.6.2",

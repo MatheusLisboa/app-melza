@@ -3,6 +3,10 @@ import { z } from "zod";
 import type { createClient } from "@/lib/supabase/server";
 import type { WorkspaceMember } from "@/types";
 import { asBool, toolBool } from "@/lib/ai/loose-bool";
+import {
+  consumeAiWritePreview,
+  stashAiWritePreview,
+} from "@/lib/ai/pending-writes";
 import { getAiLanguageModel } from "@/lib/ai/provider";
 import { createTransactionAction } from "@/lib/actions/transactions";
 import { payInvoiceAction } from "@/lib/actions/invoices";
@@ -373,53 +377,81 @@ export function buildChatTools(opts: {
             return { error: `Cartão "${cardName}" não encontrado` };
           list = [match];
         }
-        if (!list.length) return { invoices: [], message: "Nenhum cartão ativo" };
+        if (!list.length) {
+          return { invoices: [], message: "Nenhum cartão ativo" };
+        }
 
-        const invoices = [];
-        for (const card of list) {
-          const cycles = listInvoiceCycles(
-            card.closing_day,
-            card.due_day,
-            { past: 4, future: 2 }
-          );
-          const cycle =
-            (cycleKey
-              ? cycles.find((c) => c.key === cycleKey)
-              : cycles.find((c) => c.isCurrent)) ??
-            getCurrentInvoiceCycle(card);
-          if (!cycle) continue;
+        const cardCycles = list
+          .map((card) => {
+            const cycles = listInvoiceCycles(card.closing_day, card.due_day, {
+              past: 4,
+              future: 2,
+            });
+            const cycle =
+              (cycleKey
+                ? cycles.find((c) => c.key === cycleKey)
+                : cycles.find((c) => c.isCurrent)) ??
+              getCurrentInvoiceCycle(card);
+            if (!cycle) return null;
+            return { card, cycle };
+          })
+          .filter(Boolean) as {
+          card: (typeof list)[number];
+          cycle: NonNullable<ReturnType<typeof getCurrentInvoiceCycle>>;
+        }[];
 
-          const { data: txs } = await supabase
+        if (!cardCycles.length) return { invoices: [] };
+
+        const minFrom = cardCycles.reduce(
+          (m, c) => (c.cycle.from < m ? c.cycle.from : m),
+          cardCycles[0].cycle.from
+        );
+        const maxTo = cardCycles.reduce(
+          (m, c) => (c.cycle.to > m ? c.cycle.to : m),
+          cardCycles[0].cycle.to
+        );
+        const cardIds = cardCycles.map((c) => c.card.id);
+
+        const [{ data: txs }, { data: paymentRows }] = await Promise.all([
+          supabase
             .from("transactions")
-            .select("amount, transaction_type, status")
+            .select("amount, transaction_type, card_id, transaction_date")
             .eq("workspace_id", workspaceId)
-            .eq("card_id", card.id)
-            .gte("transaction_date", cycle.from)
-            .lte("transaction_date", cycle.to)
-            .neq("status", "cancelled");
+            .in("card_id", cardIds)
+            .gte("transaction_date", minFrom)
+            .lte("transaction_date", maxTo)
+            .neq("status", "cancelled"),
+          supabase
+            .from("transactions")
+            .select("amount, tags")
+            .eq("workspace_id", workspaceId)
+            .contains("tags", ["invoice_payment"])
+            .neq("status", "cancelled"),
+        ]);
 
+        const invoices = cardCycles.map(({ card, cycle }) => {
           const total = (txs ?? [])
-            .filter((t) => t.transaction_type !== "income")
+            .filter(
+              (t) =>
+                t.card_id === card.id &&
+                t.transaction_date >= cycle.from &&
+                t.transaction_date <= cycle.to &&
+                t.transaction_type !== "income"
+            )
             .reduce((s, t) => s + Number(t.amount), 0);
 
-          const { data: payments } = await supabase
-            .from("transactions")
-            .select("amount")
-            .eq("workspace_id", workspaceId)
-            .contains("tags", [
-              "invoice_payment",
-              `invoice_card:${card.id}`,
-              `invoice_cycle:${cycle.key}`,
-            ])
-            .neq("status", "cancelled");
+          const paid = (paymentRows ?? [])
+            .filter((p) => {
+              const tags = (p.tags as string[] | null) ?? [];
+              return (
+                tags.includes(`invoice_card:${card.id}`) &&
+                tags.includes(`invoice_cycle:${cycle.key}`)
+              );
+            })
+            .reduce((s, p) => s + Number(p.amount), 0);
 
-          const paid = (payments ?? []).reduce(
-            (s, p) => s + Number(p.amount),
-            0
-          );
           const remaining = Math.max(0, total - paid);
-
-          invoices.push({
+          return {
             card: card.name,
             bank: card.bank,
             cycleKey: cycle.key,
@@ -430,8 +462,8 @@ export function buildChatTools(opts: {
             total: Math.round(total * 100) / 100,
             paid: Math.round(paid * 100) / 100,
             remaining: Math.round(remaining * 100) / 100,
-          });
-        }
+          };
+        });
 
         return { count: invoices.length, invoices };
       },
@@ -579,7 +611,7 @@ export function buildChatTools(opts: {
 
     createTransaction: tool({
       description:
-        "Cria lançamento (despesa ou receita). SEMPRE chame primeiro com confirm=false para preview; só com confirm=true após o usuário confirmar.",
+        "Cria lançamento (despesa ou receita). Sempre: 1) confirm=false → mostre preview + previewId; 2) confirm=true + MESMO previewId após o usuário confirmar.",
       inputSchema: z.object({
         description: z.string(),
         amount: z.number().positive(),
@@ -591,6 +623,10 @@ export function buildChatTools(opts: {
         date: z.string().optional().describe("YYYY-MM-DD; padrão = hoje"),
         categoryName: z.string().optional(),
         confirm: toolBool.describe("false = preview; true = gravar"),
+        previewId: z
+          .string()
+          .optional()
+          .describe("Obrigatório quando confirm=true"),
       }),
       execute: async ({
         description,
@@ -601,6 +637,7 @@ export function buildChatTools(opts: {
         date,
         categoryName,
         confirm,
+        previewId,
       }) => {
         const doConfirm = asBool(confirm, false);
         const useCard = paymentKind === "card";
@@ -653,25 +690,50 @@ export function buildChatTools(opts: {
           categoryName
         );
 
-        const preview = {
+        const payload = {
           description,
           amount,
           type,
           date: date || toISODate(new Date()),
           payment: resolvedName,
           channel,
+          payment_method,
+          category_id,
           categoryName: categoryName ?? null,
-          categoryResolved: Boolean(category_id),
         };
 
         if (!doConfirm) {
+          const id = stashAiWritePreview({
+            memberId: member.id,
+            workspaceId,
+            kind: "createTransaction",
+            payload,
+          });
           return {
             needsConfirmation: true,
-            preview,
+            previewId: id,
+            preview: {
+              description: payload.description,
+              amount: payload.amount,
+              type: payload.type,
+              date: payload.date,
+              payment: payload.payment,
+              channel: payload.channel,
+              categoryName: payload.categoryName,
+            },
             message:
-              "Mostre o preview ao usuário. Se confirmar, chame de novo com confirm=true.",
+              "Mostre o preview. Se o usuário confirmar, chame de novo com confirm=true e este previewId.",
           };
         }
+
+        const gate = consumeAiWritePreview({
+          previewId,
+          memberId: member.id,
+          workspaceId,
+          kind: "createTransaction",
+          payload,
+        });
+        if (!gate.ok) return { error: gate.error };
 
         const result = await createTransactionAction({
           description,
@@ -694,7 +756,16 @@ export function buildChatTools(opts: {
         if ("error" in result && result.error) {
           return { error: result.error };
         }
-        return { success: true, created: preview };
+        return {
+          success: true,
+          created: {
+            description: payload.description,
+            amount: payload.amount,
+            type: payload.type,
+            date: payload.date,
+            payment: payload.payment,
+          },
+        };
       },
     }),
 
@@ -711,6 +782,7 @@ export function buildChatTools(opts: {
           .describe("Omitir = pagar o restante da fatura atual"),
         cycleKey: z.string().optional(),
         confirm: toolBool.describe("false = preview; true = pagar"),
+        previewId: z.string().optional(),
       }),
       execute: async ({
         cardName,
@@ -718,6 +790,7 @@ export function buildChatTools(opts: {
         amount,
         cycleKey,
         confirm,
+        previewId,
       }) => {
         const doConfirm = asBool(confirm, false);
         const { data: cards } = await supabase
@@ -794,6 +867,8 @@ export function buildChatTools(opts: {
         }
 
         const preview = {
+          cardId: card.id,
+          accountId: account.id,
           card: card.name,
           account: account.name,
           cycleKey: cycle.key,
@@ -806,13 +881,35 @@ export function buildChatTools(opts: {
         };
 
         if (!doConfirm) {
+          const id = stashAiWritePreview({
+            memberId: member.id,
+            workspaceId,
+            kind: "payInvoice",
+            payload: preview,
+          });
           return {
             needsConfirmation: true,
-            preview,
+            previewId: id,
+            preview: {
+              card: preview.card,
+              account: preview.account,
+              cycleKey: preview.cycleKey,
+              remaining: preview.remaining,
+              payAmount: preview.payAmount,
+            },
             message:
-              "Confirme o pagamento com o usuário e chame de novo com confirm=true.",
+              "Confirme com o usuário e chame de novo com confirm=true + previewId.",
           };
         }
+
+        const gate = consumeAiWritePreview({
+          previewId,
+          memberId: member.id,
+          workspaceId,
+          kind: "payInvoice",
+          payload: preview,
+        });
+        if (!gate.ok) return { error: gate.error };
 
         const result = await payInvoiceAction({
           cardId: card.id,
@@ -847,6 +944,7 @@ export function buildChatTools(opts: {
         paymentKind: z.enum(["card", "account"]).optional(),
         nextBillingDate: z.string().optional(),
         confirm: toolBool.describe("false = preview; true = cadastrar"),
+        previewId: z.string().optional(),
       }),
       execute: async ({
         name,
@@ -856,6 +954,7 @@ export function buildChatTools(opts: {
         paymentKind = "card",
         nextBillingDate,
         confirm,
+        previewId,
       }) => {
         const doConfirm = asBool(confirm, false);
         let card_id: string | null = null;
@@ -899,18 +998,42 @@ export function buildChatTools(opts: {
           name,
           amount,
           billingCycle,
+          card_id,
+          account_id,
           paidWith,
           nextBillingDate: nextBillingDate || null,
         };
 
         if (!doConfirm) {
+          const id = stashAiWritePreview({
+            memberId: member.id,
+            workspaceId,
+            kind: "createSubscription",
+            payload: preview,
+          });
           return {
             needsConfirmation: true,
-            preview,
+            previewId: id,
+            preview: {
+              name: preview.name,
+              amount: preview.amount,
+              billingCycle: preview.billingCycle,
+              paidWith: preview.paidWith,
+              nextBillingDate: preview.nextBillingDate,
+            },
             message:
-              "Confirme com o usuário e chame de novo com confirm=true.",
+              "Confirme com o usuário e chame de novo com confirm=true + previewId.",
           };
         }
+
+        const gate = consumeAiWritePreview({
+          previewId,
+          memberId: member.id,
+          workspaceId,
+          kind: "createSubscription",
+          payload: preview,
+        });
+        if (!gate.ok) return { error: gate.error };
 
         const result = await createSubscriptionAction({
           name,
@@ -926,7 +1049,15 @@ export function buildChatTools(opts: {
         if ("error" in result && result.error) {
           return { error: result.error };
         }
-        return { success: true, created: preview };
+        return {
+          success: true,
+          created: {
+            name: preview.name,
+            amount: preview.amount,
+            billingCycle: preview.billingCycle,
+            paidWith: preview.paidWith,
+          },
+        };
       },
     }),
 
@@ -937,8 +1068,9 @@ export function buildChatTools(opts: {
         type: z.enum(["expense", "income"]).optional(),
         limit: z.number().int().min(1).max(20).optional(),
         confirm: toolBool.describe("false = preview; true = aplicar"),
+        previewId: z.string().optional(),
       }),
-      execute: async ({ type = "expense", limit = 10, confirm }) => {
+      execute: async ({ type = "expense", limit = 10, confirm, previewId }) => {
         const doConfirm = asBool(confirm, false);
         const { data: categories } = await supabase
           .from("categories")
@@ -963,22 +1095,41 @@ export function buildChatTools(opts: {
           return { message: "Nenhum lançamento sem categoria nesse filtro." };
         }
 
-        const preview = txs.map((t) => ({
-          id: t.id,
-          description: t.description,
-          amount: Number(t.amount),
-          date: t.transaction_date,
-        }));
+        const preview = {
+          type,
+          ids: txs.map((t) => t.id).sort(),
+          items: txs.map((t) => ({
+            id: t.id,
+            description: t.description,
+            amount: Number(t.amount),
+            date: t.transaction_date,
+          })),
+        };
 
         if (!doConfirm) {
+          const id = stashAiWritePreview({
+            memberId: member.id,
+            workspaceId,
+            kind: "batchCategorize",
+            payload: { type: preview.type, ids: preview.ids },
+          });
           return {
             needsConfirmation: true,
-            count: preview.length,
-            preview,
-            message:
-              `Há ${preview.length} lançamentos sem categoria. Confirme para categorizar com IA.`,
+            previewId: id,
+            count: preview.items.length,
+            preview: preview.items,
+            message: `Há ${preview.items.length} lançamentos sem categoria. Confirme com confirm=true + previewId.`,
           };
         }
+
+        const gate = consumeAiWritePreview({
+          previewId,
+          memberId: member.id,
+          workspaceId,
+          kind: "batchCategorize",
+          payload: { type: preview.type, ids: preview.ids },
+        });
+        if (!gate.ok) return { error: gate.error };
 
         const ai = getAiLanguageModel("categorize");
         if (!ai.ok) return { error: ai.error, code: ai.code };

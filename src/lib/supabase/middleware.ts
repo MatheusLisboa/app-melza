@@ -81,6 +81,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isAuthRoute) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Não autenticado" },
+        { status: 401 }
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", pathname);

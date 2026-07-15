@@ -4,9 +4,17 @@ const FINANCE_ROOTS = new Set([
   "dashboard",
   "transactions",
   "invoices",
+  "invoice-payments",
   "accounts",
   "reports",
   "transaction",
+  "cards",
+  "card",
+  "card-cycles",
+  "subscriptions",
+  "loans",
+  "entre-nos",
+  "categories",
 ]);
 
 /**

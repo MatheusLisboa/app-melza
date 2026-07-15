@@ -47,11 +47,10 @@ export function InviteAcceptForm({ token }: { token: string }) {
         return;
       }
 
-      const { data: invite } = await supabase
-        .from("workspace_invites")
-        .select("workspace_id")
-        .eq("token", token)
-        .maybeSingle();
+      const { data: inviteRows } = await supabase.rpc("peek_workspace_invite", {
+        p_token: token,
+      });
+      const invite = Array.isArray(inviteRows) ? inviteRows[0] : inviteRows;
 
       if (invite?.workspace_id) {
         const { data: existing } = await supabase

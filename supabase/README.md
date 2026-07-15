@@ -10,7 +10,7 @@
 | Ainda tem **`families`** (caso atual após falha do 002) | **`004_migrate_families_complete.sql`** |
 | Já tem só `workspaces`, falta RLS/RPCs | `003_finish_workspace_migration.sql` |
 
-| Já tem workspaces; faltam consumer / delete / avatar | `005` → `006` → **`007_delete_workspace_rpc.sql`** → **`008_avatar_url.sql`** |
+| Já tem workspaces; faltam consumer / delete / avatar / RLS | `005` → `006` → **`007`** → **`008`** → **`009_security_rls.sql`** |
 
 Migrations adicionais:
 
@@ -18,6 +18,7 @@ Migrations adicionais:
 - `006_workspaces_delete_policy.sql` — RLS delete
 - **`007_delete_workspace_rpc.sql`** — exclusão real via RPC (necessária)
 - **`008_avatar_url.sql`** — `avatar_url` + política/bucket `avatars` (foto de perfil)
+- **`009_security_rls.sql`** — endurece invites + roles (obrigatória)
 Confirme antes (SQL):
 
 ```sql

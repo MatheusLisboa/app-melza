@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { payInvoiceAction } from "@/lib/actions/invoices";
+import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { useAccounts } from "@/lib/hooks/use-finance";
 import { formatCurrency, toISODate } from "@/lib/utils/format";
 import { MoneyInput } from "@/components/transactions/money-input";
@@ -113,11 +114,7 @@ export function PayInvoiceDialog({
       setError(res.error);
       return;
     }
-    await qc.invalidateQueries({ queryKey: ["invoices"] });
-    await qc.invalidateQueries({ queryKey: ["invoice-payments"] });
-    await qc.invalidateQueries({ queryKey: ["dashboard"] });
-    await qc.invalidateQueries({ queryKey: ["transactions"] });
-    await qc.invalidateQueries({ queryKey: ["accounts"] });
+    invalidateFinanceQueries(qc);
     onOpenChange(false);
   }
 

@@ -47,7 +47,10 @@ export function WorkspaceSwitcher({
       try {
         await setActiveWorkspaceAction(workspaceId);
         await qc.invalidateQueries({ queryKey: ["app-shell"] });
-        await qc.invalidateQueries();
+        const { invalidateFinanceQueries } = await import(
+          "@/lib/finance/invalidate"
+        );
+        invalidateFinanceQueries(qc);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao trocar");
       }

@@ -42,7 +42,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 |----------|------------|
 | Banco **novo** | `001_initial_schema.sql` (+ `005`…`008` se não estiverem no 001) |
 | Ainda tem `families` | `004_migrate_families_complete.sql` (ver README do Supabase) |
-| Já em workspaces | garantir `005` → `006` → `007_delete_workspace_rpc.sql` → `008_avatar_url.sql` |
+| Já em workspaces | garantir `005` → `006` → `007` → `008` → **`009_security_rls.sql`** |
 
 Bucket de Storage `avatars` (público de leitura) é necessário para foto de perfil — ver nota em `008_avatar_url.sql`.
 
