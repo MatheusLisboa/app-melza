@@ -93,17 +93,24 @@ export function BottomNav({
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[var(--color-card)] lg:hidden",
-        "pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
+        "pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center lg:hidden",
+        "px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         className
       )}
       aria-label="Navegação principal"
     >
-      <ul className="mx-auto flex h-[58px] max-w-lg items-stretch justify-around px-1">
+      <ul
+        className={cn(
+          "pointer-events-auto flex h-[60px] w-full max-w-md items-stretch justify-around gap-0.5",
+          "rounded-[22px] border border-[var(--color-line)] px-1.5 py-1",
+          "bg-[var(--color-card)]/92 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl",
+          "dark:border-[#3A3A3C] dark:bg-[#1C1C1E]/92 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+        )}
+      >
         {items.map(({ id, href, icon: Icon, label }) => {
           const isActive = active === id;
           return (
-            <li key={id} className="flex-1">
+            <li key={id} className="flex min-w-0 flex-1">
               <Link
                 href={href}
                 prefetch
@@ -111,26 +118,26 @@ export function BottomNav({
                   if (pathname !== href) setPendingHref(href);
                 }}
                 onTouchStart={() => router.prefetch(href)}
-                className="relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-0.5 px-1 active:opacity-80"
+                className="relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-0.5 px-0.5 active:opacity-80"
                 aria-current={isActive ? "page" : undefined}
               >
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 transition-colors",
+                    "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1.5 transition-colors",
                     isActive
-                      ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-chip)] dark:text-[#111]"
+                      ? "bg-[var(--color-ink)] text-white dark:bg-[#F2F2F7] dark:text-[#111111]"
                       : "text-[var(--color-text-2)]"
                   )}
                 >
                   <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
                   {isActive && (
-                    <span className="max-w-[4.5rem] truncate text-[10px] font-semibold tracking-wide">
+                    <span className="max-w-[3.75rem] truncate text-[10px] font-semibold tracking-wide">
                       {label}
                     </span>
                   )}
                 </span>
                 {!isActive && (
-                  <span className="mt-0.5 max-w-full truncate text-[10px] font-medium text-[var(--color-text-2)]">
+                  <span className="mt-0.5 max-w-full truncate text-[9px] font-medium text-[var(--color-text-3)]">
                     {label}
                   </span>
                 )}

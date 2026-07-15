@@ -17,7 +17,7 @@ export function Fab({
   className?: string;
 }) {
   const classNames = cn(
-    "fixed bottom-[calc(90px+env(safe-area-inset-bottom,0px))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-ink)] text-white transition-transform duration-150 ease-linear active:scale-95 hover:bg-[#2C2C2E] dark:bg-[#F2F2F7] dark:text-[#111] lg:bottom-8",
+    "fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-ink)] text-white transition-transform duration-150 ease-linear active:scale-95 hover:bg-[#2C2C2E] dark:bg-[#F2F2F7] dark:text-[#111] lg:bottom-8 lg:right-5",
     className
   );
 

@@ -205,20 +205,22 @@ Usar sempre a inicial da categoria/merchant em maiúsculo.
 ### Bottom navigation (mobile)
 
 ```
-fundo:        --color-white
-border-top:   1px solid --color-fog
-4 itens:      Contas / Home / Análise / Config
+estilo:       flutuante (inset, pill)
+fundo:        --color-card / 92% + backdrop-blur
+borda:        --color-line (dark: #3A3A3C)
+raio:         22px
+sombra:       0 8px 32px rgba(0,0,0,0.12)
 ```
 
 Item ativo:
 ```css
-background: var(--color-ink);
-color: #fff;
+background: var(--color-ink);        /* dark: #F2F2F7 */
+color: #fff;                         /* dark: #111 */
 border-radius: 20px;
-padding: 6px 16px;
+padding: 6px 12px;
 ```
 
-Item inativo: ícone + label em `--color-silver`.
+Item inativo: ícone + label em `--color-text-2` / `--color-text-3`.
 
 ---
 

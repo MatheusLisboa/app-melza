@@ -81,7 +81,7 @@ function FieldLabel({
   hint?: React.ReactNode;
 }) {
   return (
-    <Label className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80">
+    <Label className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-2)]">
       {children}
       {hint}
     </Label>
@@ -106,8 +106,8 @@ function Chip({
       className={cn(
         "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-all active:scale-[0.97]",
         active
-          ? "border-[#111111] bg-[#111111] text-white"
-          : "border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[#F2F2F7] dark:bg-[#F2F2F7] dark:text-[#111]"
+          : "border-[var(--color-line)] bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]",
         className
       )}
     >
@@ -135,7 +135,7 @@ function MemberChip({
         "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-all active:scale-[0.97]",
         active
           ? "border-transparent text-white"
-          : "border-border/70 bg-muted/25 text-muted-foreground hover:bg-muted/50"
+          : "border-[var(--color-line)] bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
       )}
       style={active ? { backgroundColor: color } : undefined}
     >
@@ -353,20 +353,35 @@ export function TransactionFormDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden border-border/60 bg-card p-0 sm:max-w-md sm:rounded-2xl">
-        <DialogHeader className="border-b border-border/50 px-5 pb-4 pt-5 text-left">
-          <DialogTitle className="text-[17px] font-medium tracking-tight">
+      <DialogContent
+        className={cn(
+          "gap-0 overflow-hidden border-[var(--color-line)] bg-[var(--color-modal)] p-0 text-[var(--color-text)]",
+          // Mobile: bottom sheet
+          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto",
+          "max-md:max-h-[min(92dvh,920px)] max-md:w-full max-md:max-w-none",
+          "max-md:translate-x-0 max-md:translate-y-0",
+          "max-md:rounded-b-none max-md:rounded-t-[22px]",
+          "max-md:data-[state=open]:slide-in-from-bottom-4 max-md:data-[state=closed]:slide-out-to-bottom-4",
+          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
+          // Desktop: centered card
+          "md:max-h-[92vh] md:max-w-md md:rounded-[20px]"
+        )}
+      >
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[var(--color-line)] md:hidden" />
+        <DialogHeader className="border-b border-[var(--color-line)] px-5 pb-3.5 pt-3 text-left md:pt-5">
+          <DialogTitle className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Novo lançamento
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--color-text-2)]">
             Registre gasto, receita ou transferência
           </p>
         </DialogHeader>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="max-h-[min(78vh,640px)] space-y-5 overflow-y-auto px-5 py-5"
+          className="flex max-h-[min(78dvh,680px)] flex-col md:max-h-[min(78vh,640px)]"
         >
+          <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 pb-3">
           <div className="space-y-2">
             <FieldLabel>Tipo</FieldLabel>
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
@@ -388,21 +403,21 @@ export function TransactionFormDialog({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/50 bg-muted/25 px-4 py-4">
+          <div className="rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] px-4 py-4">
             <FieldLabel>Valor</FieldLabel>
             <MoneyInput
               value={amount}
               onValueChange={(v) =>
                 form.setValue("amount", v, { shouldValidate: true })
               }
-              className="mt-2 h-14 rounded-xl border-0 bg-transparent pl-11 text-2xl font-medium tracking-tight shadow-none focus-visible:ring-0"
+              className="mt-2 h-14 rounded-xl border-0 bg-transparent pl-11 text-2xl font-semibold tracking-tight text-[var(--color-text)] shadow-none focus-visible:ring-0"
             />
-            <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
+            <div className="mt-3 space-y-3 border-t border-[var(--color-line)] pt-3">
               <div className="space-y-1.5">
                 <FieldLabel
                   hint={
                     (aiLoading || aiHint) && (
-                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[#8E8E93]">
+                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[var(--color-text-2)]">
                         <Sparkles className="h-3 w-3" />
                         {aiLoading ? "sugerindo…" : aiHint}
                       </span>
@@ -415,7 +430,7 @@ export function TransactionFormDialog({
                   {...form.register("description")}
                   placeholder="iFood, Uber, salário…"
                   list="desc-suggestions"
-                  className="h-11 rounded-xl border-border/70 bg-background/60"
+                  className="h-11 rounded-xl border-[var(--color-line)] bg-[var(--color-input)]"
                 />
                 <datalist id="desc-suggestions">
                   <option value="iFood" />
@@ -431,7 +446,7 @@ export function TransactionFormDialog({
                 <Input
                   type="date"
                   {...form.register("transaction_date")}
-                  className="h-11 rounded-xl border-border/70 bg-background/60"
+                  className="h-11 rounded-xl border-[var(--color-line)] bg-[var(--color-input)]"
                 />
               </div>
             </div>
@@ -473,7 +488,7 @@ export function TransactionFormDialog({
                           (!accountTypesForChannel ||
                             accountTypesForChannel.includes(a.account_type))
                       ))) && (
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-[var(--color-text-2)]">
                       {paymentEmptyHint}
                     </p>
                   )}
@@ -500,7 +515,7 @@ export function TransactionFormDialog({
                   value={form.watch("transfer_to_account_id") ?? undefined}
                   onValueChange={(v) => form.setValue("transfer_to_account_id", v)}
                 >
-                  <SelectTrigger className="h-12 rounded-xl border-border/80 bg-muted/40">
+                  <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]">
                     <SelectValue placeholder="Para onde entra" />
                   </SelectTrigger>
                   <SelectContent>
@@ -527,7 +542,7 @@ export function TransactionFormDialog({
                   setAiHint(null);
                 }}
               >
-                <SelectTrigger className="h-12 rounded-xl border-border/80 bg-muted/40">
+                <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]">
                   <SelectValue placeholder="Escolha uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -541,7 +556,7 @@ export function TransactionFormDialog({
             </div>
           )}
 
-          <div className="space-y-3 rounded-2xl border border-border/50 bg-muted/20 p-3.5">
+          <div className="space-y-3 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
             <div className="space-y-2">
               <FieldLabel>Quem consumiu</FieldLabel>
               <div className="flex flex-wrap gap-2">
@@ -556,7 +571,7 @@ export function TransactionFormDialog({
                 ))}
               </div>
             </div>
-            <div className="space-y-2 border-t border-border/40 pt-3">
+            <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
               <FieldLabel>Quem pagou</FieldLabel>
               <div className="flex flex-wrap gap-2">
                 {members.map((m) => (
@@ -594,7 +609,7 @@ export function TransactionFormDialog({
           )}
 
           {showInstallment && (
-            <div className="space-y-2 rounded-2xl border border-border/50 bg-muted/20 p-3.5">
+            <div className="space-y-2 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={isInstallment}
@@ -603,7 +618,7 @@ export function TransactionFormDialog({
                   }
                   id="installment"
                 />
-                <Label htmlFor="installment" className="text-sm font-medium">
+                <Label htmlFor="installment" className="text-sm font-medium text-[var(--color-text)]">
                   Parcelado no cartão
                 </Label>
               </div>
@@ -631,25 +646,22 @@ export function TransactionFormDialog({
               rows={2}
               {...form.register("notes")}
               placeholder="Opcional"
-              className="min-h-[72px] rounded-xl border-border/70 bg-muted/25 resize-none"
+              className="min-h-[72px] resize-none rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]"
             />
           </div>
 
           {error && (
-            <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="rounded-xl bg-[#EF4444]/10 px-3 py-2 text-sm text-[#EF4444]">
               {error}
             </p>
           )}
+          </div>
 
-          <Btn
-            type="submit"
-            fullWidth
-            size="lg"
-            disabled={submitting}
-            className="sticky bottom-0"
-          >
-            {submitting ? "Salvando…" : "Salvar lançamento"}
-          </Btn>
+          <div className="shrink-0 border-t border-[var(--color-line)] bg-[var(--color-modal)] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            <Btn type="submit" fullWidth size="lg" disabled={submitting}>
+              {submitting ? "Salvando…" : "Salvar lançamento"}
+            </Btn>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
