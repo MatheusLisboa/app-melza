@@ -10,10 +10,7 @@ export function BalanceCard({
   balance,
   income,
   expenses,
-  accentColor: _accentColor,
   loading = false,
-  trendLabel: _trendLabel,
-  trendPositive: _trendPositive,
   title = "DISPONÍVEL",
   subtitle,
   className,
@@ -21,6 +18,7 @@ export function BalanceCard({
   balance: number;
   income: number;
   expenses: number;
+  /** Aceito por compatibilidade; o hero Melza usa ink fixo. */
   accentColor?: string;
   loading?: boolean;
   trendLabel?: string;

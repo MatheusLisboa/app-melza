@@ -26,7 +26,6 @@ export function Btn({
   children,
   variant = "primary",
   size = "md",
-  wsColor: _wsColor,
   onClick,
   fullWidth,
   icon,
@@ -37,6 +36,7 @@ export function Btn({
   children: React.ReactNode;
   variant?: BtnVariant;
   size?: BtnSize;
+  /** Aceito por compatibilidade; variantes usam tokens Melza. */
   wsColor?: string;
   onClick?: () => void;
   fullWidth?: boolean;

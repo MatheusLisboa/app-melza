@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 export function Fab({
   href,
   onClick,
-  color: _color,
   className,
 }: {
   href?: string;

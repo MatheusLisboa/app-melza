@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
 export function TxRow({
-  emoji: _emoji,
+  emoji,
   title,
   category,
   dateLabel,
@@ -49,6 +49,7 @@ export function TxRow({
     category?.trim().charAt(0) ||
     "?"
   ).toUpperCase();
+  const iconLabel = emoji?.trim() || initial;
 
   const sign =
     type === "income" ? "+" : type === "expense" ? "−" : "";
@@ -62,7 +63,7 @@ export function TxRow({
   const content = (
     <>
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-icon)] text-[13px] font-bold text-white">
-        {initial}
+        {iconLabel}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">

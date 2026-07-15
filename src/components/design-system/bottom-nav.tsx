@@ -59,10 +59,10 @@ function resolveActive(
 }
 
 export function BottomNav({
-  wsColor: _wsColor,
   className,
   showEntreNos = true,
 }: {
+  /** Aceito por compatibilidade; ícones usam tokens Melza. */
   wsColor?: string;
   className?: string;
   showEntreNos?: boolean;
