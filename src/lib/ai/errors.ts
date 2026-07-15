@@ -1,5 +1,21 @@
 /** Mensagens amigáveis a partir de erros Groq / OpenAI / AI SDK */
 
+export function isToolUseFailed(error: unknown): boolean {
+  const raw =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error ?? "");
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes("failed to call a function") ||
+    lower.includes("tool_use_failed") ||
+    lower.includes("failed_generation") ||
+    lower.includes("adjust your prompt")
+  );
+}
+
 export function mapAiProviderError(error: unknown): {
   message: string;
   code: string;
@@ -20,6 +36,15 @@ export function mapAiProviderError(error: unknown): {
     typeof (error as { statusCode: unknown }).statusCode === "number"
       ? (error as { statusCode: number }).statusCode
       : undefined;
+
+  if (isToolUseFailed(error)) {
+    return {
+      message:
+        "A IA falhou ao montar a consulta (limitação do modelo). Tente de novo com uma pergunta mais curta — ex.: “saldo das contas” ou “fatura do Nubank”.",
+      code: "TOOL_USE_FAILED",
+      status: 502,
+    };
+  }
 
   if (
     lower.includes("insufficient_quota") ||

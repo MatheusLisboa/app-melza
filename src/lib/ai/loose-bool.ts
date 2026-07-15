@@ -1,11 +1,15 @@
 import { z } from "zod";
 
-/** Groq/LLMs often pass booleans as "true"/"false" strings. */
-export const looseBool = z
-  .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
-  .optional()
-  .transform((v) => {
-    if (v === undefined) return undefined;
-    if (typeof v === "boolean") return v;
-    return v === "true" || v === "1";
-  });
+/**
+ * Boolean opcional para tools.
+ * Evitar z.union/transform no schema — Groq falha com "Failed to call a function".
+ */
+export const toolBool = z.boolean().optional();
+
+/** Aceita boolean ou string residual na execução (não use no inputSchema). */
+export function asBool(v: unknown, fallback = false): boolean {
+  if (typeof v === "boolean") return v;
+  if (v === "true" || v === "1") return true;
+  if (v === "false" || v === "0") return false;
+  return fallback;
+}

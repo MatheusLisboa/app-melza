@@ -2,7 +2,7 @@ import { generateObject, tool } from "ai";
 import { z } from "zod";
 import type { createClient } from "@/lib/supabase/server";
 import type { WorkspaceMember } from "@/types";
-import { looseBool } from "@/lib/ai/loose-bool";
+import { asBool, toolBool } from "@/lib/ai/loose-bool";
 import { getAiLanguageModel } from "@/lib/ai/provider";
 import { createTransactionAction } from "@/lib/actions/transactions";
 import { payInvoiceAction } from "@/lib/actions/invoices";
@@ -66,11 +66,10 @@ export function buildChatTools(opts: {
       description:
         "Lista assinaturas/recorrências do workspace (Netflix, Spotify, etc.).",
       inputSchema: z.object({
-        activeOnly: looseBool.describe(
-          "true = só ativas (padrão); false = todas"
-        ),
+        activeOnly: toolBool.describe("true = só ativas (padrão)"),
       }),
-      execute: async ({ activeOnly = true }) => {
+      execute: async ({ activeOnly }) => {
+        const onlyActive = asBool(activeOnly, true);
         let q = supabase
           .from("subscriptions")
           .select(
@@ -78,7 +77,7 @@ export function buildChatTools(opts: {
           )
           .eq("workspace_id", workspaceId)
           .order("name", { ascending: true });
-        if (activeOnly) q = q.eq("is_active", true);
+        if (onlyActive) q = q.eq("is_active", true);
         const { data, error } = await q;
         if (error) return { error: error.message };
         const items = (data ?? []).map((s) => {
@@ -113,8 +112,9 @@ export function buildChatTools(opts: {
 
     listCards: tool({
       description: "Lista cartões cadastrados no workspace.",
-      inputSchema: z.object({ activeOnly: looseBool }),
-      execute: async ({ activeOnly = true }) => {
+      inputSchema: z.object({ activeOnly: toolBool }),
+      execute: async ({ activeOnly }) => {
+        const onlyActive = asBool(activeOnly, true);
         let q = supabase
           .from("cards")
           .select(
@@ -122,7 +122,7 @@ export function buildChatTools(opts: {
           )
           .eq("workspace_id", workspaceId)
           .order("name");
-        if (activeOnly) q = q.eq("is_active", true);
+        if (onlyActive) q = q.eq("is_active", true);
         const { data, error } = await q;
         if (error) return { error: error.message };
         return {
@@ -246,14 +246,15 @@ export function buildChatTools(opts: {
     getAccountBalances: tool({
       description:
         "Saldos das contas bancárias/carteiras do workspace (current_balance).",
-      inputSchema: z.object({ activeOnly: looseBool }),
-      execute: async ({ activeOnly = true }) => {
+      inputSchema: z.object({ activeOnly: toolBool }),
+      execute: async ({ activeOnly }) => {
+        const onlyActive = asBool(activeOnly, true);
         let q = supabase
           .from("accounts")
           .select("name, bank, account_type, current_balance, is_active")
           .eq("workspace_id", workspaceId)
           .order("name");
-        if (activeOnly) q = q.eq("is_active", true);
+        if (onlyActive) q = q.eq("is_active", true);
         const { data, error } = await q;
         if (error) return { error: error.message };
         const accounts = (data ?? []).map((a) => ({
@@ -424,8 +425,12 @@ export function buildChatTools(opts: {
     getEntreNos: tool({
       description:
         "Entre Nós: quem deve a quem no workspace compartilhado (acerto entre membros).",
-      inputSchema: z.object({}),
-      execute: async () => {
+      inputSchema: z.object({
+        // Groq quebra com z.object({}) vazio
+        detail: toolBool.describe("true = incluir histórico recente"),
+      }),
+      execute: async ({ detail }) => {
+        const withDetail = asBool(detail, true);
         const { data: members, error: mErr } = await supabase
           .from("workspace_members")
           .select("id, display_name")
@@ -476,7 +481,7 @@ export function buildChatTools(opts: {
           aPaidForB: settlement.aPaidForB,
           bPaidForA: settlement.bPaidForA,
           balances: settlement.balances,
-          recent: settlement.recent,
+          recent: withDetail ? settlement.recent : undefined,
         };
       },
     }),
@@ -570,7 +575,7 @@ export function buildChatTools(opts: {
         paymentKind: z.enum(["card", "account", "pix", "cash"]),
         date: z.string().optional().describe("YYYY-MM-DD; padrão = hoje"),
         categoryName: z.string().optional(),
-        confirm: looseBool,
+        confirm: toolBool.describe("false = preview; true = gravar"),
       }),
       execute: async ({
         description,
@@ -580,8 +585,9 @@ export function buildChatTools(opts: {
         paymentKind,
         date,
         categoryName,
-        confirm = false,
+        confirm,
       }) => {
+        const doConfirm = asBool(confirm, false);
         const useCard = paymentKind === "card";
         let payment_method = "";
         let resolvedName = paymentName;
@@ -643,7 +649,7 @@ export function buildChatTools(opts: {
           categoryResolved: Boolean(category_id),
         };
 
-        if (!confirm) {
+        if (!doConfirm) {
           return {
             needsConfirmation: true,
             preview,
@@ -689,15 +695,16 @@ export function buildChatTools(opts: {
           .optional()
           .describe("Omitir = pagar o restante da fatura atual"),
         cycleKey: z.string().optional(),
-        confirm: looseBool,
+        confirm: toolBool.describe("false = preview; true = pagar"),
       }),
       execute: async ({
         cardName,
         accountName,
         amount,
         cycleKey,
-        confirm = false,
+        confirm,
       }) => {
+        const doConfirm = asBool(confirm, false);
         const { data: cards } = await supabase
           .from("cards")
           .select("id, name, closing_day, due_day")
@@ -783,7 +790,7 @@ export function buildChatTools(opts: {
           payAmount,
         };
 
-        if (!confirm) {
+        if (!doConfirm) {
           return {
             needsConfirmation: true,
             preview,
@@ -824,7 +831,7 @@ export function buildChatTools(opts: {
           .describe("Nome do cartão ou conta"),
         paymentKind: z.enum(["card", "account"]).optional(),
         nextBillingDate: z.string().optional(),
-        confirm: looseBool,
+        confirm: toolBool.describe("false = preview; true = cadastrar"),
       }),
       execute: async ({
         name,
@@ -833,8 +840,9 @@ export function buildChatTools(opts: {
         paymentName,
         paymentKind = "card",
         nextBillingDate,
-        confirm = false,
+        confirm,
       }) => {
+        const doConfirm = asBool(confirm, false);
         let card_id: string | null = null;
         let account_id: string | null = null;
         let paidWith: string | null = null;
@@ -880,7 +888,7 @@ export function buildChatTools(opts: {
           nextBillingDate: nextBillingDate || null,
         };
 
-        if (!confirm) {
+        if (!doConfirm) {
           return {
             needsConfirmation: true,
             preview,
@@ -913,9 +921,10 @@ export function buildChatTools(opts: {
       inputSchema: z.object({
         type: z.enum(["expense", "income"]).optional(),
         limit: z.number().int().min(1).max(20).optional(),
-        confirm: looseBool,
+        confirm: toolBool.describe("false = preview; true = aplicar"),
       }),
-      execute: async ({ type = "expense", limit = 10, confirm = false }) => {
+      execute: async ({ type = "expense", limit = 10, confirm }) => {
+        const doConfirm = asBool(confirm, false);
         const { data: categories } = await supabase
           .from("categories")
           .select("id, name, icon")
@@ -946,7 +955,7 @@ export function buildChatTools(opts: {
           date: t.transaction_date,
         }));
 
-        if (!confirm) {
+        if (!doConfirm) {
           return {
             needsConfirmation: true,
             count: preview.length,
@@ -1095,4 +1104,85 @@ export function buildChatTools(opts: {
       },
     }),
   };
+}
+
+export type ChatTools = ReturnType<typeof buildChatTools>;
+
+const WRITE_KEYS = [
+  "createTransaction",
+  "payInvoice",
+  "createSubscription",
+  "batchCategorize",
+  "suggestCategory",
+] as const;
+
+const CORE_READ_KEYS = [
+  "queryExpenses",
+  "listCards",
+  "listSubscriptions",
+  "getAccountBalances",
+  "getCardLimits",
+  "getInvoiceCycles",
+  "getEntreNos",
+  "getMonthlyReport",
+  "topCards",
+  "openLoans",
+] as const;
+
+/** Menos tools = menos falhas no Groq ("Failed to call a function"). */
+export function pickChatTools(
+  all: ChatTools,
+  userText: string,
+  mode: "auto" | "core" | "minimal" = "auto"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
+  const text = userText.toLowerCase();
+
+  if (mode === "minimal") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return {
+      queryExpenses: all.queryExpenses,
+      getAccountBalances: all.getAccountBalances,
+      getCardLimits: all.getCardLimits,
+      getInvoiceCycles: all.getInvoiceCycles,
+      getEntreNos: all.getEntreNos,
+    } as any;
+  }
+
+  const wantsWrite =
+    /\b(cria|criar|lan[cç]a|lancar|cadastr|pag(a|ar)|assinatur|categoriz|confirma|confirm)/i.test(
+      text
+    ) ||
+    /\b(sim|pode|faz|execute)\b/i.test(text);
+
+  const picked: Record<string, unknown> = {};
+  for (const key of CORE_READ_KEYS) {
+    picked[key] = all[key];
+  }
+
+  if (mode === "auto" && wantsWrite) {
+    for (const key of WRITE_KEYS) {
+      picked[key] = all[key];
+    }
+  }
+
+  if (
+    mode === "auto" &&
+    /\b(despesa|receita|gasto|compra)\b/i.test(text) &&
+    /\b(no |na |cart[aã]o|conta|pix)\b/i.test(text)
+  ) {
+    picked.createTransaction = all.createTransaction;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return picked as any;
+}
+
+export function lastUserText(
+  messages: { role: string; content: string }[]
+): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === "user") return messages[i].content ?? "";
+  }
+  return "";
 }

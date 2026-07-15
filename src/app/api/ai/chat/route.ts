@@ -2,10 +2,34 @@ import { generateText, stepCountIs } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/supabase/workspace";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
-import { mapAiProviderError } from "@/lib/ai/errors";
+import { isToolUseFailed, mapAiProviderError } from "@/lib/ai/errors";
 import { getAiLanguageModel } from "@/lib/ai/provider";
-import { buildChatTools } from "@/lib/ai/chat-tools";
+import {
+  buildChatTools,
+  lastUserText,
+  pickChatTools,
+} from "@/lib/ai/chat-tools";
 import { toISODate } from "@/lib/utils/format";
+
+function systemPrompt(opts: { strictTools: boolean; today: string }) {
+  if (opts.strictTools) {
+    return `Você é o assistente financeiro do Melza (Brasil). Responda em português, objetivo, valores em R$.
+Hoje: ${opts.today}.
+
+Para números do app (saldos, faturas, gastos, Entre Nós), use as tools disponíveis.
+Se a tool vier vazia, diga que não há dados — não invente.
+
+Ações (criar/pagar/cadastrar/categorizar):
+1) Chame com confirm=false e mostre o preview.
+2) Só confirm=true depois do usuário confirmar ("sim", "confirma").
+Argumentos das tools: JSON válido; booleanos true/false (não strings); datas YYYY-MM-DD.`;
+  }
+
+  return `Você é o assistente financeiro do Melza. Português, objetivo, R$.
+Hoje: ${opts.today}.
+Use só as tools listadas, com JSON válido (booleanos true/false).
+Se falhar a tool, explique sem inventar números.`;
+}
 
 /**
  * POST /api/ai/chat — resposta em texto (generateText + tools)
@@ -41,6 +65,9 @@ export async function POST(request: Request) {
     );
   }
 
+  const model = ai.model;
+  const provider = ai.provider;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -72,35 +99,58 @@ export async function POST(request: Request) {
   }
 
   const workspaceId = member.workspace_id;
-  const tools = buildChatTools({ supabase, member, workspaceId });
+  const allTools = buildChatTools({ supabase, member, workspaceId });
+  const userText = lastUserText(messages);
+  const today = toISODate(new Date());
+  const mappedMessages = messages.map((m) => ({
+    role: m.role as "user" | "assistant" | "system",
+    content: m.content,
+  }));
+
+  async function run(mode: "auto" | "core" | "minimal") {
+    const tools = pickChatTools(allTools, userText, mode);
+    return generateText({
+      model,
+      maxRetries: 0,
+      temperature: 0.2,
+      system: systemPrompt({
+        strictTools: mode !== "minimal",
+        today,
+      }),
+      messages: mappedMessages,
+      stopWhen: stepCountIs(mode === "minimal" ? 5 : 8),
+      tools,
+      toolChoice: "auto",
+    });
+  }
 
   try {
-    const { text } = await generateText({
-      model: ai.model,
-      maxRetries: 1,
-      system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
-Responda em português, de forma objetiva, com valores em R$.
+    let text = "";
+    try {
+      const first = await run("auto");
+      text = (first.text ?? "").trim();
+    } catch (err) {
+      if (!isToolUseFailed(err)) throw err;
+      console.warn("[ai/chat] tool_use_failed — retry minimal tools", err);
+      try {
+        const second = await run("minimal");
+        text = (second.text ?? "").trim();
+      } catch (err2) {
+        if (!isToolUseFailed(err2)) throw err2;
+        console.warn("[ai/chat] tool_use_failed again — text only");
+        const fallback = await generateText({
+          model,
+          maxRetries: 0,
+          temperature: 0.3,
+          system: `Você é o assistente do Melza. Em português.
+Não invente saldos nem valores. Explique que a consulta automática falhou e peça para o usuário tentar de novo com uma pergunta mais curta (ex.: "saldo das contas", "fatura do Nubank").`,
+          messages: mappedMessages,
+        });
+        text = (fallback.text ?? "").trim();
+      }
+    }
 
-CONSULTAS — SEMPRE use tools antes de responder sobre:
-assinaturas, gastos, cartões, saldos de contas, limite disponível, faturas/ciclos,
-empréstimos, Entre Nós (quem deve a quem), relatórios/orçamento ou categorias.
-Se a tool retornar lista vazia, diga que não há registros — não invente.
-
-AÇÕES (criar lançamento, pagar fatura, cadastrar assinatura, batch de categorização):
-1) Chame a tool com confirm=false e mostre o PREVIEW ao usuário.
-2) Só chame de novo com confirm=true depois que o usuário confirmar claramente (ex.: "sim", "confirma", "pode criar").
-3) Se faltar valor, conta/cartão ou descrição, pergunte antes de executar.
-Datas em YYYY-MM-DD. Hoje é ${toISODate(new Date())}.`,
-      messages: messages.map((m) => ({
-        role: m.role as "user" | "assistant" | "system",
-        content: m.content,
-      })),
-      stopWhen: stepCountIs(10),
-      tools,
-    });
-
-    const answer = (text ?? "").trim();
-    if (!answer) {
+    if (!text) {
       return new Response(
         JSON.stringify({
           error:
@@ -111,11 +161,11 @@ Datas em YYYY-MM-DD. Hoje é ${toISODate(new Date())}.`,
       );
     }
 
-    return new Response(answer, {
+    return new Response(text, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-store",
-        "X-Melza-AI-Provider": ai.provider,
+        "X-Melza-AI-Provider": provider,
       },
     });
   } catch (err) {
