@@ -23,12 +23,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const AVATAR_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#22c55e",
-  "#f59e0b",
-  "#06b6d4",
-  "#ef4444",
+  "#111111",
+  "#1C1C1E",
+  "#2C2C2E",
+  "#3A3A3C",
+  "#8E8E93",
+  "#C7C7CC",
 ];
 
 const INTRO_STEPS = [
@@ -181,7 +181,7 @@ export function OnboardingForm({
             <button
               type="button"
               onClick={() => setStep((s) => s - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06]"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-chip)]"
               aria-label="Voltar"
             >
               <ChevronLeft
@@ -201,7 +201,7 @@ export function OnboardingForm({
                 style={{
                   width: i === step ? 20 : 6,
                   backgroundColor:
-                    i === step ? "#6366F1" : "rgba(255,255,255,0.12)",
+                    i === step ? "#c0c0c0" : "rgba(255,255,255,0.12)",
                 }}
               />
             ))}
@@ -227,7 +227,7 @@ export function OnboardingForm({
           </div>
           <div>
             <h2
-              className="whitespace-pre-line text-[28px] font-semibold leading-tight text-foreground"
+              className="whitespace-pre-line text-[28px] font-medium leading-tight text-foreground"
               style={{ letterSpacing: "-0.025em" }}
             >
               {current.title}
@@ -257,7 +257,7 @@ export function OnboardingForm({
       <div className="mb-8 flex flex-col items-center gap-3 text-center">
         <BrandMark size="sm" />
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Configurar</h1>
+          <h1 className="text-xl font-medium tracking-tight">Configurar</h1>
           <p className="mt-1 text-sm text-foreground/40">
             Crie um workspace, entre com convite ou continue no pessoal.
           </p>
@@ -282,8 +282,8 @@ export function OnboardingForm({
             className={cn(
               "rounded-xl py-2.5 text-xs font-medium transition-colors",
               mode === id
-                ? "bg-primary text-primary-foreground"
-                : "bg-white/[0.06] text-foreground/50 hover:bg-white/[0.1]"
+                ? "bg-[#111111] text-white"
+                : "bg-[var(--color-chip)] text-foreground/50 hover:bg-[var(--color-chip)]"
             )}
           >
             {label}
@@ -315,7 +315,7 @@ export function OnboardingForm({
                 )
               }
             >
-              <SelectTrigger className="h-[50px] rounded-xl border-white/[0.08] bg-[#18181B]">
+              <SelectTrigger className="h-[50px] rounded-md border border-[var(--color-line)] bg-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -423,10 +423,12 @@ function AvatarColorPicker({
           <button
             key={color}
             type="button"
-            className="h-8 w-8 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 w-8 rounded-full border border-[var(--color-line)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111]"
             style={{
               backgroundColor: color,
-              boxShadow: value === color ? `0 0 0 2px ${color}` : undefined,
+              outline:
+                value === color ? "2px solid #c0c0c0" : undefined,
+              outlineOffset: 2,
             }}
             onClick={() => onChange(color)}
           />
@@ -438,13 +440,13 @@ function AvatarColorPicker({
 
 function IntroWorkspacesVisual() {
   const items = [
-    { emoji: "👤", name: "Meu Financeiro", type: "Pessoal", color: "#6366F1" },
-    { emoji: "❤️", name: "Matheus & Ana", type: "Casal", color: "#EC4899" },
+    { emoji: "👤", name: "Meu Financeiro", type: "Pessoal", color: "#c0c0c0" },
+    { emoji: "❤️", name: "Matheus & Ana", type: "Casal", color: "#e0e0e0" },
     {
       emoji: "🏠",
       name: "Apartamento 42",
       type: "Compartilhado",
-      color: "#14B8A6",
+      color: "#888888",
     },
   ];
   return (
@@ -452,26 +454,21 @@ function IntroWorkspacesVisual() {
       {items.map((ws, i) => (
         <div
           key={ws.name}
-          className="flex items-center gap-3 rounded-2xl border border-white/[0.06] p-4"
+          className="flex items-center gap-3 rounded-xl border border-[#E5E5EA] bg-white p-4"
           style={{
-            background: `${ws.color}0D`,
             transform: `translateX(${i * 8}px)`,
             opacity: 1 - i * 0.12,
           }}
         >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-xl"
-            style={{ background: `${ws.color}22` }}
-          >
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-xl">
             {ws.emoji}
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground/90">{ws.name}</p>
+            <p className="text-sm font-medium text-foreground/90">{ws.name}</p>
             <p className="mt-0.5 text-xs text-foreground/35">{ws.type}</p>
           </div>
           <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: ws.color }}
+            className="h-2 w-2 rounded-full bg-melza-silver"
           />
         </div>
       ))}
@@ -481,37 +478,34 @@ function IntroWorkspacesVisual() {
 
 function IntroAttributionVisual() {
   const people = [
-    { label: "Consumiu", name: "Ana", color: "#EC4899", initial: "A" },
-    { label: "Pagou", name: "Matheus", color: "#6366F1", initial: "M" },
-    { label: "Cartão", name: "Matheus", color: "#6366F1", initial: "M" },
+    { label: "Consumiu", name: "Ana", initial: "A" },
+    { label: "Pagou", name: "Matheus", initial: "M" },
+    { label: "Cartão", name: "Matheus", initial: "M" },
   ];
   return (
-    <div className="w-full rounded-2xl border border-white/[0.06] bg-card p-4">
+    <div className="w-full rounded-xl border border-[#E5E5EA] bg-white p-4">
       <div className="mb-4 flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1C1C1F] text-lg">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-lg">
           🛒
         </div>
         <div>
-          <p className="text-[14px] font-semibold text-foreground/90">
+          <p className="text-[14px] font-medium text-foreground/90">
             Supermercado Extra
           </p>
           <p className="text-xs text-foreground/35">R$ 287,40 · Hoje</p>
         </div>
       </div>
-      <div className="h-px bg-white/[0.06]" />
+      <div className="h-px bg-[#E5E5EA]" />
       <div className="flex gap-2 pt-4">
         {people.map((p) => (
           <div
             key={p.label}
-            className="flex flex-1 flex-col items-center gap-1.5 rounded-xl bg-white/[0.04] py-2"
+            className="flex flex-1 flex-col items-center gap-1.5 rounded-md bg-[var(--color-chip)] py-2"
           >
             <span className="text-[9px] font-medium uppercase tracking-wider text-foreground/30">
               {p.label}
             </span>
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ backgroundColor: p.color }}
-            >
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1C1C1E] text-[10px] font-medium text-[#111111]">
               {p.initial}
             </div>
             <span className="text-[11px] font-medium text-foreground/60">
@@ -529,10 +523,10 @@ function IntroReadyVisual() {
     <div className="flex w-full flex-col items-center gap-4">
       <BrandMark size="lg" />
       <div className="flex flex-col items-center gap-2">
-        <p className="text-[15px] font-semibold text-foreground/90">
+        <p className="text-[15px] font-medium text-foreground/90">
           Meu Financeiro
         </p>
-        <span className="rounded-full bg-[#6366F115] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#6366F1]">
+        <span className="rounded-full bg-[var(--color-chip)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#8E8E93]">
           Pessoal
         </span>
       </div>
@@ -544,7 +538,7 @@ function IntroReadyVisual() {
         ].map(({ emoji, label }) => (
           <div
             key={label}
-            className="flex flex-1 flex-col items-center gap-1.5 rounded-xl bg-[#18181B] py-3"
+            className="flex flex-1 flex-col items-center gap-1.5 rounded-md bg-white py-3"
           >
             <span className="text-lg">{emoji}</span>
             <span className="text-center text-[10px] leading-tight text-foreground/40">

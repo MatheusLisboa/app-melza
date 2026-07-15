@@ -275,7 +275,7 @@ export function NubankInvoiceImportDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-white/[0.06] px-5 py-4 text-left">
+        <DialogHeader className="border-b-[0.5px] border-melza-border px-5 py-4 text-left">
           <DialogTitle>Importar fatura</DialogTitle>
           <DialogDescription>
             CSV ou OFX do Nubank. Compras já cadastradas são ignoradas;
@@ -285,13 +285,13 @@ export function NubankInvoiceImportDialog({
 
         <div className="space-y-4 overflow-y-auto px-5 py-4">
           <div className="space-y-1.5">
-            <Label className="text-xs text-white/45">Cartão destino</Label>
+            <Label className="text-xs text-[var(--color-text-2)]">Cartão destino</Label>
             <Select
               value={effectiveCardId}
               onValueChange={setCardId}
               disabled={activeCards.length === 0}
             >
-              <SelectTrigger className="h-11 rounded-xl border-white/[0.08] bg-white/[0.03]">
+              <SelectTrigger className="h-11 rounded-xl border border-[var(--color-line)] bg-[var(--color-input)] text-[var(--color-text)]">
                 <SelectValue placeholder="Selecione o cartão" />
               </SelectTrigger>
               <SelectContent>
@@ -304,7 +304,7 @@ export function NubankInvoiceImportDialog({
             </Select>
           </div>
 
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-8 transition-colors hover:border-violet-400/40 hover:bg-violet-400/5">
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-chip)] px-4 py-8 transition-colors hover:border-[var(--color-text)]">
             <input
               type="file"
               accept=".csv,.ofx,.qfx,text/csv,application/x-ofx,application/vnd.intu.qfx"
@@ -313,11 +313,11 @@ export function NubankInvoiceImportDialog({
               onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
             />
             {parsing ? (
-              <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--color-text-2)]" />
             ) : (
-              <Upload className="h-6 w-6 text-white/35" />
+              <Upload className="h-6 w-6 text-[var(--color-text-2)]" />
             )}
-            <span className="text-sm font-medium text-white/70">
+            <span className="text-sm font-medium text-[var(--color-text)]">
               {parsing
                 ? "Lendo arquivo…"
                 : fileName
@@ -329,7 +329,7 @@ export function NubankInvoiceImportDialog({
           {lines.length > 0 && (
             <>
               {(existsCount > 0 || updateCount > 0) && (
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-[#8E8E93]">
                   {existsCount > 0
                     ? `${existsCount} já cadastrada${existsCount === 1 ? "" : "s"}`
                     : null}
@@ -340,25 +340,25 @@ export function NubankInvoiceImportDialog({
                 </p>
               )}
 
-              <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+              <div className="flex items-center gap-2 rounded-md border border-[#E5E5EA] bg-white/[0.02] px-3 py-2.5">
                 <Checkbox
                   id="future-inst"
                   checked={createFuture}
                   onCheckedChange={(v) => setCreateFuture(Boolean(v))}
                 />
-                <Label htmlFor="future-inst" className="text-sm text-white/70">
+                <Label htmlFor="future-inst" className="text-sm text-[#3A3A3C]">
                   Criar parcelas futuras faltantes
                 </Label>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-white/40">
+              <div className="flex items-center justify-between text-xs text-[#8E8E93]">
                 <span>
                   {selectedCount} selecionada{selectedCount === 1 ? "" : "s"} ·{" "}
                   {formatCurrency(selectedTotal)}
                 </span>
                 <button
                   type="button"
-                  className="text-violet-400"
+                  className="text-[#8E8E93]"
                   onClick={() => {
                     const targets = selectable;
                     const allOn = targets.every(
@@ -373,7 +373,7 @@ export function NubankInvoiceImportDialog({
                 </button>
               </div>
 
-              <ul className="max-h-56 divide-y divide-white/[0.05] overflow-y-auto rounded-xl border border-white/[0.06]">
+              <ul className="max-h-56 divide-y divide-[var(--color-line)] overflow-y-auto rounded-md border border-[#E5E5EA]">
                 {lines.map((line) => {
                   const st = lineStatus[line.id] ?? "new";
                   const locked = st === "exists";
@@ -394,10 +394,10 @@ export function NubankInvoiceImportDialog({
                         className="mt-1"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-white/85">
+                        <p className="truncate text-[13px] font-medium text-[var(--color-text)]">
                           {line.description}
                         </p>
-                        <p className="text-[11px] text-white/35">
+                        <p className="text-[11px] text-[#8E8E93]">
                           {formatDate(line.date)}
                           {line.installmentCurrent && line.installmentTotal
                             ? ` · ${line.installmentCurrent}/${line.installmentTotal}`
@@ -406,7 +406,7 @@ export function NubankInvoiceImportDialog({
                           {st === "update" ? " · atualizar" : ""}
                         </p>
                       </div>
-                      <span className="shrink-0 font-mono text-[13px] font-semibold text-red-400/90">
+                      <span className="shrink-0 font-mono text-[13px] font-medium text-[#EF4444]">
                         {formatCurrency(line.amount)}
                       </span>
                     </li>
@@ -435,7 +435,7 @@ export function NubankInvoiceImportDialog({
             </p>
           )}
           {resultMsg && (
-            <p className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+            <p className="rounded-md bg-[#F0FDF4] px-3 py-2 text-sm text-[#22C55E]">
               {resultMsg}
             </p>
           )}

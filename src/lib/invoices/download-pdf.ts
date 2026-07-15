@@ -8,8 +8,8 @@ export type InvoicePdfLine = {
 };
 
 /**
- * Gera visualização da fatura e abre o diálogo de impressão
- * (Salvar como PDF no navegador).
+ * Gera visualização da fatura e abre impressão (Salvar como PDF).
+ * Usa Blob URL — evita falha de window.open com noopener (retorna null).
  */
 export function downloadInvoicePdf(opts: {
   cardName: string;
@@ -45,24 +45,24 @@ export function downloadInvoicePdf(opts: {
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
     body {
-      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: #111;
       margin: 0;
       padding: 32px;
       background: #fff;
     }
-    h1 { font-size: 22px; margin: 0 0 4px; }
-    .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+    h1 { font-size: 22px; margin: 0 0 4px; font-weight: 700; }
+    .sub { color: #8E8E93; font-size: 13px; margin-bottom: 24px; }
     .total {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 28px; font-weight: 700; margin: 8px 0 24px;
+      font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      font-size: 28px; font-weight: 800; margin: 8px 0 24px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 10px 8px; border-bottom: 1px solid #eee; text-align: left; }
-    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; }
-    .num { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
-    .muted { color: #888; font-size: 12px; }
-    .foot { margin-top: 28px; font-size: 11px; color: #999; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #E5E5EA; text-align: left; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #8E8E93; }
+    .num { text-align: right; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .muted { color: #8E8E93; font-size: 12px; }
+    .foot { margin-top: 28px; font-size: 11px; color: #C7C7CC; }
     @media print {
       body { padding: 12px; }
       @page { margin: 16mm; }
@@ -92,21 +92,23 @@ export function downloadInvoicePdf(opts: {
   <p class="foot">Gerado pelo Melza · ${escapeHtml(new Date().toLocaleString("pt-BR"))}</p>
   <script>
     window.onload = function () {
-      setTimeout(function () { window.print(); }, 250);
+      setTimeout(function () { window.print(); }, 300);
     };
   </script>
 </body>
 </html>`;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=800,height=900");
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
   if (!win) {
+    URL.revokeObjectURL(url);
     throw new Error(
-      "Pop-up bloqueado. Permita pop-ups para baixar o PDF da fatura."
+      "Pop-up bloqueado. Permita pop-ups neste site para gerar o PDF."
     );
   }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  // Revoga depois que a aba carregou
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function escapeHtml(value: string): string {

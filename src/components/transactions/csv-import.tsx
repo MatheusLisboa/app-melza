@@ -176,7 +176,7 @@ export function CsvImportCard({
                   </span>
                   <span
                     className={`font-money shrink-0 ${
-                      r.type === "expense" ? "text-red-400" : "text-emerald-400"
+                      r.type === "expense" ? "text-[#EF4444]" : "text-[#22C55E]"
                     }`}
                   >
                     {r.type === "expense" ? "−" : "+"}
@@ -206,7 +206,7 @@ export function CsvImportCard({
           <p className="text-sm text-destructive">{parseError}</p>
         )}
         {resultMsg && (
-          <p className="text-sm text-emerald-500">{resultMsg}</p>
+          <p className="text-sm text-[#22C55E]">{resultMsg}</p>
         )}
 
         {/* member usado só para tipagem/contexto futuro */}

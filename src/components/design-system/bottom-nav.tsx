@@ -58,15 +58,13 @@ function resolveActive(
   return null;
 }
 
-/** Make: BottomNav — optimistic + prefetch + safe-area */
 export function BottomNav({
-  wsColor = "#6366F1",
+  wsColor: _wsColor,
   className,
   showEntreNos = true,
 }: {
   wsColor?: string;
   className?: string;
-  /** Entre Nós só em workspace compartilhado */
   showEntreNos?: boolean;
 }) {
   const pathname = usePathname();
@@ -95,15 +93,10 @@ export function BottomNav({
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] lg:hidden",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[var(--color-card)] lg:hidden",
         "pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
         className
       )}
-      style={{
-        background: "rgba(9,9,11,0.94)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-      }}
       aria-label="Navegação principal"
     >
       <ul className="mx-auto flex h-[58px] max-w-lg items-stretch justify-around px-1">
@@ -121,29 +114,26 @@ export function BottomNav({
                 className="relative flex h-full min-h-[44px] w-full flex-col items-center justify-center gap-0.5 px-1 active:opacity-80"
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="relative">
-                  <Icon
-                    size={22}
-                    strokeWidth={isActive ? 2.5 : 1.75}
-                    style={{
-                      color: isActive ? wsColor : "rgba(255,255,255,0.32)",
-                    }}
-                  />
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 transition-colors",
+                    isActive
+                      ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-chip)] dark:text-[#111]"
+                      : "text-[var(--color-text-2)]"
+                  )}
+                >
+                  <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
                   {isActive && (
-                    <span
-                      className="absolute -bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
-                      style={{ backgroundColor: wsColor }}
-                    />
+                    <span className="max-w-[4.5rem] truncate text-[10px] font-semibold tracking-wide">
+                      {label}
+                    </span>
                   )}
                 </span>
-                <span
-                  className="mt-0.5 max-w-full truncate text-[10px] font-medium"
-                  style={{
-                    color: isActive ? wsColor : "rgba(255,255,255,0.32)",
-                  }}
-                >
-                  {label}
-                </span>
+                {!isActive && (
+                  <span className="mt-0.5 max-w-full truncate text-[10px] font-medium text-[var(--color-text-2)]">
+                    {label}
+                  </span>
+                )}
               </Link>
             </li>
           );

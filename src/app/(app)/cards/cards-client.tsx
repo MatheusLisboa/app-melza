@@ -7,23 +7,28 @@ import {
   useCardMutations,
   useWorkspaceMembers,
 } from "@/lib/hooks/use-finance";
-import { getBankName } from "@/lib/utils/banks";
+import { getBankColor, getBankName } from "@/lib/utils/banks";
 import type { Card as CardType, WorkspaceMember } from "@/types";
+import type { CardInput } from "@/lib/validations/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TopBar } from "@/components/design-system";
 import { CardFormDialog } from "@/components/cards/card-form-dialog";
 import { formatCurrency } from "@/lib/utils/format";
 import { workspaceAccent } from "@/lib/utils/workspace";
-import { CreditCard, Pencil, Plus, Wallet } from "lucide-react";
+import { Pencil, Plus, Wallet } from "lucide-react";
 
-function darken(hex: string, amount = 0.25): string {
-  const h = hex.replace("#", "");
-  if (h.length !== 6) return hex;
-  const n = parseInt(h, 16);
-  const r = Math.max(0, ((n >> 16) & 255) * (1 - amount));
-  const g = Math.max(0, ((n >> 8) & 255) * (1 - amount));
-  const b = Math.max(0, (n & 255) * (1 - amount));
-  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+function cardBrandColor(card: CardType): string {
+  if (card.bank) return getBankColor(card.bank);
+  return card.color || "#111111";
+}
+
+function isLightBrand(color: string): boolean {
+  const hex = color.replace("#", "");
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
 }
 
 export function CardsPageClient({ member }: { member: WorkspaceMember }) {
@@ -32,7 +37,6 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
   const cardMutations = useCardMutations(member.workspace_id);
 
   const activeCards = useMemo(() => cards.filter((c) => c.is_active), [cards]);
-  const featured: CardType | undefined = activeCards[0];
   const accent = workspaceAccent(member.workspace?.type);
 
   return (
@@ -45,7 +49,7 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/accounts"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-foreground/50 transition-colors hover:bg-white/[0.06] hover:text-foreground/80"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
             >
               <Wallet size={14} />
               Contas
@@ -74,9 +78,9 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
         }
       />
 
-      <div className="page-pad space-y-5 md:px-6">
+      <div className="page-pad space-y-3 md:px-6">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Carregando…</p>
+          <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
         ) : activeCards.length === 0 ? (
           <div className="space-y-4">
             <EmptyState
@@ -88,10 +92,10 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
               trigger={
                 <button
                   type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.12] p-4"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-line)] p-4"
                 >
-                  <Plus size={16} className="text-foreground/30" />
-                  <span className="text-sm font-medium text-foreground/35">
+                  <Plus size={16} className="text-[var(--color-text-2)]" />
+                  <span className="text-sm font-medium text-[var(--color-text-2)]">
                     Adicionar cartão
                   </span>
                 </button>
@@ -103,131 +107,49 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
           </div>
         ) : (
           <>
-            {featured && (
-              <>
-                <Link
-                  href={`/cards/${featured.id}`}
-                  className="block"
-                  aria-label={`Ver detalhes de ${featured.name}`}
+            <ul className="flex flex-col gap-2.5">
+              {activeCards.map((card) => {
+                const owner = members.find(
+                  (m) => m.id === card.owner_member_id
+                );
+                return (
+                  <li key={card.id}>
+                    <CompactCardRow
+                      card={card}
+                      owner={owner}
+                      members={members}
+                      onUpdate={async (values) => {
+                        await cardMutations.update.mutateAsync({
+                          id: card.id,
+                          ...values,
+                        });
+                      }}
+                      onDeactivate={() =>
+                        cardMutations.deactivate.mutate(card.id)
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+
+            <CardFormDialog
+              members={members}
+              trigger={
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-line)] p-3.5 transition-colors hover:border-[var(--color-text-2)]"
                 >
-                  <FeatureCard
-                    card={featured}
-                    owner={members.find(
-                      (m) => m.id === featured.owner_member_id
-                    )}
-                  />
-                </Link>
-                {featured.credit_limit != null && (
-                  <div className="rounded-2xl border border-white/[0.06] bg-card p-4">
-                    <div className="mb-1 flex items-center justify-between">
-                      <p className="text-[13px] font-medium text-foreground/60">
-                        Limite
-                      </p>
-                      <p className="font-mono text-[13px] font-semibold text-foreground/80">
-                        {formatCurrency(Number(featured.credit_limit))}
-                      </p>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-foreground/25">
-                      <span>Fecha dia {featured.closing_day ?? "—"}</span>
-                      <span>Vence dia {featured.due_day ?? "—"}</span>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            <div>
-              <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-foreground/60">
-                Todos os cartões
-              </h3>
-              <div className="flex flex-col gap-2">
-                {activeCards.map((card) => {
-                  const owner = members.find(
-                    (m) => m.id === card.owner_member_id
-                  );
-                  return (
-                    <div
-                      key={card.id}
-                      className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-card p-4"
-                    >
-                      <Link
-                        href={`/cards/${card.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-4 text-left transition-opacity hover:opacity-90"
-                      >
-                        <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                          style={{
-                            background: `linear-gradient(135deg, ${card.color}, ${darken(card.color)})`,
-                          }}
-                        >
-                          <CreditCard
-                            size={18}
-                            strokeWidth={1.75}
-                            className="text-white/80"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-semibold text-foreground/90">
-                            {card.name}
-                          </p>
-                          <p className="mt-0.5 text-xs text-foreground/35">
-                            •••• {card.last_four ?? "····"}
-                            {owner ? ` · ${owner.display_name}` : ""}
-                            {card.credit_limit != null
-                              ? ` · Limite ${formatCurrency(Number(card.credit_limit))}`
-                              : ""}
-                          </p>
-                        </div>
-                      </Link>
-                      <CardFormDialog
-                        members={members}
-                        initial={card}
-                        trigger={
-                          <button
-                            type="button"
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-foreground/40 transition-colors hover:bg-white/[0.08] hover:text-foreground/70"
-                            aria-label={`Editar ${card.name}`}
-                          >
-                            <Pencil size={14} />
-                          </button>
-                        }
-                        onSubmit={async (values) => {
-                          await cardMutations.update.mutateAsync({
-                            id: card.id,
-                            ...values,
-                          });
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="shrink-0 text-[11px] text-destructive/80"
-                        onClick={() => cardMutations.deactivate.mutate(card.id)}
-                      >
-                        Desativar
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <CardFormDialog
-                members={members}
-                trigger={
-                  <button
-                    type="button"
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.12] p-4 transition-colors hover:border-white/25"
-                  >
-                    <Plus size={16} className="text-foreground/30" />
-                    <span className="text-sm font-medium text-foreground/35">
-                      Adicionar cartão
-                    </span>
-                  </button>
-                }
-                onSubmit={async (values) => {
-                  await cardMutations.create.mutateAsync(values);
-                }}
-              />
-            </div>
+                  <Plus size={16} className="text-[var(--color-text-2)]" />
+                  <span className="text-sm font-medium text-[var(--color-text-2)]">
+                    Adicionar cartão
+                  </span>
+                </button>
+              }
+              onSubmit={async (values) => {
+                await cardMutations.create.mutateAsync(values);
+              }}
+            />
           </>
         )}
       </div>
@@ -235,60 +157,103 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
   );
 }
 
-function FeatureCard({
+function CompactCardRow({
   card,
   owner,
+  members,
+  onUpdate,
+  onDeactivate,
 }: {
   card: CardType;
   owner?: WorkspaceMember;
+  members: WorkspaceMember[];
+  onUpdate: (values: CardInput) => Promise<void>;
+  onDeactivate: () => void;
 }) {
-  const c1 = card.color || "#7C3AED";
-  const c2 = darken(c1, 0.3);
+  const brand = cardBrandColor(card);
+  const light = isLightBrand(brand);
+  const fg = light ? "#111111" : "#FFFFFF";
+  const fgMuted = light ? "rgba(17,17,17,0.65)" : "rgba(255,255,255,0.72)";
+  const typeLabel = card.card_type === "debit" ? "Débito" : "Crédito";
 
   return (
-    <div
-      className="relative mx-auto w-full max-w-[360px] overflow-hidden rounded-3xl p-6 lg:mx-0"
-      style={{
-        background: `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
-        aspectRatio: "1.586 / 1",
-      }}
-    >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{
-          background:
-            "linear-gradient(115deg, rgba(255,255,255,0.4) 0%, transparent 50%)",
-        }}
-      />
-      <div className="absolute left-6 top-6">
-        <div className="flex h-7 w-9 items-center justify-center rounded-md bg-amber-300/80">
-          <div className="flex h-4 w-5 items-center justify-center rounded-sm border-2 border-amber-600/60">
-            <div className="h-2.5 w-2 border-r-2 border-amber-600/60" />
-          </div>
-        </div>
-      </div>
-      {owner && (
-        <div className="absolute right-5 top-5">
+    <div className="flex items-stretch overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+      <Link
+        href={`/cards/${card.id}`}
+        className="flex min-w-0 flex-1 items-stretch transition-opacity hover:opacity-95"
+        aria-label={`Ver detalhes de ${card.name}`}
+      >
+        <div
+          className="relative flex w-[112px] shrink-0 flex-col justify-between overflow-hidden p-3 sm:w-[128px]"
+          style={{ backgroundColor: brand }}
+        >
           <div
-            className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ backgroundColor: owner.avatar_color }}
+            className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full opacity-25"
+            style={{ background: light ? "#000" : "#fff" }}
+          />
+          <p
+            className="relative truncate text-[10px] font-medium uppercase tracking-wider"
+            style={{ color: fgMuted }}
           >
-            {owner.display_name[0]}
+            {getBankName(card.bank)}
+          </p>
+          <div className="relative">
+            <div
+              className="mb-2 h-5 w-7 rounded-[3px]"
+              style={{
+                background: light
+                  ? "rgba(0,0,0,0.14)"
+                  : "rgba(255,255,255,0.22)",
+              }}
+            />
+            <p
+              className="font-mono text-[11px] font-medium tracking-wider"
+              style={{ color: fg }}
+            >
+              ••{card.last_four ?? "····"}
+            </p>
           </div>
         </div>
-      )}
-      <div className="absolute bottom-10 left-6 right-6">
-        <p className="font-mono text-[15px] font-semibold tracking-[0.2em] text-white/80">
-          •••• •••• •••• {card.last_four ?? "····"}
-        </p>
-      </div>
-      <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-white/70">
-          {card.name}
-        </p>
-        <p className="font-mono text-[11px] text-white/50">
-          {getBankName(card.bank)}
-        </p>
+
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3.5 py-3">
+          <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
+            {card.name}
+          </p>
+          <p className="truncate text-[11px] text-[var(--color-text-2)]">
+            {typeLabel}
+            {owner ? ` · ${owner.display_name}` : ""}
+            {` · fecha ${card.closing_day ?? "—"}`}
+          </p>
+          {card.credit_limit != null && (
+            <p className="mt-0.5 font-mono text-[12px] font-medium text-[var(--color-text)]">
+              Limite {formatCurrency(Number(card.credit_limit))}
+            </p>
+          )}
+        </div>
+      </Link>
+
+      <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-[var(--color-line)] px-2 py-2">
+        <CardFormDialog
+          members={members}
+          initial={card}
+          trigger={
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
+              aria-label={`Editar ${card.name}`}
+            >
+              <Pencil size={14} />
+            </button>
+          }
+          onSubmit={onUpdate}
+        />
+        <button
+          type="button"
+          className="rounded-lg px-1.5 py-1 text-[10px] font-medium text-[#EF4444]/80 transition-colors hover:bg-[var(--color-chip)] hover:text-[#EF4444]"
+          onClick={onDeactivate}
+        >
+          Excluir
+        </button>
       </div>
     </div>
   );

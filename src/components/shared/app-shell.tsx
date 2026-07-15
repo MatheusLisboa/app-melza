@@ -68,7 +68,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-pulse rounded-2xl bg-white/[0.08]" />
+          <div className="h-10 w-10 animate-pulse rounded-2xl bg-[var(--color-chip)]" />
           <p className="text-sm text-foreground/35">Carregando…</p>
         </div>
       </div>
@@ -88,7 +88,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppShellContext.Provider value={value}>
-      <div className="flex h-dvh overflow-hidden bg-background">
+      <div className="flex h-dvh overflow-hidden bg-[var(--color-page)]">
         <AppSidebar
           member={value.member}
           memberships={value.memberships}

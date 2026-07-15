@@ -95,7 +95,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
+          <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
             Empréstimos
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -120,7 +120,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-money text-lg font-semibold text-amber-500 sm:text-xl">
+            <p className="font-money text-lg font-medium text-[#22C55E] sm:text-xl">
               {formatCurrency(theyOwe)}
             </p>
           </CardContent>
@@ -132,7 +132,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-money text-lg font-semibold text-red-400 sm:text-xl">
+            <p className="font-money text-lg font-medium text-[#EF4444] sm:text-xl">
               {formatCurrency(weOwe)}
             </p>
           </CardContent>
@@ -163,8 +163,8 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
                         variant="secondary"
                         className={
                           loan.direction === "given"
-                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                            : "bg-red-500/15 text-red-400"
+                            ? "bg-[var(--color-chip)] text-[#22C55E]"
+                            : "bg-[var(--color-chip)] text-[#EF4444]"
                         }
                       >
                         {loan.direction === "given" ? "Dado" : "Recebido"}
@@ -183,7 +183,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-semibold">
+                    <p className="font-money text-base font-medium">
                       {formatCurrency(remaining)}
                     </p>
                     <p className="text-[10px] text-muted-foreground">saldo</p>

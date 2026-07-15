@@ -65,16 +65,16 @@ export function BrandWordmark({
   markClassName?: string;
 }) {
   const text = {
-    sm: "text-base font-semibold tracking-tight",
-    md: "text-2xl font-semibold tracking-tight",
-    lg: "text-3xl font-semibold tracking-tight",
+    sm: "text-base font-bold tracking-tight text-[#111111]",
+    md: "text-2xl font-bold tracking-tight text-[#111111]",
+    lg: "text-3xl font-bold tracking-tight text-[#111111]",
   };
 
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <BrandMark size={size === "lg" ? "md" : size} className={markClassName} />
       <span
-        className={cn("text-foreground", text[size])}
+        className={cn(text[size])}
         style={{ fontStyle: "italic", letterSpacing: "-0.035em" }}
       >
         Melza

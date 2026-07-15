@@ -17,12 +17,12 @@ import {
 import Link from "next/link";
 
 const AVATAR_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#22c55e",
-  "#f59e0b",
-  "#06b6d4",
-  "#ef4444",
+  "#111111",
+  "#1C1C1E",
+  "#2C2C2E",
+  "#3A3A3C",
+  "#8E8E93",
+  "#C7C7CC",
 ];
 
 export function InviteAcceptForm({ token }: { token: string }) {

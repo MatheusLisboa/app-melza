@@ -4,7 +4,7 @@ import { Btn } from "./btn";
 import { cn } from "@/lib/utils";
 
 /**
- * Make: EmptyState
+ * Melza EmptyState
  * Aceita aliases (description/actionLabel) para callers existentes.
  */
 export function EmptyState({
@@ -41,17 +41,17 @@ export function EmptyState({
         className
       )}
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05] text-white/20">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-chip)] text-[#8E8E93]">
         {icon ?? (
-          <span className="text-xl opacity-40" aria-hidden>
+          <span className="text-xl opacity-60" aria-hidden>
             ◻
           </span>
         )}
       </div>
       <div>
-        <p className="text-[15px] font-semibold text-white/80">{title}</p>
+        <p className="text-[15px] font-semibold text-[var(--color-text)]">{title}</p>
         {body && (
-          <p className="mt-1 text-sm leading-relaxed text-white/35">{body}</p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--color-text-2)]">{body}</p>
         )}
       </div>
       {ctaLabel && handleCta && (

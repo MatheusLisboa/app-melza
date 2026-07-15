@@ -36,7 +36,7 @@ export function ForgotPasswordForm() {
       <div className="flex items-center gap-3 py-3">
         <Link
           href="/login"
-          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06]"
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-chip)]"
           aria-label="Voltar"
         >
           <ChevronLeft size={18} strokeWidth={2} className="text-foreground/70" />
@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
           <>
             <div>
               <h2
-                className="text-[26px] font-semibold tracking-tight text-foreground"
+                className="text-[26px] font-medium tracking-tight text-foreground"
                 style={{ letterSpacing: "-0.025em" }}
               >
                 Recuperar senha
@@ -83,11 +83,11 @@ export function ForgotPasswordForm() {
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#22C55E15]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-[10px] bg-[#F0FDF4]">
               <CheckCircle size={32} className="text-[#22C55E]" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">
+              <h3 className="text-lg font-medium text-foreground">
                 Link enviado!
               </h3>
               <p className="mt-1.5 text-sm leading-relaxed text-foreground/35">

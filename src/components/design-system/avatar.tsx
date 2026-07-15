@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { DsMember } from "./types";
 
-/** Make: Avatar — círculo, 1ª letra, size numérico */
+/** Avatar — círculo night, letra branca */
 export function Avatar({
   member,
   size = 36,
@@ -14,13 +14,13 @@ export function Avatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-semibold text-white",
+        "flex shrink-0 items-center justify-center rounded-full font-bold text-white",
         className
       )}
       style={{
         width: size,
         height: size,
-        backgroundColor: member.color,
+        backgroundColor: member.color || "#1C1C1E",
         fontSize: size * 0.36,
       }}
       title={member.name}

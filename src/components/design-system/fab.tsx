@@ -4,26 +4,23 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** FAB flutuante — nova transação (Figma: bottom-right sobre a bottom nav) */
+/** FAB — primário Melza ink */
 export function Fab({
   href,
   onClick,
-  color = "hsl(var(--primary))",
+  color: _color,
   className,
 }: {
   href?: string;
   onClick?: () => void;
+  /** @deprecated Ignorado — usa ink Melza */
   color?: string;
   className?: string;
 }) {
   const classNames = cn(
-        "fixed bottom-[calc(90px+env(safe-area-inset-bottom,0px))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-fab transition-transform active:scale-95 lg:bottom-8",
+    "fixed bottom-[calc(90px+env(safe-area-inset-bottom,0px))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-ink)] text-white transition-transform duration-150 ease-linear active:scale-95 hover:bg-[#2C2C2E] dark:bg-[#F2F2F7] dark:text-[#111] lg:bottom-8",
     className
   );
-  const style = {
-    backgroundColor: color,
-    boxShadow: `0 8px 32px ${color}55`,
-  };
 
   if (onClick || !href) {
     return (
@@ -32,21 +29,15 @@ export function Fab({
         onClick={onClick}
         aria-label="Nova transação"
         className={classNames}
-        style={style}
       >
-        <Plus className="h-6 w-6" strokeWidth={2.5} />
+        <Plus className="h-6 w-6" strokeWidth={2} />
       </button>
     );
   }
 
   return (
-    <Link
-      href={href}
-      aria-label="Nova transação"
-      className={classNames}
-      style={style}
-    >
-      <Plus className="h-6 w-6" strokeWidth={2.5} />
+    <Link href={href} aria-label="Nova transação" className={classNames}>
+      <Plus className="h-6 w-6" strokeWidth={2} />
     </Link>
   );
 }

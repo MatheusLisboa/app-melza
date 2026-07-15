@@ -98,7 +98,7 @@ export function ChatClient() {
   return (
     <div className="page-pad flex h-[calc(100dvh-8rem)] flex-col gap-3 md:h-[calc(100vh-2rem)] md:px-6">
       <div>
-        <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
+        <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
           Chat financeiro
         </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -123,7 +123,7 @@ export function ChatClient() {
               key={`${m.role}-${i}`}
               className={
                 m.role === "user"
-                  ? "ml-8 rounded-2xl bg-primary/15 px-3 py-2 text-sm"
+                  ? "ml-8 rounded-[10px] bg-[var(--color-chip)] px-3 py-2 text-sm"
                   : "mr-8 whitespace-pre-wrap rounded-2xl bg-muted px-3 py-2 text-sm"
               }
             >
@@ -135,7 +135,7 @@ export function ChatClient() {
       </Card>
 
       {error && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">{error}</p>
+        <p className="text-sm text-[#EF4444]">{error}</p>
       )}
 
       <div className="flex gap-2">

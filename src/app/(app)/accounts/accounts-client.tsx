@@ -50,7 +50,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/cards"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-foreground/50 transition-colors hover:bg-white/[0.06] hover:text-foreground/80"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-foreground/50 transition-colors hover:bg-[var(--color-chip)] hover:text-foreground/80"
             >
               <CreditCard size={14} />
               Cartões
@@ -81,7 +81,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
 
       <div className="page-pad space-y-5 md:px-6">
         {active.length > 0 && (
-          <div className="rounded-2xl border border-white/[0.06] bg-card p-4">
+          <div className="rounded-2xl border border-[#E5E5EA] bg-card p-4">
             <p className="text-[11px] font-medium uppercase tracking-wider text-foreground/35">
               Total nas contas
             </p>
@@ -126,17 +126,17 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               return (
                 <div
                   key={account.id}
-                  className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-card p-4"
+                  className="flex items-center gap-3 rounded-2xl border border-[#E5E5EA] bg-card p-4"
                 >
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                     style={{
-                      backgroundColor: `${account.color ?? "#6366f1"}22`,
+                      backgroundColor: `${account.color ?? "#111111"}22`,
                     }}
                   >
                     <Wallet
                       size={18}
-                      style={{ color: account.color ?? "#6366f1" }}
+                      style={{ color: account.color ?? "#111111" }}
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -161,7 +161,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     trigger={
                       <button
                         type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-foreground/40 transition-colors hover:bg-white/[0.08] hover:text-foreground/70"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-chip)] text-foreground/40 transition-colors hover:bg-[var(--color-chip)] hover:text-foreground/70"
                         aria-label={`Editar ${account.name}`}
                       >
                         <Pencil size={14} />

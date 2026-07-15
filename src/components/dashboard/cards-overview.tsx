@@ -15,6 +15,7 @@ import {
   type CardCycleTx,
 } from "@/lib/finance/card-cycle";
 import { cn } from "@/lib/utils";
+import { getBankColor } from "@/lib/utils/banks";
 
 export function DashboardCardsSection({
   member,
@@ -127,64 +128,64 @@ export function DashboardCardsSection({
   }, [activeCards, cardTx, cyclesByCard]);
   if (cardsLoading) {
     return (
-      <div className="px-5 mt-6">
-        <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-white/60">
+      <div className="mt-6 px-5 md:px-6">
+        <h3 className="mb-3 text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
           Cartões
         </h3>
-        <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
+        <div className="h-28 animate-pulse rounded-[14px] bg-[var(--color-chip)]" />
       </div>
     );
   }
 
   if (activeCards.length === 0) {
     return (
-      <div className="px-5 mt-6">
+      <div className="mt-6 px-5 md:px-6">
         <div className="mb-3 flex items-end justify-between gap-2">
-          <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
+          <h3 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Cartões
           </h3>
           <Link
             href="/cards"
-            className="text-xs font-medium text-white/35 hover:text-white/55"
+            className="text-[13px] font-medium text-[var(--color-text-2)] hover:text-[var(--color-text)]"
           >
             Gerenciar
           </Link>
         </div>
         <Link
           href="/cards"
-          className="flex items-center gap-3 rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.02] px-4 py-5 transition-colors hover:border-white/[0.18]"
+          className="flex items-center gap-3 rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5 transition-colors hover:border-[var(--color-text-2)]"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15">
-            <CreditCard className="h-4 w-4 text-indigo-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-chip)]">
+            <CreditCard className="h-4 w-4 text-[var(--color-text)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-white/80">
+            <p className="text-[14px] font-medium text-[var(--color-text)]">
               Adicionar cartão
             </p>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-[var(--color-text-2)]">
               Limite, fatura e compras no dashboard
             </p>
           </div>
-          <ChevronRight size={16} className="text-white/25" />
+          <ChevronRight size={16} className="text-[var(--color-text-3)]" />
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="px-5 mt-6">
+    <div className="mt-6 px-5 md:px-6">
       <div className="mb-3 flex items-end justify-between gap-2">
         <div>
-          <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
+          <h3 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Cartões
           </h3>
-          <p className="mt-0.5 text-xs text-white/30">
-            Ciclo atual da fatura · limite com parcelas
+          <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
+            Ciclo atual · limite com parcelas
           </p>
         </div>
         <Link
           href="/cards"
-          className="text-xs font-medium text-white/35 hover:text-white/55"
+          className="text-[13px] font-medium text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
         >
           Ver todos
         </Link>
@@ -202,41 +203,47 @@ export function DashboardCardsSection({
             usedPct,
             recent,
           }) => {
-            const color = card.color || "#6366F1";
             return (
               <div
                 key={card.id}
-                className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]"
+                className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]"
               >
-                <div className="h-1" style={{ backgroundColor: color }} />
-                <div className="p-4">
+                <div
+                  className="h-1.5"
+                  style={{
+                    backgroundColor: card.bank
+                      ? getBankColor(card.bank)
+                      : card.color || "var(--color-text)",
+                  }}
+                />
+                <div className="p-3.5">
                   <Link
                     href={`/cards/${card.id}`}
                     className="mb-3 flex items-start justify-between gap-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[15px] font-semibold text-white/90">
+                      <p className="truncate text-[15px] font-medium text-[var(--color-text)]">
                         {card.name}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-white/35">
+                      <p className="mt-0.5 text-[11px] text-[var(--color-text-2)]">
                         {cycle?.label ?? "Ciclo da fatura"}
                         {card.last_four ? ` · ••${card.last_four}` : ""}
                       </p>
                     </div>
                     <ChevronRight
                       size={16}
-                      className="mt-1 shrink-0 text-white/25"
+                      className="mt-1 shrink-0 text-[var(--color-text-3)]"
                     />
                   </Link>
 
-                  <div className="mb-3 grid grid-cols-3 gap-2">
+                  <div className="mb-2.5 grid grid-cols-3 gap-2">
                     <Metric
                       label="Neste ciclo"
                       value={formatCurrency(cycleSpend)}
                       muted={txLoading}
                     />
                     <Metric
-                      label="Parcelas a vencer"
+                      label="Parcelas"
                       value={
                         futureCommitted > 0
                           ? formatCurrency(futureCommitted)
@@ -259,32 +266,26 @@ export function DashboardCardsSection({
                     />
                   </div>
 
-                  {limit != null && (
-                    <p className="mb-2 text-[10px] text-white/25">
-                      Limite {formatCurrency(limit)}
-                      {futureCommitted > 0
-                        ? " · disponível já desconta parcelas futuras"
-                        : ""}
-                    </p>
-                  )}
-
                   {usedPct != null && (
-                    <div className="mb-2">
-                      <div className="mb-1 flex items-center justify-between text-[10px] text-white/30">
-                        <span>Limite comprometido</span>
+                    <div className="mb-1">
+                      <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--color-text-2)]">
+                        <span>Comprometido</span>
                         <span className="font-mono">{usedPct}%</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chip)]">
                         <div
-                          className="h-full rounded-full transition-all duration-500"
+                          className={cn(
+                            "h-full rounded-full transition-all duration-300",
+                            usedPct >= 90 ? "bg-[#EF4444]" : ""
+                          )}
                           style={{
                             width: `${usedPct}%`,
                             backgroundColor:
                               usedPct >= 90
-                                ? "#EF4444"
-                                : usedPct >= 70
-                                  ? "#F59E0B"
-                                  : color,
+                                ? undefined
+                                : card.bank
+                                  ? getBankColor(card.bank)
+                                  : undefined,
                           }}
                         />
                       </div>
@@ -292,14 +293,14 @@ export function DashboardCardsSection({
                   )}
 
                   {recent.length > 0 ? (
-                    <ul className="mt-3 space-y-1.5 border-t border-white/[0.05] pt-3">
+                    <ul className="mt-3 space-y-1.5 border-t border-[var(--color-line)] pt-3">
                       {recent.map((tx) => (
                         <li key={tx.id}>
                           <Link
                             href={`/transactions/${tx.id}`}
-                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-white/80"
+                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-[var(--color-text)]"
                           >
-                            <span className="min-w-0 truncate text-white/55">
+                            <span className="min-w-0 truncate text-[var(--color-text-2)]">
                               {formatDate(tx.transaction_date)} ·{" "}
                               {tx.description}
                               {tx.is_installment &&
@@ -308,7 +309,7 @@ export function DashboardCardsSection({
                                 ? ` (${tx.installment_number}/${tx.total_installments})`
                                 : ""}
                             </span>
-                            <span className="shrink-0 font-mono text-white/70">
+                            <span className="shrink-0 font-mono text-[#EF4444]">
                               {formatCurrency(Number(tx.amount))}
                             </span>
                           </Link>
@@ -317,32 +318,18 @@ export function DashboardCardsSection({
                     </ul>
                   ) : (
                     !txLoading && (
-                      <p className="mt-2 text-[11px] text-white/25">
+                      <p className="mt-2 text-[11px] text-[var(--color-text-3)]">
                         Nenhuma compra neste ciclo
                       </p>
                     )
                   )}
-
-                  <div className="mt-3 flex gap-4 text-[11px]">
-                    <Link
-                      href={`/cards/${card.id}`}
-                      className="font-medium text-white/40 hover:text-white/65"
-                    >
-                      Detalhes
-                    </Link>
-                    <Link
-                      href="/invoices"
-                      className="font-medium text-white/40 hover:text-white/65"
-                    >
-                      Fatura
-                    </Link>
-                  </div>
                 </div>
               </div>
             );
           }
         )}
-      </div>    </div>
+      </div>
+    </div>
   );
 }
 
@@ -358,17 +345,17 @@ function Metric({
   emphasis?: "ok" | "warn";
 }) {
   return (
-    <div className="rounded-xl bg-white/[0.03] px-2.5 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-white/30">
+    <div className="rounded-xl bg-[var(--color-chip)] px-2.5 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-[var(--color-text-2)]">
         {label}
       </p>
       <p
         className={cn(
-          "mt-0.5 font-mono text-[13px] font-semibold",
-          muted && "text-white/40",
-          !muted && emphasis === "warn" && "text-amber-400",
-          !muted && emphasis === "ok" && "text-emerald-400/90",
-          !muted && !emphasis && "text-white/85"
+          "mt-0.5 font-mono text-[12px] font-medium sm:text-[13px]",
+          muted && "text-[var(--color-text-3)]",
+          !muted && emphasis === "warn" && "text-[#EF4444]",
+          !muted && emphasis === "ok" && "text-[var(--color-text)]",
+          !muted && !emphasis && "text-[var(--color-text)]"
         )}
       >
         {value}

@@ -1,0 +1,28 @@
+---
+description: Melza design system v2 — preto/branco/prata (XP)
+alwaysApply: true
+---
+
+# Design System Melza v2
+
+Fonte da verdade: `.cursor/melza-design-system.md`
+
+## Cores — use APENAS
+- ink `#111111` · night `#1C1C1E` · onyx `#2C2C2E` · graphite `#3A3A3C`
+- silver `#8E8E93` · mist `#C7C7CC` · fog `#E5E5EA` · pearl `#F2F2F7` · white `#FFFFFF`
+- income `#22C55E` · expense `#EF4444` · warning `#F59E0B` (só texto de valor / badge atrasado)
+
+Tokens CSS: `var(--color-*)` ou classes `melza-*` / hex explícitos do DS.
+
+## Proibido
+- Roxo, indigo, violeta, azul de marca, gradientes, glow
+- Fundo de página escuro (`zinc-900`, `gray-950`, `#0a0a0a`)
+- Verde/vermelho como fundo de botão ou card
+
+## Componentes
+- Botão primário: `#111111` + texto branco, `rounded-lg`
+- Botão secundário: branco + borda `#E5E5EA`
+- Card item: branco + borda `#E5E5EA` + `rounded-xl`
+- Card hero: fundo `#111111` + `rounded-2xl`
+- Nav ativa (mobile): pill `#111111` + texto branco
+- Sidebar ativa: `#F2F2F7` + texto ink

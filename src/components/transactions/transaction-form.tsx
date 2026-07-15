@@ -106,7 +106,7 @@ function Chip({
       className={cn(
         "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-all active:scale-[0.97]",
         active
-          ? "border-primary/40 bg-primary text-primary-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]"
+          ? "border-[#111111] bg-[#111111] text-white"
           : "border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
         className
       )}
@@ -140,7 +140,7 @@ function MemberChip({
       style={active ? { backgroundColor: color } : undefined}
     >
       <span
-        className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+        className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium text-white"
         style={{ backgroundColor: active ? "rgba(0,0,0,0.25)" : color }}
       >
         {name[0]}
@@ -355,7 +355,7 @@ export function TransactionFormDialog({
       </DialogTrigger>
       <DialogContent className="max-h-[92vh] gap-0 overflow-hidden border-border/60 bg-card p-0 sm:max-w-md sm:rounded-2xl">
         <DialogHeader className="border-b border-border/50 px-5 pb-4 pt-5 text-left">
-          <DialogTitle className="text-[17px] font-semibold tracking-tight">
+          <DialogTitle className="text-[17px] font-medium tracking-tight">
             Novo lançamento
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
@@ -395,14 +395,14 @@ export function TransactionFormDialog({
               onValueChange={(v) =>
                 form.setValue("amount", v, { shouldValidate: true })
               }
-              className="mt-2 h-14 rounded-xl border-0 bg-transparent pl-11 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0"
+              className="mt-2 h-14 rounded-xl border-0 bg-transparent pl-11 text-2xl font-medium tracking-tight shadow-none focus-visible:ring-0"
             />
             <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
               <div className="space-y-1.5">
                 <FieldLabel
                   hint={
                     (aiLoading || aiHint) && (
-                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-primary">
+                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[#8E8E93]">
                         <Sparkles className="h-3 w-3" />
                         {aiLoading ? "sugerindo…" : aiHint}
                       </span>
@@ -549,7 +549,7 @@ export function TransactionFormDialog({
                   <MemberChip
                     key={`c-${m.id}`}
                     name={m.display_name}
-                    color={m.avatar_color || "#6366F1"}
+                    color={m.avatar_color || "#c0c0c0"}
                     active={form.watch("consumer_member_id") === m.id}
                     onClick={() => form.setValue("consumer_member_id", m.id)}
                   />
@@ -563,7 +563,7 @@ export function TransactionFormDialog({
                   <MemberChip
                     key={`p-${m.id}`}
                     name={m.display_name}
-                    color={m.avatar_color || "#6366F1"}
+                    color={m.avatar_color || "#c0c0c0"}
                     active={form.watch("paid_by_member_id") === m.id}
                     onClick={() => form.setValue("paid_by_member_id", m.id)}
                   />

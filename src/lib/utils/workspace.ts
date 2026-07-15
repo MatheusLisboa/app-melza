@@ -13,15 +13,15 @@ export const SHARED_WORKSPACE_TYPES: WorkspaceType[] = [
   "SHARED",
 ];
 
-/** Accents visuais Make por tipo (até schema ter emoji/color) */
+/** Accents Melza v2 — ink (#111) como único accent de marca */
 export const WORKSPACE_TYPE_ACCENT: Record<
   WorkspaceType,
   { color: string; emoji: string }
 > = {
-  PERSONAL: { color: "#6366F1", emoji: "👤" },
-  COUPLE: { color: "#EC4899", emoji: "❤️" },
-  FAMILY: { color: "#14B8A6", emoji: "🏠" },
-  SHARED: { color: "#F59E0B", emoji: "💼" },
+  PERSONAL: { color: "#111111", emoji: "👤" },
+  COUPLE: { color: "#111111", emoji: "❤️" },
+  FAMILY: { color: "#111111", emoji: "🏠" },
+  SHARED: { color: "#111111", emoji: "💼" },
 };
 
 export function workspaceTypeLabel(type: WorkspaceType | string | undefined) {

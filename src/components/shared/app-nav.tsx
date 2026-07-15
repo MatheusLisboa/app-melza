@@ -25,7 +25,7 @@ import {
   type MembershipOption,
 } from "@/components/shared/workspace-switcher";
 import type { WorkspaceMember } from "@/types";
-import { workspaceAccent, isSharedWorkspace } from "@/lib/utils/workspace";
+import { isSharedWorkspace } from "@/lib/utils/workspace";
 
 const SIDEBAR_NAV: {
   href: string;
@@ -51,13 +51,11 @@ function NavLink({
   label,
   icon: Icon,
   active,
-  accent,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
-  accent: string;
 }) {
   const router = useRouter();
 
@@ -67,16 +65,11 @@ function NavLink({
       prefetch
       onMouseEnter={() => router.prefetch(href)}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
         active
-          ? "font-medium"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "bg-[var(--color-chip)] font-semibold text-[var(--color-text)]"
+          : "text-[var(--color-text-2)] hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
       )}
-      style={
-        active
-          ? { backgroundColor: `${accent}26`, color: accent }
-          : undefined
-      }
     >
       <Icon className="h-4 w-4 shrink-0" />
       {label}
@@ -92,15 +85,14 @@ export function AppSidebar({
   memberships: MembershipOption[];
 }) {
   const pathname = usePathname();
-  const accent = workspaceAccent(member.workspace?.type).color;
   const shared = isSharedWorkspace(member.workspace?.type);
   const navItems = SIDEBAR_NAV.filter((item) =>
     item.sharedOnly ? shared : true
   );
 
   return (
-    <aside className="hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-card/40 lg:flex">
-      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-border/60 px-2 py-3">
+    <aside className="hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-[var(--color-line)] bg-[var(--color-card)] lg:flex">
+      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-[var(--color-line)] px-2 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <BrandMark size="sm" className="shrink-0" />
           <WorkspaceSwitcher member={member} memberships={memberships} />
@@ -118,12 +110,11 @@ export function AppSidebar({
               label={item.label}
               icon={item.icon}
               active={active}
-              accent={accent}
             />
           );
         })}
       </nav>
-      <div className="shrink-0 border-t border-border/60 p-4">
+      <div className="shrink-0 border-t border-[var(--color-line)] p-4">
         <div className="flex items-center gap-3">
           <MemberAvatar
             name={member.display_name}
@@ -131,8 +122,10 @@ export function AppSidebar({
             size="sm"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{member.display_name}</p>
-            <p className="text-xs capitalize text-muted-foreground">
+            <p className="truncate text-sm font-bold text-[var(--color-text)]">
+              {member.display_name}
+            </p>
+            <p className="text-xs capitalize text-[var(--color-text-2)]">
               {member.role}
             </p>
           </div>
@@ -152,7 +145,7 @@ export function MobileHeader({
   return (
     <header
       className={cn(
-        "flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-3 py-2 lg:hidden",
+        "flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-line)] bg-[var(--color-card)] px-3 py-2 lg:hidden",
         "pt-[max(0.5rem,env(safe-area-inset-top))]"
       )}
     >
@@ -191,7 +184,7 @@ export function MobileNav({
 }) {
   return (
     <BottomNav
-      wsColor={wsColor ?? "#6366F1"}
+      wsColor={wsColor ?? "#111111"}
       showEntreNos={showEntreNos ?? true}
     />
   );

@@ -65,7 +65,7 @@ export function SignupForm() {
         <div className="flex items-center gap-3 py-3">
           <Link
             href="/login"
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06]"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-chip)]"
             aria-label="Voltar"
           >
             <ChevronLeft

@@ -15,11 +15,11 @@ export const BANKS: BankOption[] = [
   { id: "bb", name: "Banco do Brasil", color: "#FFCC29" },
   { id: "caixa", name: "Caixa", color: "#0070AF" },
   { id: "cash", name: "Dinheiro", color: "#22c55e" },
-  { id: "other", name: "Outro", color: "#6366f1" },
+  { id: "other", name: "Outro", color: "#111111" },
 ];
 
 export function getBankColor(bankId: string): string {
-  return BANKS.find((b) => b.id === bankId)?.color ?? "#6366f1";
+  return BANKS.find((b) => b.id === bankId)?.color ?? "#111111";
 }
 
 export function getBankName(bankId: string): string {

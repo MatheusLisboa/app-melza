@@ -81,7 +81,7 @@ export const getAppShell = cache(async () => {
     await supabase.rpc("create_personal_workspace_for_user", {
       p_user_id: user.id,
       p_display_name: display,
-      p_avatar_color: "#6366f1",
+      p_avatar_color: "#111111",
     });
     // invalida cache local da request: chamar again via uncached path
     const { data } = await supabase

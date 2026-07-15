@@ -26,6 +26,6 @@ export function toDsMember(input: {
     id: input.id,
     name,
     initials: name.slice(0, 2).toUpperCase(),
-    color: input.avatar_color ?? input.color ?? "#6366F1",
+    color: input.avatar_color ?? input.color ?? "#1C1C1E",
   };
 }

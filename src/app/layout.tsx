@@ -47,8 +47,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#09090B" },
-    { media: "(prefers-color-scheme: light)", color: "#09090B" },
+    { media: "(prefers-color-scheme: dark)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
   ],
 };
 
@@ -58,10 +58,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={cn("dark", inter.variable, jetbrainsMono.variable)} suppressHydrationWarning>
+    <html lang="pt-BR" className={cn(inter.variable, jetbrainsMono.variable)} suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-foreground antialiased",
+          "min-h-screen bg-[var(--color-page)] font-sans text-[var(--color-text)] antialiased",
           inter.variable,
           jetbrainsMono.variable
         )}

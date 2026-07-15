@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import {
+  BarChart3,
+  ChevronRight,
+  CreditCard,
+  FileText,
+  History,
+  Banknote,
+  QrCode,
+  Wallet,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   useAccounts,
@@ -34,48 +43,98 @@ import {
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form";
+import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
 import { DashboardCardsSection } from "@/components/dashboard/cards-overview";
 import {
   paymentMethodCaption,
   resolvePaymentChannel,
 } from "@/lib/utils/payment-channel";
 import type { PaymentChannel } from "@/lib/validations/transaction";
-import { Banknote, CreditCard, QrCode, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function greetingLabel(date = new Date()): string {
+  const h = date.getHours();
+  if (h < 5) return "Boa madrugada";
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function firstName(displayName: string): string {
+  const part = displayName.trim().split(/\s+/)[0];
+  return part || displayName;
+}
+
+function SectionHeader({
+  title,
+  subtitle,
+  href,
+  linkLabel = "Ver tudo",
+  large = false,
+}: {
+  title: string;
+  subtitle?: string;
+  href?: string;
+  linkLabel?: string;
+  large?: boolean;
+}) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h3
+          className={cn(
+            "tracking-tight text-[var(--color-text)]",
+            large
+              ? "text-[17px] font-semibold"
+              : "text-[13px] font-medium uppercase tracking-wider text-[var(--color-text-2)]"
+          )}
+        >
+          {title}
+        </h3>
+        {subtitle ? (
+          <p className="mt-0.5 text-xs text-[var(--color-text-2)]">{subtitle}</p>
+        ) : null}
+      </div>
+      {href ? (
+        <Link
+          href={href}
+          className="shrink-0 text-[13px] font-medium text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
+        >
+          {linkLabel}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
 
 const SPEND_CHANNELS: {
   id: PaymentChannel;
   label: string;
   hint: string;
-  color: string;
   icon: typeof QrCode;
 }[] = [
   {
     id: "pix",
     label: "PIX",
     hint: "Saiu da conta na hora",
-    color: "#22C55E",
     icon: QrCode,
   },
   {
     id: "card",
     label: "Cartão",
     hint: "Vai na fatura",
-    color: "#6366F1",
     icon: CreditCard,
   },
   {
     id: "account",
     label: "Conta",
     hint: "Débito / transferência",
-    color: "#06B6D4",
     icon: Wallet,
   },
   {
     id: "cash",
     label: "Dinheiro",
     hint: "Em espécie",
-    color: "#F59E0B",
     icon: Banknote,
   },
 ];
@@ -88,6 +147,7 @@ export function DashboardClient({
   member: WorkspaceMember;
   memberships?: MembershipOption[];
 }) {
+  const [detailId, setDetailId] = useState<string | null>(null);
   const monthAnchor = useMemo(() => new Date(), []);
   const from = toISODate(startOfMonth(monthAnchor));
   const to = toISODate(endOfMonth(monthAnchor));
@@ -110,8 +170,7 @@ export function DashboardClient({
           category_id, paid_by_member_id, consumer_member_id, description,
           transaction_date, is_installment, installment_number, total_installments,
           category:categories(name, icon, color),
-          card:cards(id, name, owner_member_id),
-          account:accounts(id, name)
+          card:cards(id, name, owner_member_id)
         `
         )
         .eq("workspace_id", member.workspace_id)
@@ -120,7 +179,7 @@ export function DashboardClient({
         .neq("status", "cancelled")
         .order("transaction_date", { ascending: false })
         .limit(200);
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return data as TransactionWithRelations[];
     },
   });
@@ -165,6 +224,39 @@ export function DashboardClient({
         .limit(3);
       if (error) throw error;
       return (data ?? []) as Subscription[];
+    },
+  });
+
+  /** Recentes: 90 dias (inclui fatura fora do mês civil) */
+  const recentFrom = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 90);
+    return toISODate(d);
+  }, []);
+
+  const { data: recentTx = [], isLoading: recentLoading } = useQuery({
+    queryKey: ["dashboard", "recent", member.workspace_id, recentFrom],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          `
+          id, amount, transaction_type, status, card_id, account_id, tags,
+          category_id, paid_by_member_id, consumer_member_id, description,
+          transaction_date, is_installment, installment_number, total_installments,
+          category:categories(name, icon, color),
+          card:cards(id, name, owner_member_id)
+        `
+        )
+        .eq("workspace_id", member.workspace_id)
+        .gte("transaction_date", recentFrom)
+        .neq("status", "cancelled")
+        .order("transaction_date", { ascending: false })
+        .limit(8);
+      if (error) throw new Error(error.message);
+      return data as TransactionWithRelations[];
     },
   });
 
@@ -229,8 +321,6 @@ export function DashboardClient({
     return balance;
   }, [allAccountTx, accounts]);
 
-  const monthResult = monthIncome - monthExpense;
-
   const byPerson = useMemo(() => {
     const map = new Map<string, { income: number; expenses: number }>();
     for (const m of members) {
@@ -277,7 +367,7 @@ export function DashboardClient({
       const prev = map.get(key) ?? {
         name: tx.category?.name ?? "Sem categoria",
         emoji: tx.category?.icon ?? "💸",
-        color: tx.category?.color ?? "#6366F1",
+        color: tx.category?.color ?? "#c0c0c0",
         total: 0,
       };
       prev.total += Number(tx.amount);
@@ -324,8 +414,19 @@ export function DashboardClient({
     return { rows, cashOut, onCard, uncategorized };
   }, [confirmedMonth]);
 
-  const recent = confirmedMonth.slice(0, 5);
+  const recent = recentTx;
   const monthLabel = formatMonthYear(monthAnchor);
+  const monthShort = monthAnchor
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  const todayLabel = monthAnchor.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+  const greet = greetingLabel(monthAnchor);
+  const name = firstName(member.display_name);
 
   const sharedMemberships = memberships.filter(
     (m) =>
@@ -338,56 +439,106 @@ export function DashboardClient({
       ? sharedMemberships[0]
       : null;
 
-  const trendLabel =
-    monthIncome === 0 && monthExpense === 0
-      ? "Sem movimento este mês"
-      : monthResult >= 0
-        ? `Resultado do mês +${formatCurrency(monthResult)}`
-        : `Resultado do mês −${formatCurrency(Math.abs(monthResult))}`;
+  const quickLinks = [
+    { href: "/invoices", label: "Faturas", icon: FileText },
+    { href: "/cards", label: "Cartões", icon: CreditCard },
+    { href: "/transactions", label: "Histórico", icon: History },
+    { href: "/reports", label: "Relatórios", icon: BarChart3 },
+  ] as const;
 
   return (
     <div className="relative pb-28 md:pb-8">
-      <div className="px-5 pt-2">
+      {/* Saudação */}
+      <div className="px-5 pt-3 md:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] capitalize text-[var(--color-text-2)]">
+              {todayLabel}
+            </p>
+            <h1 className="mt-0.5 truncate text-[26px] font-semibold leading-tight tracking-tight text-[var(--color-text)]">
+              {greet}, {name}
+            </h1>
+            {member.workspace?.name ? (
+              <p className="mt-1 truncate text-[13px] text-[var(--color-text-2)]">
+                {member.workspace.name}
+                {isShared ? " · compartilhado" : ""}
+              </p>
+            ) : null}
+          </div>
+          <Avatar
+            member={toDsMember({
+              id: member.id,
+              name: member.display_name,
+              color: member.avatar_color,
+            })}
+            size={40}
+          />
+        </div>
+      </div>
+
+      {/* Saldo */}
+      <div className="px-5 pt-4 md:px-6">
         <BalanceCard
           balance={consolidatedBalance}
           income={monthIncome}
           expenses={monthExpense}
           accentColor={accent.color}
           loading={isLoading && monthTx.length === 0}
-          trendLabel={trendLabel}
-          trendPositive={monthResult >= 0}
-          title={isShared ? "Nas contas" : "Nas contas"}
-          subtitle="PIX, débito e dinheiro · cartão não abate o saldo"
+          title={`Disponível · ${monthShort}`}
         />
       </div>
 
+      {/* Atalhos */}
+      <div className="mt-4 px-5 md:px-6">
+        <div className="grid grid-cols-4 gap-2">
+          {quickLinks.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex flex-col items-center gap-1.5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-1 py-3 transition-colors active:bg-[var(--color-chip)] hover:bg-[var(--color-chip)]"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-chip)]">
+                <Icon
+                  size={16}
+                  strokeWidth={1.75}
+                  className="text-[var(--color-text)]"
+                />
+              </div>
+              <span className="text-[11px] font-medium text-[var(--color-text-2)]">
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {sharedCta?.workspace && (
-        <div className="px-5 mt-3">
+        <div className="mt-4 px-5 md:px-6">
           <button
             type="button"
             onClick={async () => {
               await setActiveWorkspaceAction(sharedCta.workspace_id);
               window.location.assign("/dashboard");
             }}
-            className="flex w-full items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#111113] p-3.5 text-left transition-colors hover:bg-[#141417]"
+            className="flex w-full items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-3.5 text-left transition-colors hover:bg-[var(--color-chip)]"
           >
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-base"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-base"
               style={{
-                background: `${workspaceAccent(sharedCta.workspace.type).color}15`,
+                background: `${workspaceAccent(sharedCta.workspace.type).color}18`,
               }}
             >
               {workspaceAccent(sharedCta.workspace.type).emoji}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-white/80">
+              <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
                 {sharedCta.workspace.name}
               </p>
-              <p className="text-xs text-white/30">
-                Ver dashboard compartilhado
+              <p className="text-xs text-[var(--color-text-2)]">
+                Abrir workspace compartilhado
               </p>
             </div>
-            <ChevronRight size={16} className="text-white/25" />
+            <ChevronRight size={16} className="text-[var(--color-text-3)]" />
           </button>
         </div>
       )}
@@ -398,51 +549,45 @@ export function DashboardClient({
       {(spendByChannel.cashOut > 0 ||
         spendByChannel.onCard > 0 ||
         spendByChannel.rows.length > 0) && (
-        <div className="px-5 mt-6">
-          <div className="mb-3 flex items-end justify-between gap-2">
-            <div>
-              <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
-                Como você pagou
-              </h3>
-              <p className="mt-0.5 text-xs capitalize text-white/30">
-                {monthLabel}
-              </p>
-            </div>
-          </div>
+        <div className="mt-6 px-5 md:px-6">
+          <SectionHeader
+            title="Como você pagou"
+            subtitle={monthLabel}
+          />
 
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl border border-white/[0.06] bg-[#111113] p-3.5">
+          <div className="mb-2.5 grid grid-cols-2 gap-2.5">
+            <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-3.5">
               <div className="mb-2 flex items-center gap-1.5">
-                <QrCode className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">
+                <QrCode className="h-3.5 w-3.5 text-[var(--color-text-2)]" />
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-2)]">
                   Saiu da conta
                 </span>
               </div>
-              <p className="font-mono text-[17px] font-semibold text-white/90">
+              <p className="font-mono text-[17px] font-semibold text-[var(--color-text)]">
                 {formatCurrency(spendByChannel.cashOut)}
               </p>
-              <p className="mt-1 text-[11px] text-white/30">
+              <p className="mt-1 text-[11px] text-[var(--color-text-2)]">
                 PIX, débito e dinheiro
               </p>
             </div>
-            <div className="rounded-2xl border border-white/[0.06] bg-[#111113] p-3.5">
+            <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-3.5">
               <div className="mb-2 flex items-center gap-1.5">
-                <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">
+                <CreditCard className="h-3.5 w-3.5 text-[var(--color-text-2)]" />
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-2)]">
                   No cartão
                 </span>
               </div>
-              <p className="font-mono text-[17px] font-semibold text-white/90">
+              <p className="font-mono text-[17px] font-semibold text-[var(--color-text)]">
                 {formatCurrency(spendByChannel.onCard)}
               </p>
-              <p className="mt-1 text-[11px] text-white/30">
+              <p className="mt-1 text-[11px] text-[var(--color-text-2)]">
                 Compras na fatura
               </p>
             </div>
           </div>
 
           {spendByChannel.rows.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]">
+            <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
               {spendByChannel.rows.map((row, i) => {
                 const Icon = row.icon;
                 const pct =
@@ -454,39 +599,34 @@ export function DashboardClient({
                     key={row.id}
                     className={cn(
                       "px-4 py-3.5",
-                      i > 0 && "border-t border-white/[0.05]"
+                      i > 0 && "border-t border-[var(--color-line)]"
                     )}
                   >
                     <div className="mb-2 flex items-center gap-3">
-                      <div
-                        className="flex h-8 w-8 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: `${row.color}18` }}
-                      >
-                        <Icon
-                          className="h-3.5 w-3.5"
-                          style={{ color: row.color }}
-                        />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-chip)]">
+                        <Icon className="h-3.5 w-3.5 text-[var(--color-text)]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-medium text-white/85">
+                        <p className="text-[14px] font-medium text-[var(--color-text)]">
                           {row.label}
                         </p>
-                        <p className="text-[11px] text-white/30">{row.hint}</p>
+                        <p className="text-[11px] text-[var(--color-text-2)]">
+                          {row.hint}
+                        </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono text-[13px] font-semibold text-white/75">
+                        <p className="font-mono text-[13px] font-medium text-[var(--color-text)]">
                           {formatCurrency(row.total)}
                         </p>
-                        <p className="text-[10px] text-white/30">{pct}%</p>
+                        <p className="text-[10px] text-[var(--color-text-2)]">
+                          {pct}%
+                        </p>
                       </div>
                     </div>
-                    <div className="h-1 overflow-hidden rounded-full bg-white/[0.05]">
+                    <div className="h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
                       <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${Math.min(pct, 100)}%`,
-                          backgroundColor: row.color,
-                        }}
+                        className="h-full rounded-full bg-[var(--color-text)]/35 transition-all duration-300"
+                        style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -499,11 +639,9 @@ export function DashboardClient({
 
       {/* Shared: por membro */}
       {isShared && byPerson.length > 0 && (
-        <div className="px-5 mt-6">
-          <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-white/60">
-            Por membro
-          </h3>
-          <div className="flex flex-col gap-2">
+        <div className="mt-6 px-5 md:px-6">
+          <SectionHeader title="Por membro" subtitle={monthLabel} />
+          <div className="flex flex-col gap-2.5">
             {byPerson.map(({ member: m, income, expenses }) => {
               const saved = income - expenses;
               const pct =
@@ -511,7 +649,7 @@ export function DashboardClient({
               return (
                 <div
                   key={m.id}
-                  className="rounded-2xl border border-white/[0.06] bg-[#111113] p-4"
+                  className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4"
                 >
                   <div className="mb-3 flex items-center gap-3">
                     <Avatar
@@ -522,31 +660,31 @@ export function DashboardClient({
                       })}
                       size={36}
                     />
-                    <div>
-                      <p className="text-[14px] font-semibold text-white/90">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
                         {m.display_name}
                       </p>
-                      <p className="text-xs text-white/30">
-                        Guardou {formatCurrency(saved)} este mês
+                      <p className="text-xs text-[var(--color-text-2)]">
+                        {saved >= 0 ? "Guardou" : "Gastou a mais"}{" "}
+                        {formatCurrency(Math.abs(saved))} este mês
                       </p>
                     </div>
-                    <div className="ml-auto text-right">
-                      <p className="font-mono text-[13px] font-semibold text-white/65">
+                    <div className="text-right">
+                      <p className="font-mono text-[13px] font-medium text-[var(--color-text)]">
                         {formatCurrency(expenses)}
                       </p>
-                      <p className="text-[10px] text-white/30">gastos</p>
+                      <p className="text-[10px] text-[var(--color-text-2)]">
+                        gastos
+                      </p>
                     </div>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chip)]">
                     <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(pct, 100)}%`,
-                        backgroundColor: m.avatar_color,
-                      }}
+                      className="h-full rounded-full bg-[var(--color-text)]/35 transition-all duration-300"
+                      style={{ width: `${Math.min(pct, 100)}%` }}
                     />
                   </div>
-                  <p className="mt-1.5 text-[10px] text-white/25">
+                  <p className="mt-1.5 text-[10px] text-[var(--color-text-3)]">
                     {pct}% da renda comprometida
                   </p>
                 </div>
@@ -556,28 +694,39 @@ export function DashboardClient({
         </div>
       )}
 
-      {/* Categorias — pessoal e compartilhado */}
+      {/* Categorias */}
       {byCategory.length > 0 && (
-        <div className="px-5 mt-6">
-          <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-white/60">
-            Categorias
-          </h3>
-          <div className="flex flex-col gap-0.5">
-            {byCategory.map(({ emoji, name, total, pct, color }) => (
-              <div key={name} className="py-2.5">
+        <div className="mt-6 px-5 md:px-6">
+          <SectionHeader
+            title="Categorias"
+            subtitle={`Maiores gastos · ${monthLabel}`}
+            href="/reports"
+            linkLabel="Relatório"
+          />
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-1">
+            {byCategory.map(({ emoji, name: catName, total, pct }, i) => (
+              <div
+                key={catName}
+                className={cn(
+                  "py-3",
+                  i > 0 && "border-t border-[var(--color-line)]"
+                )}
+              >
                 <div className="mb-1.5 flex items-center gap-3">
-                  <span className="text-base">{emoji}</span>
-                  <p className="flex-1 text-[14px] font-medium text-white/80">
-                    {name}
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-chip)] text-base">
+                    {emoji}
+                  </span>
+                  <p className="flex-1 text-[14px] font-medium text-[var(--color-text)]">
+                    {catName}
                   </p>
-                  <span className="font-mono text-[13px] font-semibold text-white/65">
+                  <span className="font-mono text-[13px] font-medium text-[var(--color-text)]">
                     {formatCurrency(total)}
                   </span>
                 </div>
-                <div className="ml-8 h-1 overflow-hidden rounded-full bg-white/[0.05]">
+                <div className="ml-11 h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
                   <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct}%`, backgroundColor: color }}
+                    className="h-full rounded-full bg-[var(--color-text)]/35"
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
@@ -587,36 +736,46 @@ export function DashboardClient({
       )}
 
       {/* Próximas contas */}
-      <div className="px-5 mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
-            Próximas contas
-          </h3>
-          <Link
-            href="/subscriptions"
-            className="text-xs font-medium"
-            style={{ color: accent.color }}
-          >
-            Ver tudo
-          </Link>
-        </div>
+      <div className="mt-6 px-5 md:px-6">
+        <SectionHeader
+          title="Próximas contas"
+          large
+          href="/subscriptions"
+          linkLabel="Ver todas"
+        />
         {upcoming.length === 0 ? (
-          <p className="py-2 text-sm text-white/30">Nenhuma assinatura próxima.</p>
+          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
+            <p className="text-sm text-[var(--color-text-2)]">
+              Nenhuma assinatura próxima.
+            </p>
+            <Link
+              href="/subscriptions"
+              className="mt-1 inline-block text-[13px] font-medium text-[var(--color-text)] underline-offset-2 hover:underline"
+            >
+              Cadastrar assinatura
+            </Link>
+          </div>
         ) : (
-          <div className="flex flex-col gap-0.5">
-            {upcoming.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 py-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1C1C1F] text-base">
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+            {upcoming.map((item, i) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3.5",
+                  i > 0 && "border-t border-[var(--color-line)]"
+                )}
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)] text-base">
                   🔁
                 </div>
-                <p className="flex-1 text-[14px] font-medium text-white/80">
+                <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--color-text)]">
                   {item.name}
                 </p>
                 <div className="text-right">
-                  <p className="font-mono text-[13px] font-semibold text-white/65">
+                  <p className="font-mono text-[13px] font-medium text-[var(--color-text)]">
                     {formatCurrency(Number(item.amount))}
                   </p>
-                  <p className="text-[11px] text-white/30">
+                  <p className="text-[11px] text-[var(--color-text-2)]">
                     {item.next_billing_date
                       ? formatDate(item.next_billing_date)
                       : "—"}
@@ -629,87 +788,101 @@ export function DashboardClient({
       </div>
 
       {/* Recentes / Timeline */}
-      <div className="px-5 mt-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold uppercase tracking-wider text-white/60">
-            {isShared ? "Timeline" : "Recentes"}
-          </h3>
-          <Link
-            href="/transactions"
-            className="text-xs font-medium"
-            style={{ color: accent.color }}
-          >
-            Ver tudo
-          </Link>
-        </div>
-        {isLoading ? (
-          <div className="flex flex-col gap-3 pt-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <DsSkeleton h="h-10" w="w-10" className="rounded-xl" />
-                <div className="flex flex-1 flex-col gap-1.5">
-                  <DsSkeleton h="h-3.5" w="w-32" />
-                  <DsSkeleton h="h-3" w="w-20" />
+      <div className="mt-6 px-5 md:px-6">
+        <SectionHeader
+          title={isShared ? "Timeline" : "Últimas transações"}
+          large
+          href="/transactions"
+          linkLabel="Ver todas"
+        />
+        {recentLoading ? (
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <DsSkeleton h="h-9" w="w-9" className="rounded-full" />
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <DsSkeleton h="h-3.5" w="w-32" />
+                    <DsSkeleton h="h-3" w="w-20" />
+                  </div>
+                  <DsSkeleton h="h-3.5" w="w-16" />
                 </div>
-                <DsSkeleton h="h-3.5" w="w-16" />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : recent.length === 0 ? (
-          <p className="py-2 text-sm text-white/30">Nenhum lançamento este mês.</p>
+          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
+            <p className="text-sm text-[var(--color-text-2)]">
+              Nenhum lançamento recente.
+            </p>
+            <p className="mt-1 text-[12px] text-[var(--color-text-3)]">
+              Toque no + para registrar a primeira despesa.
+            </p>
+          </div>
         ) : (
-          recent.map((tx) => {
-            const payerMember = members.find(
-              (m) => m.id === tx.paid_by_member_id
-            );
-            const consumerMember = members.find(
-              (m) => m.id === tx.consumer_member_id
-            );
-            const payer = payerMember ? toDsMember(payerMember) : null;
-            const consumer = consumerMember
-              ? toDsMember(consumerMember)
-              : payer;
-            const cardOwnerMember = members.find(
-              (m) => m.id === tx.card?.owner_member_id
-            );
-            const cardOwner = cardOwnerMember
-              ? toDsMember(cardOwnerMember)
-              : payer;
-            const isExpense =
-              tx.transaction_type === "expense" ||
-              tx.transaction_type === "loan_given";
-            const isIncome =
-              tx.transaction_type === "income" ||
-              tx.transaction_type === "loan_received";
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+            {recent.map((tx, i) => {
+              const payerMember = members.find(
+                (m) => m.id === tx.paid_by_member_id
+              );
+              const consumerMember = members.find(
+                (m) => m.id === tx.consumer_member_id
+              );
+              const payer = payerMember ? toDsMember(payerMember) : null;
+              const consumer = consumerMember
+                ? toDsMember(consumerMember)
+                : payer;
+              const cardOwnerMember = members.find(
+                (m) => m.id === tx.card?.owner_member_id
+              );
+              const cardOwner = cardOwnerMember
+                ? toDsMember(cardOwnerMember)
+                : payer;
+              const isExpense =
+                tx.transaction_type === "expense" ||
+                tx.transaction_type === "loan_given";
+              const isIncome =
+                tx.transaction_type === "income" ||
+                tx.transaction_type === "loan_received";
 
-            return (
-              <Link key={tx.id} href={`/transactions/${tx.id}`}>
-                <TxRow
-                  emoji={tx.category?.icon}
-                  title={tx.description}
-                  category={tx.category?.name}
-                  paymentLabel={paymentMethodCaption(tx)}
-                  dateLabel={formatDate(tx.transaction_date)}
-                  amount={Number(tx.amount)}
-                  type={isIncome ? "income" : isExpense ? "expense" : "other"}
-                  pending={tx.status === "scheduled"}
-                  installments={
-                    tx.is_installment &&
-                    tx.installment_number != null &&
-                    tx.total_installments != null
-                      ? {
-                          current: tx.installment_number,
-                          total: tx.total_installments,
-                        }
-                      : null
-                  }
-                  consumer={consumer}
-                  payer={payer}
-                  cardOwner={cardOwner}
-                />
-              </Link>
-            );
-          })
+              return (
+                <div
+                  key={tx.id}
+                  className={cn(
+                    i > 0 && "border-t border-[var(--color-line)]"
+                  )}
+                >
+                  <TxRow
+                    embedded
+                    emoji={tx.category?.icon}
+                    title={tx.description}
+                    category={tx.category?.name}
+                    paymentLabel={paymentMethodCaption(tx)}
+                    dateLabel={formatDate(tx.transaction_date)}
+                    amount={Number(tx.amount)}
+                    type={
+                      isIncome ? "income" : isExpense ? "expense" : "other"
+                    }
+                    pending={tx.status === "scheduled"}
+                    installments={
+                      tx.is_installment &&
+                      tx.installment_number != null &&
+                      tx.total_installments != null
+                        ? {
+                            current: tx.installment_number,
+                            total: tx.total_installments,
+                          }
+                        : null
+                    }
+                    consumer={consumer}
+                    payer={payer}
+                    cardOwner={cardOwner}
+                    onClick={() => setDetailId(tx.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -717,6 +890,16 @@ export function DashboardClient({
         member={member}
         trigger={<Fab color={accent.color} />}
       />
+
+      <TransactionDetailSheet
+        open={Boolean(detailId)}
+        onOpenChange={(o) => {
+          if (!o) setDetailId(null);
+        }}
+        member={member}
+        transactionId={detailId}
+      />
     </div>
   );
 }
+

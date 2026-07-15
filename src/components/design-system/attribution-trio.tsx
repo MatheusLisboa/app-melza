@@ -41,16 +41,16 @@ export function AttributionTrio({
       {fields.map(({ label, member }, i) => (
         <div key={label} className="flex items-center gap-1">
           {i > 0 && (
-            <span className="text-[10px] text-foreground/15">·</span>
+            <span className="text-[10px] text-[#C7C7CC]">·</span>
           )}
-          <span className="text-[10px] text-foreground/30">{label}</span>
+          <span className="text-[10px] text-[#8E8E93]">{label}</span>
           <div
             className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[7px] font-bold text-white"
-            style={{ backgroundColor: member.color }}
+            style={{ backgroundColor: member.color || "#1C1C1E" }}
           >
             {(member.initials ?? member.name)[0]}
           </div>
-          <span className="text-[10px] font-medium text-foreground/50">
+          <span className="text-[10px] font-medium text-[#3A3A3C]">
             {member.name}
           </span>
         </div>

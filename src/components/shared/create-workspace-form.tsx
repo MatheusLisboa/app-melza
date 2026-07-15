@@ -43,7 +43,7 @@ export function CreateWorkspaceForm({
       {
         p_name: name.trim(),
         p_display_name: defaultDisplayName || "Eu",
-        p_avatar_color: "#6366f1",
+        p_avatar_color: "#111111",
         p_type: type,
       }
     );

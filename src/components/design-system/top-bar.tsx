@@ -27,21 +27,25 @@ export function TopBar({
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] transition-colors hover:bg-white/[0.1]"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] transition-colors hover:bg-[var(--color-chip)]"
           aria-label="Voltar"
         >
-          <ChevronLeft size={18} strokeWidth={2} className="text-foreground/70" />
+          <ChevronLeft
+            size={18}
+            strokeWidth={2}
+            className="text-[var(--color-text)]"
+          />
         </button>
       )}
       <div className="min-w-0 flex-1">
         <h1
-          className="truncate text-[17px] font-semibold leading-tight text-foreground/95"
+          className="truncate text-[17px] font-bold leading-tight text-[var(--color-text)]"
           style={{ letterSpacing: "-0.015em" }}
         >
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-foreground/40">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-[var(--color-text-2)]">{subtitle}</p>
         )}
       </div>
       {rightEl}

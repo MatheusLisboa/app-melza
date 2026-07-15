@@ -101,12 +101,12 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
+          <h1 className="text-[17px] font-medium tracking-tight text-[var(--color-text)]">
             Assinaturas
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             Total mensal estimado:{" "}
-            <span className="font-money text-foreground">
+            <span className="font-money text-[var(--color-text)]">
               {formatCurrency(monthlyTotal)}
             </span>
           </p>
@@ -122,9 +122,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {dueSoon.length > 0 && (
-        <Card className="border-amber-500/40 bg-amber-500/5">
+        <Card className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-card)]">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+            <CardTitle className="flex items-center gap-2 text-sm text-[var(--color-text-2)]">
               <AlertTriangle className="h-4 w-4" />
               Vencem em até {alertDays} dias ({dueSoon.length})
             </CardTitle>
@@ -136,7 +136,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                 className="flex items-center justify-between text-sm"
               >
                 <span>{s.name}</span>
-                <span className="font-money">
+                <span className="font-money text-[var(--color-text)]">
                   {s.next_billing_date
                     ? formatDate(s.next_billing_date)
                     : "—"}{" "}
@@ -149,9 +149,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
       ) : subscriptions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[var(--color-text-2)]">
           Nenhuma assinatura cadastrada.
         </p>
       ) : (
@@ -169,22 +169,24 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={sub.id}
-                className="rounded-xl border border-border/60 bg-card/50 p-4"
+                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{sub.name}</p>
+                      <p className="font-medium text-[var(--color-text)]">
+                        {sub.name}
+                      </p>
                       {!sub.is_active && (
                         <Badge variant="outline">Inativa</Badge>
                       )}
                       {daysLeft != null && daysLeft >= 0 && daysLeft <= alertDays && (
-                        <Badge className="bg-amber-500/15 text-amber-600 hover:bg-amber-500/15 dark:text-amber-400">
+                        <Badge className="bg-[var(--color-chip)] text-[var(--color-text-2)] hover:bg-[var(--color-chip)]">
                           em {daysLeft}d
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground capitalize">
+                    <p className="text-xs text-[var(--color-text-2)] capitalize">
                       {sub.billing_cycle === "monthly"
                         ? "Mensal"
                         : sub.billing_cycle === "yearly"
@@ -198,7 +200,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-semibold">
+                    <p className="font-money text-base font-medium text-[var(--color-text)]">
                       {formatCurrency(Number(sub.amount))}
                     </p>
                     <div className="mt-1 flex flex-col items-end gap-1">

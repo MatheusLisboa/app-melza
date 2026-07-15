@@ -162,10 +162,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         rightEl={
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06]"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)]"
             aria-label="Compartilhar"
           >
-            <Share2 size={16} strokeWidth={2} className="text-white/60" />
+            <Share2 size={16} strokeWidth={2} className="text-[#8E8E93]" />
           </button>
         }
       />
@@ -174,13 +174,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Calculando acertos…</p>
         ) : settled ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#22C55E]/20 bg-[#22C55E]/10 py-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#22C55E]/20">
+          <div className="flex flex-col items-center gap-3 rounded-[10px] border-[0.5px] border-[#BBF7D0] bg-[#F0FDF4] py-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#F0FDF4]">
               <CheckCircle size={24} className="text-[#22C55E]" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-[#22C55E]">Acerto registrado!</p>
-              <p className="mt-1 text-xs text-white/35">
+              <p className="font-medium text-[#22C55E]">Acerto registrado!</p>
+              <p className="mt-1 text-xs text-[#8E8E93]">
                 Saldo zerado entre{" "}
                 {settlement.debtor?.member?.display_name ?? "vocês"}.
               </p>
@@ -201,26 +201,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         ) : (
           <>
             {/* Hero */}
-            <div
-              className="relative overflow-hidden rounded-3xl p-6"
-              style={{
-                background: "linear-gradient(135deg, #1A1A1F 0%, #111113 100%)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              <div
-                className="absolute left-6 top-6 h-20 w-20 rounded-full opacity-20 blur-2xl"
-                style={{
-                  background: settlement.debtor!.member!.avatar_color,
-                }}
-              />
-              <div
-                className="absolute right-6 top-6 h-20 w-20 rounded-full opacity-20 blur-2xl"
-                style={{
-                  background: settlement.creditor!.member!.avatar_color,
-                }}
-              />
-
+            <div className="relative overflow-hidden rounded-xl border border-[#E5E5EA] bg-white p-6">
               <div className="relative z-10 mb-6 flex items-center justify-between">
                 <div className="flex flex-col items-center gap-2">
                   <div className="relative">
@@ -228,43 +209,33 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       member={toDsMember(settlement.debtor!.member!)}
                       size={56}
                     />
-                    <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#09090B] bg-[#EF4444]">
+                    <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-white bg-[#EF4444]">
                       <ArrowUpRight
                         size={10}
                         strokeWidth={3}
-                        className="text-white"
+                        className="text-[#111111]"
                       />
                     </div>
                   </div>
-                  <p className="text-[13px] font-semibold text-white/80">
+                  <p className="text-[13px] font-medium text-[#111111]">
                     {settlement.debtor!.member!.display_name}
                   </p>
-                  <Badge label="Deve" color="#EF4444" bg="#EF444415" />
+                  <Badge label="Deve" color="#cc4444" bg="#cc444415" />
                 </div>
 
                 <div className="flex flex-1 flex-col items-center gap-2 px-4">
                   <div className="flex w-full items-center">
-                    <div
-                      className="h-px flex-1"
-                      style={{
-                        background: `linear-gradient(90deg, ${settlement.debtor!.member!.avatar_color}60, ${settlement.creditor!.member!.avatar_color}60)`,
-                      }}
-                    />
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.06]">
+                    <div className="h-px flex-1 bg-[#E5E5EA]-hi" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-chip)]">
                       <ArrowRight
                         size={12}
                         strokeWidth={2.5}
-                        className="text-white/50"
+                        className="text-[#8E8E93]"
                       />
                     </div>
-                    <div
-                      className="h-px flex-1"
-                      style={{
-                        background: `linear-gradient(90deg, ${settlement.debtor!.member!.avatar_color}60, ${settlement.creditor!.member!.avatar_color}60)`,
-                      }}
-                    />
+                    <div className="h-px flex-1 bg-[#E5E5EA]-hi" />
                   </div>
-                  <span className="text-[10px] font-medium text-white/30">
+                  <span className="text-[10px] font-medium text-[#3A3A3C]">
                     transferência sugerida
                   </span>
                 </div>
@@ -275,36 +246,36 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       member={toDsMember(settlement.creditor!.member!)}
                       size={56}
                     />
-                    <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#09090B] bg-[#22C55E]">
+                    <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-white bg-[#22C55E]">
                       <ArrowDownLeft
                         size={10}
                         strokeWidth={3}
-                        className="text-white"
+                        className="text-[#111111]"
                       />
                     </div>
                   </div>
-                  <p className="text-[13px] font-semibold text-white/80">
+                  <p className="text-[13px] font-medium text-[#111111]">
                     {settlement.creditor!.member!.display_name}
                   </p>
-                  <Badge label="Recebe" color="#22C55E" bg="#22C55E15" />
+                  <Badge label="Recebe" color="#448844" bg="#44884415" />
                 </div>
               </div>
 
-              <div className="flex flex-col items-center gap-1.5 border-t border-white/[0.06] py-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-white/35">
+              <div className="flex flex-col items-center gap-1.5 border-t border-[#E5E5EA] py-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-[#8E8E93]">
                   Saldo líquido
                 </p>
                 <MoneyDisplay
                   amount={settlement.netAmount}
                   size="xl"
-                  color="#EF4444"
+                  color="#cc4444"
                 />
-                <p className="text-center text-sm text-white/45">
-                  <span className="font-semibold text-white/70">
+                <p className="text-center text-sm text-[#8E8E93]">
+                  <span className="font-medium text-[#111111]">
                     {settlement.debtor!.member!.display_name}
                   </span>{" "}
                   deve pagar para{" "}
-                  <span className="font-semibold text-white/70">
+                  <span className="font-medium text-[#111111]">
                     {settlement.creditor!.member!.display_name}
                   </span>
                 </p>
@@ -312,20 +283,20 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             </div>
 
             {/* Resumo */}
-            <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]">
-              <p className="px-4 pb-3 pt-4 text-[11px] font-semibold uppercase tracking-wider text-white/35">
+            <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
+              <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
                 Resumo
               </p>
               <Divider />
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-2">
                   <span className="text-base">⬆️</span>
-                  <p className="text-[13px] text-white/65">
+                  <p className="text-[13px] text-[#8E8E93]">
                     {settlement.creditor!.member!.display_name} pagou para{" "}
                     {settlement.debtor!.member!.display_name}
                   </p>
                 </div>
-                <span className="font-mono text-[14px] font-semibold text-[#EF4444]">
+                <span className="font-mono text-[14px] font-medium text-[#EF4444]">
                   {formatCurrency(settlement.bPaidForA)}
                 </span>
               </div>
@@ -333,20 +304,20 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-2">
                   <span className="text-base">⬇️</span>
-                  <p className="text-[13px] text-white/65">
+                  <p className="text-[13px] text-[#8E8E93]">
                     {settlement.debtor!.member!.display_name} pagou para{" "}
                     {settlement.creditor!.member!.display_name}
                   </p>
                 </div>
-                <span className="font-mono text-[14px] font-semibold text-[#22C55E]">
+                <span className="font-mono text-[14px] font-medium text-[#22C55E]">
                   {formatCurrency(settlement.aPaidForB)}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-3.5">
-                <p className="text-[13px] font-semibold text-white/80">
+              <div className="flex items-center justify-between border-t border-[#E5E5EA] px-4 py-3.5">
+                <p className="text-[13px] font-medium text-[#111111]">
                   Diferença
                 </p>
-                <span className="font-mono text-[15px] font-bold text-[#EF4444]">
+                <span className="font-mono text-[15px] font-medium text-[#EF4444]">
                   {formatCurrency(settlement.netAmount)}
                 </span>
               </div>
@@ -355,7 +326,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             {/* Histórico */}
             {settlement.timeline.length > 0 && (
               <div>
-                <p className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-white/60">
+                <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-[#8E8E93]">
                   Histórico
                 </p>
                 <div className="flex flex-col gap-0.5">
@@ -370,38 +341,30 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         key={item.id}
                         className="flex items-center gap-3 py-3"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1C1C1F] text-base">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-base">
                           {item.emoji}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium text-white/85">
+                          <p className="truncate text-[14px] font-medium text-[#111111]">
                             {item.title}
                           </p>
                           <div className="mt-0.5 flex items-center gap-1.5">
-                            <div
-                              className="flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-bold text-white"
-                              style={{
-                                backgroundColor: consumer.avatar_color,
-                              }}
-                            >
+                            <div className="flex h-3 w-3 items-center justify-center rounded-full bg-[#1C1C1E] text-[7px] font-medium text-[#111111]">
                               {consumer.display_name[0]}
                             </div>
-                            <span className="text-[11px] text-white/30">
+                            <span className="text-[11px] text-[#3A3A3C]">
                               consumiu
                             </span>
-                            <span className="text-white/15">·</span>
-                            <div
-                              className="flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-bold text-white"
-                              style={{ backgroundColor: payer.avatar_color }}
-                            >
+                            <span className="text-[#C7C7CC]">·</span>
+                            <div className="flex h-3 w-3 items-center justify-center rounded-full bg-[#1C1C1E] text-[7px] font-medium text-[#111111]">
                               {payer.display_name[0]}
                             </div>
-                            <span className="truncate text-[11px] text-white/30">
+                            <span className="truncate text-[11px] text-[#3A3A3C]">
                               pagou · {item.date}
                             </span>
                           </div>
                         </div>
-                        <span className="shrink-0 font-mono text-[14px] font-semibold text-white/60">
+                        <span className="shrink-0 font-mono text-[14px] font-medium text-[#8E8E93]">
                           {formatCurrency(item.amount)}
                         </span>
                       </div>
@@ -416,7 +379,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 variant="primary"
                 size="lg"
                 fullWidth
-                wsColor="#22C55E"
+                wsColor="#c0c0c0"
                 icon={<Check size={18} strokeWidth={2.5} />}
                 onClick={() => setSettled(true)}
               >

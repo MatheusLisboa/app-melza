@@ -35,27 +35,30 @@ export function TransactionDetailClient({
   const [busy, setBusy] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
 
-  const { data: tx, isLoading } = useQuery({
+  const {
+    data: tx,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["transaction", transactionId],
     queryFn: async () => {
       const supabase = createClient();
-      const { data, error } = await supabase
+      const { data, error: qError } = await supabase
         .from("transactions")
         .select(
           `
           *,
-          category:categories(*),
-          card:cards(*),
-          account:accounts(*),
-          paid_by:workspace_members!paid_by_member_id(*),
-          consumer:workspace_members!consumer_member_id(*)
+          category:categories(id, name, icon, color),
+          card:cards(id, name, owner_member_id, bank)
         `
         )
         .eq("id", transactionId)
         .eq("workspace_id", member.workspace_id)
-        .single();
-      if (error) throw error;
-      return data as TransactionWithRelations;
+        .maybeSingle();
+      if (qError) throw new Error(qError.message);
+      return data as TransactionWithRelations | null;
     },
   });
 
@@ -72,21 +75,54 @@ export function TransactionDetailClient({
     router.push("/transactions");
   }
 
-  if (isLoading || !tx) {
+  if (isLoading) {
     return (
       <div className="page-pad">
         <TopBar title="Detalhes" onBack={() => router.back()} />
-        <p className="mt-8 text-sm text-muted-foreground">Carregando…</p>
+        <p className="mt-8 text-sm text-[var(--color-text-2)]">Carregando…</p>
       </div>
     );
   }
 
-  const payer = tx.paid_by
-    ? toDsMember(tx.paid_by)
-    : null;
-  const consumer = tx.consumer
-    ? toDsMember(tx.consumer)
-    : payer;
+  if (isError || !tx) {
+    return (
+      <div className="page-pad">
+        <TopBar title="Detalhes" onBack={() => router.back()} />
+        <div className="mt-8 rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+          <p className="text-sm text-[var(--color-text)]">
+            Lançamento não encontrado
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-text-2)]">
+            {isError
+              ? error instanceof Error
+                ? error.message
+                : "Falha ao carregar"
+              : "Pode ter sido excluído ou está em outro workspace."}
+          </p>
+          <div className="mt-3 flex gap-3">
+            <button
+              type="button"
+              className="text-sm text-[var(--color-text)] underline"
+              onClick={() => void refetch()}
+            >
+              Tentar de novo
+            </button>
+            <button
+              type="button"
+              className="text-sm text-[var(--color-text-2)] underline"
+              onClick={() => router.push("/transactions")}
+            >
+              Voltar ao histórico
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const payerMember = members.find((m) => m.id === tx.paid_by_member_id);
+  const consumerMember = members.find((m) => m.id === tx.consumer_member_id);
+  const payer = payerMember ? toDsMember(payerMember) : null;
+  const consumer = consumerMember ? toDsMember(consumerMember) : payer;
   const cardOwnerMember = members.find(
     (m) => m.id === tx.card?.owner_member_id
   );
@@ -109,7 +145,7 @@ export function TransactionDetailClient({
 
   const channel = paymentChannelFromTags(tx.tags);
   const channelLabel = paymentChannelLabel(channel);
-  const instrumentName = tx.card?.name ?? tx.account?.name ?? null;
+  const instrumentName = tx.card?.name ?? null;
   const meioLabel = channelLabel
     ? instrumentName
       ? `${channelLabel} · ${instrumentName}`
@@ -122,14 +158,14 @@ export function TransactionDetailClient({
 
       <div className="px-5">
         <div className="flex flex-col items-center gap-3 py-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1C1C1F] text-4xl">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[10px] bg-[var(--color-chip)] text-4xl">
             {tx.category?.icon || "💸"}
           </div>
           <div className="text-center">
-            <p className="text-lg font-semibold text-white/90">
+            <p className="text-lg font-medium text-[var(--color-text)]">
               {tx.description}
             </p>
-            <p className="mt-0.5 text-sm text-white/35">
+            <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
               {[tx.category?.name, formatDate(tx.transaction_date)]
                 .filter(Boolean)
                 .join(" · ")}
@@ -143,8 +179,8 @@ export function TransactionDetailClient({
         </div>
 
         {(consumer || payer || cardOwner) && (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]">
-            <p className="px-4 pb-3 pt-4 text-[11px] font-semibold uppercase tracking-wider text-white/35">
+          <div className="mb-4 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
+            <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
               Atribuição
             </p>
             <Divider />
@@ -173,12 +209,14 @@ export function TransactionDetailClient({
                   <div className="flex items-center gap-3 px-4 py-3.5">
                     <Avatar member={row.m!} size={36} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-white/90">
+                      <p className="text-[14px] font-medium text-[var(--color-text)]">
                         {row.m!.name}
                       </p>
-                      <p className="mt-0.5 text-xs text-white/35">{row.desc}</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
+                        {row.desc}
+                      </p>
                     </div>
-                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-white/40">
+                    <span className="rounded-full bg-[var(--color-chip)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-2)]">
                       {row.label}
                     </span>
                   </div>
@@ -188,7 +226,7 @@ export function TransactionDetailClient({
           </div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111113]">
+        <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
           {[
             { label: "Data", value: formatDate(tx.transaction_date) },
             { label: "Categoria", value: tx.category?.name ?? "—" },
@@ -204,8 +242,10 @@ export function TransactionDetailClient({
           ].map((row, i, arr) => (
             <div key={row.label}>
               <div className="flex items-center justify-between px-4 py-3.5">
-                <p className="text-sm text-white/40">{row.label}</p>
-                <p className="text-sm font-medium text-white/80">{row.value}</p>
+                <p className="text-sm text-[var(--color-text-2)]">{row.label}</p>
+                <p className="text-sm font-medium text-[var(--color-text)]">
+                  {row.value}
+                </p>
               </div>
               {i < arr.length - 1 && <Divider />}
             </div>

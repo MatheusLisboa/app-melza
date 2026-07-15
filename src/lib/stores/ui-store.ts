@@ -17,7 +17,7 @@ interface UiState {
 export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
-      theme: "dark",
+      theme: "light",
       setTheme: (theme) => set({ theme }),
       toggleTheme: () =>
         set({ theme: get().theme === "dark" ? "light" : "dark" }),

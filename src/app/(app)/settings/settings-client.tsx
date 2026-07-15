@@ -34,12 +34,12 @@ import {
 } from "@/components/ui/select";
 
 const AVATAR_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#22c55e",
-  "#f59e0b",
-  "#06b6d4",
-  "#ef4444",
+  "#c0c0c0",
+  "#e0e0e0",
+  "#888888",
+  "#444444",
+  "#333333",
+  "#cc4444",
 ];
 
 export function SettingsClient({
@@ -227,7 +227,7 @@ export function SettingsClient({
     <div className="mx-auto max-w-2xl space-y-6 page-pad md:px-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-foreground/95">
+          <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
             Perfil
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -291,11 +291,14 @@ export function SettingsClient({
                 <button
                   key={color}
                   type="button"
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full border border-[var(--color-line)]"
                   style={{
                     backgroundColor: color,
-                    boxShadow:
-                      avatarColor === color ? `0 0 0 2px ${color}` : undefined,
+                    outline:
+                      avatarColor === color
+                        ? "2px solid #c0c0c0"
+                        : undefined,
+                    outlineOffset: 2,
                   }}
                   onClick={() => setAvatarColor(color)}
                 />
@@ -424,11 +427,11 @@ export function SettingsClient({
           <CardTitle className="text-base">Privacidade (LGPD)</CardTitle>
           <CardDescription>
             Exportar seus dados ou solicitar exclusão da conta.{" "}
-            <Link href="/privacy" className="text-primary underline">
+            <Link href="/privacy" className="text-[#8E8E93] underline">
               Política
             </Link>{" "}
             ·{" "}
-            <Link href="/terms" className="text-primary underline">
+            <Link href="/terms" className="text-[#8E8E93] underline">
               Termos
             </Link>
           </CardDescription>
@@ -458,7 +461,7 @@ export function SettingsClient({
       {(message || error) && (
         <p
           className={
-            error ? "text-sm text-destructive" : "text-sm text-emerald-500"
+            error ? "text-sm text-destructive" : "text-sm text-[#22C55E]"
           }
         >
           {error ?? message}

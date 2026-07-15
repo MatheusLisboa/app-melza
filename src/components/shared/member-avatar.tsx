@@ -18,7 +18,7 @@ const sizeMap = {
 /** Wrapper legado → Make Avatar (1ª letra, size numérico) */
 export function MemberAvatar({
   name,
-  color = "#6366f1",
+  color = "#1C1C1E",
   size = "md",
   className,
 }: MemberAvatarProps) {

@@ -98,7 +98,7 @@ export function CardSelector({
                 <span className="flex items-center gap-2">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: account.color ?? "#6366f1" }}
+                    style={{ backgroundColor: account.color ?? "#111111" }}
                   />
                   {account.name}
                 </span>
