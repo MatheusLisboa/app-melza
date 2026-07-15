@@ -19,7 +19,7 @@ import { MemberAvatar } from "@/components/shared/member-avatar";
 import { CreateWorkspaceForm } from "@/components/shared/create-workspace-form";
 import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import { workspaceTypeLabel } from "@/lib/utils/workspace";
-import { Copy, Download, LogOut, RefreshCw, Trash2 } from "lucide-react";
+import { Copy, Download, LogOut, RefreshCw, Trash2, Camera } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { signOutAction } from "@/lib/actions/auth";
@@ -53,6 +53,10 @@ export function SettingsClient({
   const setAlertDays = useUiStore((s) => s.setSubscriptionAlertDays);
   const [displayName, setDisplayName] = useState(member.display_name);
   const [avatarColor, setAvatarColor] = useState(member.avatar_color);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    member.avatar_url ?? null
+  );
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [invite, setInvite] = useState<WorkspaceInvite | null>(null);
   const [inviteUrl, setInviteUrl] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -98,7 +102,11 @@ export function SettingsClient({
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("workspace_members")
-      .update({ display_name: displayName, avatar_color: avatarColor })
+      .update({
+        display_name: displayName,
+        avatar_color: avatarColor,
+        avatar_url: avatarUrl,
+      })
       .eq("id", member.id);
     setSaving(false);
     if (updateError) {
@@ -143,6 +151,75 @@ export function SettingsClient({
     if (!inviteUrl) return;
     await navigator.clipboard.writeText(inviteUrl);
     setMessage("Link copiado");
+  }
+
+  async function onPhotoSelected(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Selecione uma imagem (JPG, PNG ou WebP)");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("A foto deve ter no máximo 2 MB");
+      return;
+    }
+
+    setPhotoBusy(true);
+    setError(null);
+    setMessage(null);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${member.user_id}/${member.id}.${ext === "jpeg" ? "jpg" : ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      setPhotoBusy(false);
+      setError(
+        uploadError.message.includes("Bucket not found")
+          ? "Bucket de avatares ainda não existe. Rode a migration 008 no Supabase."
+          : uploadError.message
+      );
+      return;
+    }
+
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const url = `${pub.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase
+      .from("workspace_members")
+      .update({ avatar_url: url })
+      .eq("id", member.id);
+
+    setPhotoBusy(false);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setAvatarUrl(url);
+    setMessage("Foto atualizada");
+    router.refresh();
+  }
+
+  async function removePhoto() {
+    if (!avatarUrl) return;
+    setPhotoBusy(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: updateError } = await supabase
+      .from("workspace_members")
+      .update({ avatar_url: null })
+      .eq("id", member.id);
+    setPhotoBusy(false);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setAvatarUrl(null);
+    setMessage("Foto removida");
+    router.refresh();
   }
 
   async function exportData() {
@@ -270,22 +347,74 @@ export function SettingsClient({
       <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">Perfil</CardTitle>
-          <CardDescription>Nome e cor do avatar neste workspace</CardDescription>
+          <CardDescription>
+            Foto, nome e cor do avatar neste workspace
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <MemberAvatar name={displayName} color={avatarColor} size="lg" />
-            <div className="flex-1 space-y-2">
+            <div className="relative">
+              <MemberAvatar
+                name={displayName}
+                color={avatarColor}
+                imageUrl={avatarUrl}
+                size={64}
+              />
+              <label
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)] shadow-sm transition-colors hover:bg-[var(--color-chip)]"
+                title="Alterar foto"
+              >
+                <Camera size={14} />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={photoBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    e.target.value = "";
+                    void onPhotoSelected(file);
+                  }}
+                />
+              </label>
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
               <Label htmlFor="displayName">Nome</Label>
               <Input
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
               />
+              <div className="flex flex-wrap gap-2">
+                <label className="cursor-pointer text-xs font-medium text-[var(--color-text)] underline-offset-2 hover:underline">
+                  {photoBusy ? "Enviando…" : "Escolher foto"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    disabled={photoBusy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      e.target.value = "";
+                      void onPhotoSelected(file);
+                    }}
+                  />
+                </label>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-[#EF4444] underline-offset-2 hover:underline"
+                    disabled={photoBusy}
+                    onClick={() => void removePhoto()}
+                  >
+                    Remover foto
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Cor</Label>
+            <Label>Cor (quando sem foto)</Label>
             <div className="flex flex-wrap gap-2">
               {AVATAR_COLORS.map((color) => (
                 <button
@@ -305,7 +434,7 @@ export function SettingsClient({
               ))}
             </div>
           </div>
-          <Button onClick={saveProfile} disabled={saving}>
+          <Button onClick={saveProfile} disabled={saving || photoBusy}>
             {saving ? "Salvando…" : "Salvar perfil"}
           </Button>
         </CardContent>
@@ -325,6 +454,7 @@ export function SettingsClient({
                 <MemberAvatar
                   name={m.display_name}
                   color={m.avatar_color}
+                  imageUrl={m.avatar_url}
                   size="sm"
                 />
                 <div className="min-w-0 flex-1">

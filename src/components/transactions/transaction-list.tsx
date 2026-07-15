@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { collapseInstallmentPurchases } from "@/lib/finance/collapse-installments";
 import { cn } from "@/lib/utils";
 
 type FilterTab = "all" | "income" | "expense";
@@ -124,17 +125,20 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
   });
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return transactions;
-    const q = search.toLowerCase();
-    return transactions.filter(
-      (t) =>
-        t.description.toLowerCase().includes(q) ||
-        t.category?.name?.toLowerCase().includes(q)
-    );
+    const base = !search.trim()
+      ? transactions
+      : transactions.filter((t) => {
+          const q = search.toLowerCase();
+          return (
+            t.description.toLowerCase().includes(q) ||
+            t.category?.name?.toLowerCase().includes(q)
+          );
+        });
+    return collapseInstallmentPurchases(base);
   }, [transactions, search]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, TransactionWithRelations[]>();
+    const map = new Map<string, (typeof filtered)[number][]>();
     for (const tx of filtered) {
       const key = formatDate(tx.transaction_date);
       if (!map.has(key)) map.set(key, []);
@@ -152,7 +156,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
               t.transaction_type === "loan_given") &&
             t.status !== "scheduled"
         )
-        .reduce((sum, t) => sum + Number(t.amount), 0),
+        .reduce((sum, t) => sum + t.displayAmount, 0),
     [filtered]
   );
 
@@ -359,10 +363,10 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                         <TxRow
                           embedded
                           emoji={tx.category?.icon}
-                          title={tx.description}
+                          title={tx.displayDescription}
                           category={tx.category?.name}
                           dateLabel={formatDate(tx.transaction_date)}
-                          amount={Number(tx.amount)}
+                          amount={tx.displayAmount}
                           type={
                             isIncome
                               ? "income"
@@ -372,12 +376,11 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                           }
                           pending={tx.status === "scheduled"}
                           installments={
-                            tx.is_installment &&
-                            tx.installment_number != null &&
-                            tx.total_installments != null
+                            tx.purchaseInstallments
                               ? {
-                                  current: tx.installment_number,
-                                  total: tx.total_installments,
+                                  current: tx.purchaseInstallments,
+                                  total: tx.purchaseInstallments,
+                                  asPurchase: true,
                                 }
                               : null
                           }

@@ -5,6 +5,7 @@ export type DsMember = {
   name: string;
   initials: string;
   color: string;
+  imageUrl?: string | null;
 };
 
 export type DsWorkspaceVisual = {
@@ -20,6 +21,8 @@ export function toDsMember(input: {
   name?: string;
   avatar_color?: string;
   color?: string;
+  avatar_url?: string | null;
+  imageUrl?: string | null;
 }): DsMember {
   const name = input.display_name ?? input.name ?? "?";
   return {
@@ -27,5 +30,6 @@ export function toDsMember(input: {
     name,
     initials: name.slice(0, 2).toUpperCase(),
     color: input.avatar_color ?? input.color ?? "#1C1C1E",
+    imageUrl: input.avatar_url ?? input.imageUrl ?? null,
   };
 }

@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Upload, CreditCard as CreditCardIcon } from "lucide-react";
+import {
+  Download,
+  Upload,
+  CreditCard as CreditCardIcon,
+  Wallet,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { WorkspaceMember, TransactionWithRelations } from "@/types";
@@ -15,6 +20,7 @@ import { downloadInvoicePdf } from "@/lib/invoices/download-pdf";
 import { getBankColor, getBankName } from "@/lib/utils/banks";
 import { Btn, TxRow, toDsMember } from "@/components/design-system";
 import { NubankInvoiceImportDialog } from "@/components/invoices/nubank-invoice-import";
+import { PayInvoiceDialog } from "@/components/invoices/pay-invoice-dialog";
 import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +33,22 @@ function cycleMonthLabel(key: string) {
   });
 }
 
+function isLightBrand(color: string): boolean {
+  const hex = color.replace("#", "");
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
+}
+
 export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const { data: cards = [] } = useCards(member.workspace_id);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
   const activeCards = cards.filter((c) => c.is_active);
   const [cardId, setCardId] = useState<string>("");
   const [importOpen, setImportOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -91,6 +107,38 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     },
   });
 
+  const { data: payments = [] } = useQuery({
+    queryKey: [
+      "invoice-payments",
+      member.workspace_id,
+      effectiveCardId,
+      effectiveKey,
+    ],
+    enabled: Boolean(effectiveCardId && effectiveKey),
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error: qError } = await supabase
+        .from("transactions")
+        .select("id, amount, transaction_date, description, tags, status")
+        .eq("workspace_id", member.workspace_id)
+        .contains("tags", [
+          "invoice_payment",
+          `invoice_card:${effectiveCardId}`,
+          `invoice_cycle:${effectiveKey}`,
+        ])
+        .neq("status", "cancelled");
+      if (qError) throw new Error(qError.message);
+      return (data ?? []) as {
+        id: string;
+        amount: number;
+        transaction_date: string;
+        description: string;
+        tags: string[] | null;
+        status: string;
+      }[];
+    },
+  });
+
   const expenseTx = useMemo(
     () => transactions.filter((t) => t.transaction_type !== "income"),
     [transactions]
@@ -101,10 +149,21 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     [expenseTx]
   );
 
+  const paidTotal = useMemo(
+    () => payments.reduce((sum, p) => sum + Number(p.amount), 0),
+    [payments]
+  );
+  const remaining = Math.max(0, total - paidTotal);
+
   const owner = members.find((m) => m.id === selectedCard?.owner_member_id);
   const bankColor = selectedCard?.bank
     ? getBankColor(selectedCard.bank)
     : "#111111";
+  const lightHero = isLightBrand(bankColor);
+  const heroFg = lightHero ? "#111111" : "#FFFFFF";
+  const heroMuted = lightHero
+    ? "rgba(17,17,17,0.7)"
+    : "rgba(255,255,255,0.7)";
 
   function onDownloadPdf() {
     if (!selectedCard || !cycle) return;
@@ -116,22 +175,32 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
         from: cycle.from,
         to: cycle.to,
         total,
+        paid: paidTotal,
+        remaining,
         ownerName: owner?.display_name,
-        lines: expenseTx.map((tx) => ({
-          date: tx.transaction_date,
-          description: tx.description,
-          amount: Number(tx.amount),
-          installment:
-            tx.is_installment &&
-            tx.installment_number &&
-            tx.total_installments
-              ? `${tx.installment_number}/${tx.total_installments}`
-              : null,
-        })),
+        lines: [
+          ...expenseTx.map((tx) => ({
+            date: tx.transaction_date,
+            description: tx.description,
+            amount: Number(tx.amount),
+            installment:
+              tx.is_installment &&
+              tx.installment_number &&
+              tx.total_installments
+                ? `${tx.installment_number}/${tx.total_installments}`
+                : null,
+          })),
+          ...payments.map((p) => ({
+            date: p.transaction_date,
+            description: `Pagamento · ${p.description}`,
+            amount: -Number(p.amount),
+            installment: null as string | null,
+          })),
+        ],
       });
     } catch (e) {
       setPdfError(
-        e instanceof Error ? e.message : "Não foi possível gerar o PDF"
+        e instanceof Error ? e.message : "Não foi possível gerar a fatura"
       );
     }
   }
@@ -155,10 +224,19 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             onClick={onDownloadPdf}
             icon={<Download className="h-3.5 w-3.5" />}
           >
-            PDF
+            Baixar fatura
           </Btn>
           <Btn
             variant="primary"
+            size="sm"
+            disabled={!effectiveCardId || !cycle || total <= 0}
+            onClick={() => setPayOpen(true)}
+            icon={<Wallet className="h-3.5 w-3.5" />}
+          >
+            Pagar
+          </Btn>
+          <Btn
+            variant="ghost"
             size="sm"
             disabled={activeCards.length === 0}
             onClick={() => setImportOpen(true)}
@@ -171,7 +249,6 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
 
       {pdfError && <p className="text-sm text-[#EF4444]">{pdfError}</p>}
 
-      {/* Cartões — seletor visual */}
       {!effectiveCardId ? (
         <p className="text-sm text-[var(--color-text-2)]">
           Cadastre um cartão para ver faturas.
@@ -225,7 +302,6 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             </div>
           </div>
 
-          {/* Ciclo por mês */}
           {cycle && (
             <div>
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
@@ -243,7 +319,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                         "shrink-0 rounded-full px-3.5 py-2 text-[13px] font-medium capitalize transition-colors",
                         active
                           ? "bg-[var(--color-ink)] text-white dark:bg-[#F2F2F7] dark:text-[#111]"
-                          : "bg-[var(--color-card)] text-[var(--color-text-2)] border border-[var(--color-line)] hover:text-[var(--color-text)]"
+                          : "border border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
                       )}
                     >
                       {cycleMonthLabel(c.key)}
@@ -255,26 +331,54 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             </div>
           )}
 
-          {/* Hero total */}
           {cycle && (
             <div
               className="overflow-hidden rounded-[14px] px-5 py-5"
               style={{ backgroundColor: bankColor }}
             >
-              <div className="pointer-events-none absolute" />
-              <p className="text-[11px] font-medium uppercase tracking-wider text-white/70">
+              <p
+                className="text-[11px] font-medium uppercase tracking-wider"
+                style={{ color: heroMuted }}
+              >
                 {selectedCard?.name} · {cycleMonthLabel(cycle.key)}
               </p>
-              <p className="mt-2 font-mono text-3xl font-extrabold text-white">
-                {formatCurrency(total)}
+              <p
+                className="mt-2 font-mono text-3xl font-extrabold"
+                style={{ color: heroFg }}
+              >
+                {formatCurrency(remaining)}
               </p>
-              <p className="mt-2 text-sm text-white/70">
+              <p className="mt-1 text-sm" style={{ color: heroMuted }}>
+                {paidTotal > 0
+                  ? `Restante · fatura ${formatCurrency(total)} · pago ${formatCurrency(paidTotal)}`
+                  : `Total da fatura · ${formatCurrency(total)}`}
+              </p>
+              <p className="mt-2 text-sm" style={{ color: heroMuted }}>
                 {formatDate(cycle.from)} — {formatDate(cycle.to)}
                 {owner ? ` · ${owner.display_name}` : ""}
                 {selectedCard?.due_day
                   ? ` · vence dia ${selectedCard.due_day}`
                   : ""}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPayOpen(true)}
+                  disabled={total <= 0}
+                  className="rounded-lg bg-white/20 px-3 py-2 text-[12px] font-semibold backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-40"
+                  style={{ color: heroFg }}
+                >
+                  Pagar fatura
+                </button>
+                <button
+                  type="button"
+                  onClick={onDownloadPdf}
+                  className="rounded-lg bg-white/20 px-3 py-2 text-[12px] font-semibold backdrop-blur-sm transition-colors hover:bg-white/30"
+                  style={{ color: heroFg }}
+                >
+                  Baixar PDF
+                </button>
+              </div>
             </div>
           )}
 
@@ -321,6 +425,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                   >
                     <TxRow
                       embedded
+                      emoji={tx.category?.icon}
                       title={tx.description}
                       category={tx.category?.name}
                       dateLabel={formatDate(tx.transaction_date)}
@@ -347,6 +452,37 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
               })}
             </div>
           )}
+
+          {payments.length > 0 && (
+            <div>
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
+                Pagamentos registrados
+              </p>
+              <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+                {payments.map((p, i) => (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "flex items-center justify-between px-4 py-3.5",
+                      i > 0 && "border-t border-[var(--color-line)]"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--color-text)]">
+                        {p.description}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-2)]">
+                        {formatDate(p.transaction_date)}
+                      </p>
+                    </div>
+                    <p className="font-mono text-sm font-semibold text-[#22C55E]">
+                      −{formatCurrency(Number(p.amount))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -356,6 +492,21 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
         cards={cards}
         defaultCardId={effectiveCardId || undefined}
       />
+
+      {selectedCard && cycle && (
+        <PayInvoiceDialog
+          open={payOpen}
+          onOpenChange={setPayOpen}
+          member={member}
+          cardId={selectedCard.id}
+          cardName={selectedCard.name}
+          cycleKey={cycle.key}
+          cycleFrom={cycle.from}
+          cycleTo={cycle.to}
+          invoiceTotal={total}
+          alreadyPaid={paidTotal}
+        />
+      )}
 
       <TransactionDetailSheet
         open={Boolean(detailId)}

@@ -50,6 +50,7 @@ import {
   resolvePaymentChannel,
 } from "@/lib/utils/payment-channel";
 import type { PaymentChannel } from "@/lib/validations/transaction";
+import { collapseInstallmentPurchases } from "@/lib/finance/collapse-installments";
 import { cn } from "@/lib/utils";
 
 function greetingLabel(date = new Date()): string {
@@ -254,11 +255,14 @@ export function DashboardClient({
         .gte("transaction_date", recentFrom)
         .neq("status", "cancelled")
         .order("transaction_date", { ascending: false })
-        .limit(8);
+        .limit(24);
       if (error) throw new Error(error.message);
       return data as TransactionWithRelations[];
     },
   });
+
+  // ... later recent collapses to fewer rows — slice in useMemo
+
 
   const confirmedMonth = useMemo(
     () => monthTx.filter((t) => t.status !== "scheduled"),
@@ -414,7 +418,10 @@ export function DashboardClient({
     return { rows, cashOut, onCard, uncategorized };
   }, [confirmedMonth]);
 
-  const recent = recentTx;
+  const recent = useMemo(
+    () => collapseInstallmentPurchases(recentTx).slice(0, 8),
+    [recentTx]
+  );
   const monthLabel = formatMonthYear(monthAnchor);
   const monthShort = monthAnchor
     .toLocaleDateString("pt-BR", { month: "short" })
@@ -470,6 +477,7 @@ export function DashboardClient({
               id: member.id,
               name: member.display_name,
               color: member.avatar_color,
+              avatar_url: member.avatar_url,
             })}
             size={40}
           />
@@ -855,22 +863,21 @@ export function DashboardClient({
                   <TxRow
                     embedded
                     emoji={tx.category?.icon}
-                    title={tx.description}
+                    title={tx.displayDescription}
                     category={tx.category?.name}
                     paymentLabel={paymentMethodCaption(tx)}
                     dateLabel={formatDate(tx.transaction_date)}
-                    amount={Number(tx.amount)}
+                    amount={tx.displayAmount}
                     type={
                       isIncome ? "income" : isExpense ? "expense" : "other"
                     }
                     pending={tx.status === "scheduled"}
                     installments={
-                      tx.is_installment &&
-                      tx.installment_number != null &&
-                      tx.total_installments != null
+                      tx.purchaseInstallments
                         ? {
-                            current: tx.installment_number,
-                            total: tx.total_installments,
+                            current: tx.purchaseInstallments,
+                            total: tx.purchaseInstallments,
+                            asPurchase: true,
                           }
                         : null
                     }

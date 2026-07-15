@@ -17,9 +17,15 @@ export function downloadInvoicePdf(opts: {
   from: string;
   to: string;
   total: number;
+  paid?: number;
+  remaining?: number;
   lines: InvoicePdfLine[];
   ownerName?: string | null;
 }) {
+  const paid = opts.paid ?? 0;
+  const remaining =
+    opts.remaining != null ? opts.remaining : Math.max(0, opts.total - paid);
+
   const rows = opts.lines
     .map(
       (l) => `
@@ -52,10 +58,14 @@ export function downloadInvoicePdf(opts: {
       background: #fff;
     }
     h1 { font-size: 22px; margin: 0 0 4px; font-weight: 700; }
-    .sub { color: #8E8E93; font-size: 13px; margin-bottom: 24px; }
+    .sub { color: #8E8E93; font-size: 13px; margin-bottom: 16px; }
     .total {
       font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
-      font-size: 28px; font-weight: 800; margin: 8px 0 24px;
+      font-size: 28px; font-weight: 800; margin: 8px 0 4px;
+    }
+    .meta {
+      font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      font-size: 13px; color: #636366; margin: 0 0 24px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 10px 8px; border-bottom: 1px solid #E5E5EA; text-align: left; }
@@ -76,7 +86,11 @@ export function downloadInvoicePdf(opts: {
     ${escapeHtml(opts.cycleLabel)} · ${escapeHtml(formatDate(opts.from))} a ${escapeHtml(formatDate(opts.to))}
     ${opts.ownerName ? ` · ${escapeHtml(opts.ownerName)}` : ""}
   </p>
-  <p class="total">${escapeHtml(formatCurrency(opts.total))}</p>
+  <p class="total">${escapeHtml(formatCurrency(remaining))}</p>
+  <p class="meta">
+    Restante · fatura ${escapeHtml(formatCurrency(opts.total))}
+    ${paid > 0 ? ` · pago ${escapeHtml(formatCurrency(paid))}` : ""}
+  </p>
   <table>
     <thead>
       <tr>
@@ -107,7 +121,6 @@ export function downloadInvoicePdf(opts: {
       "Pop-up bloqueado. Permita pop-ups neste site para gerar o PDF."
     );
   }
-  // Revoga depois que a aba carregou
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 

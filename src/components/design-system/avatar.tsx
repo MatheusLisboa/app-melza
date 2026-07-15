@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { DsMember } from "./types";
 
-/** Avatar — círculo night, letra branca */
+/** Avatar — foto ou círculo com inicial */
 export function Avatar({
   member,
   size = 36,
@@ -11,21 +11,34 @@ export function Avatar({
   size?: number;
   className?: string;
 }) {
+  const letter = (member.initials || member.name)[0]?.toUpperCase() ?? "?";
+
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-bold text-white",
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold text-white",
         className
       )}
       style={{
         width: size,
         height: size,
-        backgroundColor: member.color || "#1C1C1E",
+        backgroundColor: member.imageUrl
+          ? "transparent"
+          : member.color || "#1C1C1E",
         fontSize: size * 0.36,
       }}
       title={member.name}
     >
-      {(member.initials || member.name)[0]}
+      {member.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={member.imageUrl}
+          alt={member.name}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        letter
+      )}
     </div>
   );
 }

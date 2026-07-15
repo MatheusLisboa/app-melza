@@ -33,6 +33,7 @@ export interface WorkspaceMember {
   display_name: string;
   role: MemberRole;
   avatar_color: string;
+  avatar_url?: string | null;
   created_at: string;
   workspace?: Workspace | null;
 }

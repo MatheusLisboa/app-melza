@@ -119,6 +119,7 @@ export function AppSidebar({
           <MemberAvatar
             name={member.display_name}
             color={member.avatar_color}
+            imageUrl={member.avatar_url}
             size="sm"
           />
           <div className="min-w-0">
@@ -166,6 +167,7 @@ export function MobileHeader({
           <MemberAvatar
             name={member.display_name}
             color={member.avatar_color}
+            imageUrl={member.avatar_url}
             size="sm"
           />
         </Link>

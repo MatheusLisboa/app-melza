@@ -29,7 +29,12 @@ export function TxRow({
   amount: number;
   type: "income" | "expense" | "other";
   pending?: boolean;
-  installments?: { current: number; total: number } | null;
+  installments?: {
+    current: number;
+    total: number;
+    /** Compra agrupada (mostra "10x" em vez de "1/10") */
+    asPurchase?: boolean;
+  } | null;
   consumer?: AttributionMember | null;
   payer?: AttributionMember | null;
   cardOwner?: AttributionMember | null;
@@ -76,8 +81,10 @@ export function TxRow({
             </span>
           )}
           {installments && (
-            <span className="shrink-0 rounded-full bg-[var(--color-ink)] px-2.5 py-0.5 text-[11px] font-semibold text-white dark:bg-[var(--color-chip)] dark:text-[#111]">
-              {installments.current}/{installments.total}
+            <span className="shrink-0 rounded-full bg-[var(--color-ink)] px-2.5 py-0.5 text-[11px] font-semibold text-white dark:bg-[#F2F2F7] dark:text-[#111111]">
+              {installments.asPurchase
+                ? `${installments.total}x`
+                : `${installments.current}/${installments.total}`}
             </span>
           )}
         </div>
