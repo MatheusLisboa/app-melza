@@ -2,7 +2,7 @@ import { generateText, stepCountIs } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/supabase/workspace";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
-import { isToolUseFailed, mapAiProviderError } from "@/lib/ai/errors";
+import { isRetryableAiError, mapAiProviderError } from "@/lib/ai/errors";
 import { getAiLanguageModel } from "@/lib/ai/provider";
 import {
   buildChatTools,
@@ -11,24 +11,61 @@ import {
 } from "@/lib/ai/chat-tools";
 import { toISODate } from "@/lib/utils/format";
 
-function systemPrompt(opts: { strictTools: boolean; today: string }) {
-  if (opts.strictTools) {
-    return `Você é o assistente financeiro do Melza (Brasil). Responda em português, objetivo, valores em R$.
+function systemPrompt(opts: { today: string; compact: boolean }) {
+  if (opts.compact) {
+    return `Assistente Melza. Português, R$. Hoje: ${opts.today}.
+Use as tools com JSON válido (boolean true/false). Sem inventar números.`;
+  }
+  return `Você é o assistente financeiro do Melza (Brasil). Responda em português, objetivo, valores em R$.
 Hoje: ${opts.today}.
 
-Para números do app (saldos, faturas, gastos, Entre Nós), use as tools disponíveis.
+Para números do app (saldos, faturas, gastos, cartões, Entre Nós), use as tools.
 Se a tool vier vazia, diga que não há dados — não invente.
 
 Ações (criar/pagar/cadastrar/categorizar):
-1) Chame com confirm=false e mostre o preview.
-2) Só confirm=true depois do usuário confirmar ("sim", "confirma").
-Argumentos das tools: JSON válido; booleanos true/false (não strings); datas YYYY-MM-DD.`;
+1) confirm=false → preview
+2) confirm=true só após o usuário confirmar
+Booleanos true/false; datas YYYY-MM-DD.
+
+Se perguntarem "minha fatura" sem nome do cartão, use getInvoiceCycles sem cardName (lista todos).
+Se perguntarem se tem outros cartões, use listCards.`;
+}
+
+/**
+ * Groq + tools em multi-turno falha com
+ * "unsupported content types". Achata o histórico em 1 mensagem de usuário.
+ */
+function flattenMessagesForGroq(
+  messages: { role: string; content: string }[]
+): { role: "user"; content: string }[] {
+  const cleaned = messages
+    .filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.trim().length > 0
+    )
+    .slice(-8);
+
+  if (cleaned.length === 0) {
+    return [{ role: "user", content: "Olá" }];
   }
 
-  return `Você é o assistente financeiro do Melza. Português, objetivo, R$.
-Hoje: ${opts.today}.
-Use só as tools listadas, com JSON válido (booleanos true/false).
-Se falhar a tool, explique sem inventar números.`;
+  if (cleaned.length === 1 && cleaned[0].role === "user") {
+    return [{ role: "user", content: cleaned[0].content.trim() }];
+  }
+
+  const lines = cleaned.map((m) => {
+    const who = m.role === "user" ? "Usuário" : "Assistente";
+    return `${who}: ${m.content.trim()}`;
+  });
+
+  return [
+    {
+      role: "user",
+      content: `Histórico da conversa:\n${lines.join("\n")}\n\nResponda à última mensagem do Usuário usando as tools se precisar de dados.`,
+    },
+  ];
 }
 
 /**
@@ -102,10 +139,7 @@ export async function POST(request: Request) {
   const allTools = buildChatTools({ supabase, member, workspaceId });
   const userText = lastUserText(messages);
   const today = toISODate(new Date());
-  const mappedMessages = messages.map((m) => ({
-    role: m.role as "user" | "assistant" | "system",
-    content: m.content,
-  }));
+  const flatMessages = flattenMessagesForGroq(messages);
 
   async function run(mode: "auto" | "core" | "minimal") {
     const tools = pickChatTools(allTools, userText, mode);
@@ -114,11 +148,11 @@ export async function POST(request: Request) {
       maxRetries: 0,
       temperature: 0.2,
       system: systemPrompt({
-        strictTools: mode !== "minimal",
         today,
+        compact: mode === "minimal",
       }),
-      messages: mappedMessages,
-      stopWhen: stepCountIs(mode === "minimal" ? 5 : 8),
+      messages: flatMessages,
+      stopWhen: stepCountIs(mode === "minimal" ? 4 : 6),
       tools,
       toolChoice: "auto",
     });
@@ -130,21 +164,21 @@ export async function POST(request: Request) {
       const first = await run("auto");
       text = (first.text ?? "").trim();
     } catch (err) {
-      if (!isToolUseFailed(err)) throw err;
-      console.warn("[ai/chat] tool_use_failed — retry minimal tools", err);
+      if (!isRetryableAiError(err)) throw err;
+      console.warn("[ai/chat] retryable AI error — minimal tools", err);
       try {
         const second = await run("minimal");
         text = (second.text ?? "").trim();
       } catch (err2) {
-        if (!isToolUseFailed(err2)) throw err2;
-        console.warn("[ai/chat] tool_use_failed again — text only");
+        if (!isRetryableAiError(err2)) throw err2;
+        console.warn("[ai/chat] retryable again — text only");
         const fallback = await generateText({
           model,
           maxRetries: 0,
           temperature: 0.3,
           system: `Você é o assistente do Melza. Em português.
-Não invente saldos nem valores. Explique que a consulta automática falhou e peça para o usuário tentar de novo com uma pergunta mais curta (ex.: "saldo das contas", "fatura do Nubank").`,
-          messages: mappedMessages,
+Não invente saldos nem valores. Explique que a consulta automática falhou e peça para tentar de novo com pergunta curta (ex.: "saldo das contas", "fatura do Nubank", "listar cartões").`,
+          messages: flatMessages,
         });
         text = (fallback.text ?? "").trim();
       }

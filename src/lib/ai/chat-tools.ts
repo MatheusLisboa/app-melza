@@ -346,9 +346,12 @@ export function buildChatTools(opts: {
 
     getInvoiceCycles: tool({
       description:
-        "Faturas por ciclo: total da fatura, já pago e restante. Use para 'quanto falta pagar no Nubank'.",
+        "Faturas por ciclo: total, pago e restante. Sem cardName = todos os cartões ativos (ciclo atual). Com cardName = um cartão.",
       inputSchema: z.object({
-        cardName: z.string().describe("Nome do cartão"),
+        cardName: z
+          .string()
+          .optional()
+          .describe("Nome do cartão; omitir para listar todas as faturas"),
         cycleKey: z
           .string()
           .optional()
@@ -360,65 +363,77 @@ export function buildChatTools(opts: {
           .select("id, name, bank, closing_day, due_day, is_active")
           .eq("workspace_id", workspaceId)
           .eq("is_active", true);
-        const { match, ambiguous } = findByName(cards ?? [], cardName);
-        if (ambiguous.length)
-          return { error: `Vários cartões: ${ambiguous.join(", ")}` };
-        if (!match) return { error: `Cartão "${cardName}" não encontrado` };
 
-        const cycles = listInvoiceCycles(
-          match.closing_day,
-          match.due_day,
-          { past: 4, future: 2 }
-        );
-        const cycle =
-          (cycleKey
-            ? cycles.find((c) => c.key === cycleKey)
-            : cycles.find((c) => c.isCurrent)) ??
-          getCurrentInvoiceCycle(match);
-        if (!cycle) return { error: "Ciclo não encontrado" };
+        let list = cards ?? [];
+        if (cardName?.trim()) {
+          const { match, ambiguous } = findByName(list, cardName);
+          if (ambiguous.length)
+            return { error: `Vários cartões: ${ambiguous.join(", ")}` };
+          if (!match)
+            return { error: `Cartão "${cardName}" não encontrado` };
+          list = [match];
+        }
+        if (!list.length) return { invoices: [], message: "Nenhum cartão ativo" };
 
-        const { data: txs } = await supabase
-          .from("transactions")
-          .select("amount, transaction_type, status")
-          .eq("workspace_id", workspaceId)
-          .eq("card_id", match.id)
-          .gte("transaction_date", cycle.from)
-          .lte("transaction_date", cycle.to)
-          .neq("status", "cancelled");
+        const invoices = [];
+        for (const card of list) {
+          const cycles = listInvoiceCycles(
+            card.closing_day,
+            card.due_day,
+            { past: 4, future: 2 }
+          );
+          const cycle =
+            (cycleKey
+              ? cycles.find((c) => c.key === cycleKey)
+              : cycles.find((c) => c.isCurrent)) ??
+            getCurrentInvoiceCycle(card);
+          if (!cycle) continue;
 
-        const total = (txs ?? [])
-          .filter((t) => t.transaction_type !== "income")
-          .reduce((s, t) => s + Number(t.amount), 0);
+          const { data: txs } = await supabase
+            .from("transactions")
+            .select("amount, transaction_type, status")
+            .eq("workspace_id", workspaceId)
+            .eq("card_id", card.id)
+            .gte("transaction_date", cycle.from)
+            .lte("transaction_date", cycle.to)
+            .neq("status", "cancelled");
 
-        const { data: payments } = await supabase
-          .from("transactions")
-          .select("amount")
-          .eq("workspace_id", workspaceId)
-          .contains("tags", [
-            "invoice_payment",
-            `invoice_card:${match.id}`,
-            `invoice_cycle:${cycle.key}`,
-          ])
-          .neq("status", "cancelled");
+          const total = (txs ?? [])
+            .filter((t) => t.transaction_type !== "income")
+            .reduce((s, t) => s + Number(t.amount), 0);
 
-        const paid = (payments ?? []).reduce(
-          (s, p) => s + Number(p.amount),
-          0
-        );
-        const remaining = Math.max(0, total - paid);
+          const { data: payments } = await supabase
+            .from("transactions")
+            .select("amount")
+            .eq("workspace_id", workspaceId)
+            .contains("tags", [
+              "invoice_payment",
+              `invoice_card:${card.id}`,
+              `invoice_cycle:${cycle.key}`,
+            ])
+            .neq("status", "cancelled");
 
-        return {
-          card: match.name,
-          bank: match.bank,
-          cycleKey: cycle.key,
-          label: cycle.label,
-          from: cycle.from,
-          to: cycle.to,
-          dueDay: match.due_day,
-          total: Math.round(total * 100) / 100,
-          paid: Math.round(paid * 100) / 100,
-          remaining: Math.round(remaining * 100) / 100,
-        };
+          const paid = (payments ?? []).reduce(
+            (s, p) => s + Number(p.amount),
+            0
+          );
+          const remaining = Math.max(0, total - paid);
+
+          invoices.push({
+            card: card.name,
+            bank: card.bank,
+            cycleKey: cycle.key,
+            label: cycle.label,
+            from: cycle.from,
+            to: cycle.to,
+            dueDay: card.due_day,
+            total: Math.round(total * 100) / 100,
+            paid: Math.round(paid * 100) / 100,
+            remaining: Math.round(remaining * 100) / 100,
+          });
+        }
+
+        return { count: invoices.length, invoices };
       },
     }),
 

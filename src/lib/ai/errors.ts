@@ -1,19 +1,32 @@
 /** Mensagens amigáveis a partir de erros Groq / OpenAI / AI SDK */
 
-export function isToolUseFailed(error: unknown): boolean {
-  const raw =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : JSON.stringify(error ?? "");
-  const lower = raw.toLowerCase();
+function errorText(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error ?? "");
+  } catch {
+    return "Erro desconhecido na IA";
+  }
+}
+
+/** Erros recuperáveis: re-tenta com menos tools / prompt flat. */
+export function isRetryableAiError(error: unknown): boolean {
+  const lower = errorText(error).toLowerCase();
   return (
     lower.includes("failed to call a function") ||
     lower.includes("tool_use_failed") ||
     lower.includes("failed_generation") ||
-    lower.includes("adjust your prompt")
+    lower.includes("adjust your prompt") ||
+    lower.includes("unsupported content") ||
+    lower.includes("unsupported content types") ||
+    lower.includes("unsupported content fields")
   );
+}
+
+/** @deprecated use isRetryableAiError */
+export function isToolUseFailed(error: unknown): boolean {
+  return isRetryableAiError(error);
 }
 
 export function mapAiProviderError(error: unknown): {
@@ -21,13 +34,7 @@ export function mapAiProviderError(error: unknown): {
   code: string;
   status: number;
 } {
-  const raw =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "Erro desconhecido na IA";
-
+  const raw = errorText(error);
   const lower = raw.toLowerCase();
   const statusCode =
     typeof error === "object" &&
@@ -37,10 +44,10 @@ export function mapAiProviderError(error: unknown): {
       ? (error as { statusCode: number }).statusCode
       : undefined;
 
-  if (isToolUseFailed(error)) {
+  if (isRetryableAiError(error)) {
     return {
       message:
-        "A IA falhou ao montar a consulta (limitação do modelo). Tente de novo com uma pergunta mais curta — ex.: “saldo das contas” ou “fatura do Nubank”.",
+        "A IA falhou ao montar a consulta. Tente de novo com uma pergunta mais curta — ex.: “saldo das contas” ou “fatura do Nubank”.",
       code: "TOOL_USE_FAILED",
       status: 502,
     };
