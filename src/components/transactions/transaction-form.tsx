@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ArrowLeftRight,
+  CalendarDays,
   CreditCard,
   Banknote,
   HandCoins,
@@ -72,6 +73,9 @@ const CHANNELS: {
   { value: "account", label: "Conta", icon: <Wallet className="h-3.5 w-3.5" /> },
   { value: "cash", label: "Dinheiro", icon: <Banknote className="h-3.5 w-3.5" /> },
 ];
+
+const FIELD =
+  "h-12 w-full rounded-[12px] border border-[var(--color-line)] bg-[var(--color-input)] px-3.5 text-[15px] text-[var(--color-text)] placeholder:text-[var(--color-text-3)] focus-visible:border-[var(--color-text)]/40 focus-visible:ring-2 focus-visible:ring-[var(--color-text)]/10";
 
 function FieldLabel({
   children,
@@ -419,41 +423,56 @@ export function TransactionFormDialog({
                 }
                 className="mt-1.5 h-[52px] rounded-xl border-0 bg-transparent pl-11 text-[28px] font-semibold leading-none tracking-tight text-[var(--color-text)] shadow-none focus-visible:ring-0"
               />
-              <div className="mt-3 grid gap-3 border-t border-[var(--color-line)] pt-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel
-                    hint={
-                      (aiLoading || aiHint) && (
-                        <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[var(--color-text-2)]">
-                          <Sparkles className="h-3 w-3" />
-                          {aiLoading ? "sugerindo…" : aiHint}
-                        </span>
-                      )
-                    }
-                  >
-                    Descrição
-                  </FieldLabel>
-                  <Input
-                    {...form.register("description")}
-                    placeholder="Ex.: iFood, Uber, salário"
-                    list="desc-suggestions"
-                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-[15px]"
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <FieldLabel
+                  hint={
+                    (aiLoading || aiHint) && (
+                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[var(--color-text-2)]">
+                        <Sparkles className="h-3 w-3" />
+                        {aiLoading ? "sugerindo…" : aiHint}
+                      </span>
+                    )
+                  }
+                >
+                  Descrição
+                </FieldLabel>
+                <Input
+                  {...form.register("description")}
+                  placeholder="Ex.: iFood, Uber, salário"
+                  list="desc-suggestions"
+                  autoComplete="off"
+                  enterKeyHint="next"
+                  className={FIELD}
+                />
+                <datalist id="desc-suggestions">
+                  <option value="iFood" />
+                  <option value="Uber" />
+                  <option value="Mercado" />
+                  <option value="Netflix" />
+                  <option value="Aluguel" />
+                  <option value="Salário" />
+                </datalist>
+              </div>
+
+              <div className="space-y-1.5">
+                <FieldLabel>Data</FieldLabel>
+                <div className="relative">
+                  <CalendarDays
+                    size={16}
+                    strokeWidth={1.75}
+                    className="pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 text-[var(--color-text-2)]"
                   />
-                  <datalist id="desc-suggestions">
-                    <option value="iFood" />
-                    <option value="Uber" />
-                    <option value="Mercado" />
-                    <option value="Netflix" />
-                    <option value="Aluguel" />
-                    <option value="Salário" />
-                  </datalist>
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel>Data</FieldLabel>
                   <Input
                     type="date"
                     {...form.register("transaction_date")}
-                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-[15px]"
+                    className={cn(
+                      FIELD,
+                      "pl-10 pr-3 font-medium [color-scheme:light] dark:[color-scheme:dark]",
+                      "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    )}
                   />
                 </div>
               </div>
