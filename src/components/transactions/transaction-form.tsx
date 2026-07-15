@@ -354,121 +354,127 @@ export function TransactionFormDialog({
         )}
       </DialogTrigger>
       <DialogContent
-        className={cn(
-          "gap-0 overflow-hidden border-[var(--color-line)] bg-[var(--color-modal)] p-0 text-[var(--color-text)]",
-          // Mobile: bottom sheet
-          "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto",
-          "max-md:max-h-[min(92dvh,920px)] max-md:w-full max-md:max-w-none",
-          "max-md:translate-x-0 max-md:translate-y-0",
-          "max-md:rounded-b-none max-md:rounded-t-[22px]",
-          "max-md:data-[state=open]:slide-in-from-bottom-4 max-md:data-[state=closed]:slide-out-to-bottom-4",
-          "max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100",
-          // Desktop: centered card
-          "md:max-h-[92vh] md:max-w-md md:rounded-[20px]"
-        )}
+        hideClose
+        className="flex max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
       >
-        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[var(--color-line)] md:hidden" />
-        <DialogHeader className="border-b border-[var(--color-line)] px-5 pb-3.5 pt-3 text-left md:pt-5">
-          <DialogTitle className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
-            Novo lançamento
-          </DialogTitle>
-          <p className="text-sm text-[var(--color-text-2)]">
-            Registre gasto, receita ou transferência
-          </p>
-        </DialogHeader>
+        {/* Handle + header */}
+        <div className="shrink-0 border-b border-[var(--color-line)]">
+          <div className="flex justify-center pb-1 pt-2.5 sm:hidden">
+            <div className="h-1 w-10 rounded-full bg-[var(--color-line)]" />
+          </div>
+          <div className="flex items-start justify-between gap-3 px-5 pb-3.5 pt-1 sm:pt-5">
+            <DialogHeader className="space-y-1 pr-8">
+              <DialogTitle>Novo lançamento</DialogTitle>
+              <p className="text-sm text-[var(--color-text-2)]">
+                Gasto, receita ou transferência
+              </p>
+            </DialogHeader>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)] sm:right-4 sm:top-4"
+              aria-label="Fechar"
+            >
+              <span className="text-lg leading-none">×</span>
+            </button>
+          </div>
+        </div>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="flex max-h-[min(78dvh,680px)] flex-col md:max-h-[min(78vh,640px)]"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 pb-3">
-          <div className="space-y-2">
-            <FieldLabel>Tipo</FieldLabel>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-              {TX_TYPES.map((t) => (
-                <Chip
-                  key={t.value}
-                  active={txType === t.value}
-                  onClick={() => setType(t.value)}
-                >
-                  {t.value === "transfer" && (
-                    <ArrowLeftRight className="h-3.5 w-3.5" />
-                  )}
-                  {(t.value === "loan_given" || t.value === "loan_received") && (
-                    <HandCoins className="h-3.5 w-3.5" />
-                  )}
-                  {t.short}
-                </Chip>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] px-4 py-4">
-            <FieldLabel>Valor</FieldLabel>
-            <MoneyInput
-              value={amount}
-              onValueChange={(v) =>
-                form.setValue("amount", v, { shouldValidate: true })
-              }
-              className="mt-2 h-14 rounded-xl border-0 bg-transparent pl-11 text-2xl font-semibold tracking-tight text-[var(--color-text)] shadow-none focus-visible:ring-0"
-            />
-            <div className="mt-3 space-y-3 border-t border-[var(--color-line)] pt-3">
-              <div className="space-y-1.5">
-                <FieldLabel
-                  hint={
-                    (aiLoading || aiHint) && (
-                      <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[var(--color-text-2)]">
-                        <Sparkles className="h-3 w-3" />
-                        {aiLoading ? "sugerindo…" : aiHint}
-                      </span>
-                    )
-                  }
-                >
-                  Descrição
-                </FieldLabel>
-                <Input
-                  {...form.register("description")}
-                  placeholder="iFood, Uber, salário…"
-                  list="desc-suggestions"
-                  className="h-11 rounded-xl border-[var(--color-line)] bg-[var(--color-input)]"
-                />
-                <datalist id="desc-suggestions">
-                  <option value="iFood" />
-                  <option value="Uber" />
-                  <option value="Mercado" />
-                  <option value="Netflix" />
-                  <option value="Aluguel" />
-                  <option value="Salário" />
-                </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel>Data</FieldLabel>
-                <Input
-                  type="date"
-                  {...form.register("transaction_date")}
-                  className="h-11 rounded-xl border-[var(--color-line)] bg-[var(--color-input)]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {showPaymentChannels && (
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:space-y-5 sm:px-5">
+            {/* Tipo */}
             <div className="space-y-2">
-              <FieldLabel>Forma de pagamento</FieldLabel>
-              <div className="grid grid-cols-4 gap-2">
-                {CHANNELS.map((c) => (
+              <FieldLabel>Tipo</FieldLabel>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {TX_TYPES.map((t) => (
                   <Chip
-                    key={c.value}
-                    active={channel === c.value}
-                    onClick={() => setChannel(c.value)}
-                    className="h-auto flex-col justify-center gap-1 rounded-xl px-2 py-2.5 text-[11px]"
+                    key={t.value}
+                    active={txType === t.value}
+                    onClick={() => setType(t.value)}
                   >
-                    {c.icon}
-                    {c.label}
+                    {t.value === "transfer" && (
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                    )}
+                    {(t.value === "loan_given" ||
+                      t.value === "loan_received") && (
+                      <HandCoins className="h-3.5 w-3.5" />
+                    )}
+                    <span className="sm:hidden">{t.short}</span>
+                    <span className="hidden sm:inline">{t.label}</span>
                   </Chip>
                 ))}
               </div>
-              <div className="pt-1">
+            </div>
+
+            {/* Hero valor */}
+            <div className="rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-4">
+              <FieldLabel>Valor</FieldLabel>
+              <MoneyInput
+                value={amount}
+                onValueChange={(v) =>
+                  form.setValue("amount", v, { shouldValidate: true })
+                }
+                className="mt-1.5 h-[52px] rounded-xl border-0 bg-transparent pl-11 text-[28px] font-semibold leading-none tracking-tight text-[var(--color-text)] shadow-none focus-visible:ring-0"
+              />
+              <div className="mt-3 grid gap-3 border-t border-[var(--color-line)] pt-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel
+                    hint={
+                      (aiLoading || aiHint) && (
+                        <span className="inline-flex items-center gap-1 normal-case tracking-normal text-[var(--color-text-2)]">
+                          <Sparkles className="h-3 w-3" />
+                          {aiLoading ? "sugerindo…" : aiHint}
+                        </span>
+                      )
+                    }
+                  >
+                    Descrição
+                  </FieldLabel>
+                  <Input
+                    {...form.register("description")}
+                    placeholder="Ex.: iFood, Uber, salário"
+                    list="desc-suggestions"
+                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-[15px]"
+                  />
+                  <datalist id="desc-suggestions">
+                    <option value="iFood" />
+                    <option value="Uber" />
+                    <option value="Mercado" />
+                    <option value="Netflix" />
+                    <option value="Aluguel" />
+                    <option value="Salário" />
+                  </datalist>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel>Data</FieldLabel>
+                  <Input
+                    type="date"
+                    {...form.register("transaction_date")}
+                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-[15px]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {showPaymentChannels && (
+              <div className="space-y-2.5">
+                <FieldLabel>Forma de pagamento</FieldLabel>
+                <div className="grid grid-cols-4 gap-2">
+                  {CHANNELS.map((c) => (
+                    <Chip
+                      key={c.value}
+                      active={channel === c.value}
+                      onClick={() => setChannel(c.value)}
+                      className="h-auto min-h-[52px] w-full flex-col justify-center gap-1 rounded-[12px] px-1.5 py-2 text-[11px]"
+                    >
+                      {c.icon}
+                      {c.label}
+                    </Chip>
+                  ))}
+                </div>
                 <CardSelector
                   cards={cards}
                   accounts={accounts}
@@ -478,6 +484,7 @@ export function TransactionFormDialog({
                   value={form.watch("payment_method")}
                   onChange={(v) => form.setValue("payment_method", v)}
                   placeholder={paymentPlaceholder}
+                  triggerClassName="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
                 />
                 {!form.watch("payment_method") &&
                   ((channel === "card" && !cards.some((c) => c.is_active)) ||
@@ -488,176 +495,181 @@ export function TransactionFormDialog({
                           (!accountTypesForChannel ||
                             accountTypesForChannel.includes(a.account_type))
                       ))) && (
-                    <p className="mt-2 text-xs text-[var(--color-text-2)]">
+                    <p className="text-xs text-[var(--color-text-2)]">
                       {paymentEmptyHint}
                     </p>
                   )}
               </div>
-            </div>
-          )}
+            )}
 
-          {txType === "transfer" && (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <FieldLabel>Conta de origem</FieldLabel>
-                <CardSelector
-                  cards={cards}
-                  accounts={accounts}
-                  accountsOnly
-                  value={form.watch("payment_method")}
-                  onChange={(v) => form.setValue("payment_method", v)}
-                  placeholder="De onde sai"
-                />
+            {txType === "transfer" && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <FieldLabel>Conta de origem</FieldLabel>
+                  <CardSelector
+                    cards={cards}
+                    accounts={accounts}
+                    accountsOnly
+                    value={form.watch("payment_method")}
+                    onChange={(v) => form.setValue("payment_method", v)}
+                    placeholder="De onde sai"
+                    triggerClassName="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <FieldLabel>Conta de destino</FieldLabel>
+                  <Select
+                    value={form.watch("transfer_to_account_id") ?? undefined}
+                    onValueChange={(v) =>
+                      form.setValue("transfer_to_account_id", v)
+                    }
+                  >
+                    <SelectTrigger className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]">
+                      <SelectValue placeholder="Para onde entra" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts
+                        .filter((a) => a.is_active)
+                        .map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            )}
+
+            {txType !== "transfer" && (
               <div className="space-y-1.5">
-                <FieldLabel>Conta de destino</FieldLabel>
+                <FieldLabel>Categoria</FieldLabel>
                 <Select
-                  value={form.watch("transfer_to_account_id") ?? undefined}
-                  onValueChange={(v) => form.setValue("transfer_to_account_id", v)}
+                  value={form.watch("category_id") ?? undefined}
+                  onValueChange={(v) => {
+                    form.setValue("category_id", v);
+                    setAiHint(null);
+                  }}
                 >
-                  <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]">
-                    <SelectValue placeholder="Para onde entra" />
+                  <SelectTrigger className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]">
+                    <SelectValue placeholder="Escolha uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts
-                      .filter((a) => a.is_active)
-                      .map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
+                    {filteredCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.icon} {c.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          )}
+            )}
 
-          {txType !== "transfer" && (
-            <div className="space-y-1.5">
-              <FieldLabel>Categoria</FieldLabel>
-              <Select
-                value={form.watch("category_id") ?? undefined}
-                onValueChange={(v) => {
-                  form.setValue("category_id", v);
-                  setAiHint(null);
-                }}
-              >
-                <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]">
-                  <SelectValue placeholder="Escolha uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.icon} {c.name}
-                    </SelectItem>
+            <div className="space-y-3 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
+              <div className="space-y-2">
+                <FieldLabel>Quem consumiu</FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {members.map((m) => (
+                    <MemberChip
+                      key={`c-${m.id}`}
+                      name={m.display_name}
+                      color={m.avatar_color || "#c0c0c0"}
+                      active={form.watch("consumer_member_id") === m.id}
+                      onClick={() => form.setValue("consumer_member_id", m.id)}
+                    />
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
+              <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
+                <FieldLabel>Quem pagou</FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {members.map((m) => (
+                    <MemberChip
+                      key={`p-${m.id}`}
+                      name={m.display_name}
+                      color={m.avatar_color || "#c0c0c0"}
+                      active={form.watch("paid_by_member_id") === m.id}
+                      onClick={() => form.setValue("paid_by_member_id", m.id)}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-          )}
 
-          <div className="space-y-3 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
-            <div className="space-y-2">
-              <FieldLabel>Quem consumiu</FieldLabel>
-              <div className="flex flex-wrap gap-2">
-                {members.map((m) => (
-                  <MemberChip
-                    key={`c-${m.id}`}
-                    name={m.display_name}
-                    color={m.avatar_color || "#c0c0c0"}
-                    active={form.watch("consumer_member_id") === m.id}
-                    onClick={() => form.setValue("consumer_member_id", m.id)}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
-              <FieldLabel>Quem pagou</FieldLabel>
-              <div className="flex flex-wrap gap-2">
-                {members.map((m) => (
-                  <MemberChip
-                    key={`p-${m.id}`}
-                    name={m.display_name}
-                    color={m.avatar_color || "#c0c0c0"}
-                    active={form.watch("paid_by_member_id") === m.id}
-                    onClick={() => form.setValue("paid_by_member_id", m.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {(txType === "loan_given" || txType === "loan_received") && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <FieldLabel>Terceiro</FieldLabel>
-                <Input
-                  {...form.register("third_party_name")}
-                  placeholder="Nome (ex: Pai)"
-                  className="h-11 rounded-xl"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel>Relação</FieldLabel>
-                <Input
-                  {...form.register("third_party_relationship")}
-                  placeholder="pai, amigo…"
-                  className="h-11 rounded-xl"
-                />
-              </div>
-            </div>
-          )}
-
-          {showInstallment && (
-            <div className="space-y-2 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={isInstallment}
-                  onCheckedChange={(v) =>
-                    form.setValue("is_installment", Boolean(v))
-                  }
-                  id="installment"
-                />
-                <Label htmlFor="installment" className="text-sm font-medium text-[var(--color-text)]">
-                  Parcelado no cartão
-                </Label>
-              </div>
-              {isInstallment && (
-                <div className="space-y-1.5 pt-1">
-                  <FieldLabel>Nº de parcelas</FieldLabel>
-                  <IntegerMaskInput
-                    min={2}
-                    max={48}
-                    value={form.watch("total_installments") ?? 2}
-                    onValueChange={(v) =>
-                      form.setValue("total_installments", v, {
-                        shouldValidate: true,
-                      })
-                    }
+            {(txType === "loan_given" || txType === "loan_received") && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <FieldLabel>Terceiro</FieldLabel>
+                  <Input
+                    {...form.register("third_party_name")}
+                    placeholder="Nome (ex: Pai)"
+                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
                   />
                 </div>
-              )}
+                <div className="space-y-1.5">
+                  <FieldLabel>Relação</FieldLabel>
+                  <Input
+                    {...form.register("third_party_relationship")}
+                    placeholder="pai, amigo…"
+                    className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {showInstallment && (
+              <div className="space-y-2 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    checked={isInstallment}
+                    onCheckedChange={(v) =>
+                      form.setValue("is_installment", Boolean(v))
+                    }
+                    id="installment"
+                  />
+                  <Label
+                    htmlFor="installment"
+                    className="text-sm font-medium text-[var(--color-text)]"
+                  >
+                    Parcelado no cartão
+                  </Label>
+                </div>
+                {isInstallment && (
+                  <div className="space-y-1.5 pt-1">
+                    <FieldLabel>Nº de parcelas</FieldLabel>
+                    <IntegerMaskInput
+                      min={2}
+                      max={48}
+                      value={form.watch("total_installments") ?? 2}
+                      onValueChange={(v) =>
+                        form.setValue("total_installments", v, {
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <FieldLabel>Notas</FieldLabel>
+              <Textarea
+                rows={2}
+                {...form.register("notes")}
+                placeholder="Opcional"
+                className="min-h-[68px] resize-none rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
+              />
             </div>
-          )}
 
-          <div className="space-y-1.5">
-            <FieldLabel>Notas</FieldLabel>
-            <Textarea
-              rows={2}
-              {...form.register("notes")}
-              placeholder="Opcional"
-              className="min-h-[72px] resize-none rounded-xl border-[var(--color-line)] bg-[var(--color-chip)]"
-            />
+            {error && (
+              <p className="rounded-[12px] bg-[#EF4444]/10 px-3 py-2.5 text-sm text-[#EF4444]">
+                {error}
+              </p>
+            )}
           </div>
 
-          {error && (
-            <p className="rounded-xl bg-[#EF4444]/10 px-3 py-2 text-sm text-[#EF4444]">
-              {error}
-            </p>
-          )}
-          </div>
-
-          <div className="shrink-0 border-t border-[var(--color-line)] bg-[var(--color-modal)] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          <div className="shrink-0 border-t border-[var(--color-line)] bg-[var(--color-modal)] px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-5">
             <Btn type="submit" fullWidth size="lg" disabled={submitting}>
               {submitting ? "Salvando…" : "Salvar lançamento"}
             </Btn>
