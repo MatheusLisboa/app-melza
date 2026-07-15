@@ -7,20 +7,7 @@ export type InvoicePdfLine = {
   installment?: string | null;
 };
 
-const MELZA_MARK_SVG = `
-<svg viewBox="0 0 64 64" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect width="64" height="64" rx="14" fill="#111111"/>
-  <g transform="skewX(-10) translate(4 0)">
-    <path fill="#FFFFFF" d="M9.2 49.2 18.6 14.4h7.1L36 35.6 45.1 14.4h7.1L43.4 49.2h-7.3l5.6-20.4L33.4 49.2h-5.1L20 28.8l-4.1 20.4H9.2Z"/>
-  </g>
-</svg>
-`.trim();
-
-/**
- * Gera fatura Melza e abre o diálogo de impressão (Salvar como PDF).
- * Usa iframe oculto — sem window.open / pop-up.
- */
-export function downloadInvoicePdf(opts: {
+export type InvoicePdfOpts = {
   cardName: string;
   cycleLabel: string;
   from: string;
@@ -30,11 +17,30 @@ export function downloadInvoicePdf(opts: {
   remaining?: number;
   lines: InvoicePdfLine[];
   ownerName?: string | null;
-}) {
+  /** Esconde o hint de impressão (útil na prévia no app) */
+  hidePrintHint?: boolean;
+};
+
+const MELZA_MARK_SVG = `
+<svg viewBox="0 0 64 64" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="64" height="64" rx="14" fill="#111111"/>
+  <g transform="skewX(-10) translate(4 0)">
+    <path fill="#FFFFFF" d="M9.2 49.2 18.6 14.4h7.1L36 35.6 45.1 14.4h7.1L43.4 49.2h-7.3l5.6-20.4L33.4 49.2h-5.1L20 28.8l-4.1 20.4H9.2Z"/>
+  </g>
+</svg>
+`.trim();
+
+export function invoicePdfTitle(opts: Pick<InvoicePdfOpts, "cardName" | "cycleLabel">) {
+  return `Fatura ${opts.cardName} — ${opts.cycleLabel}`;
+}
+
+/** HTML completo da fatura Melza (prévia / impressão / PDF). */
+export function buildInvoicePdfHtml(opts: InvoicePdfOpts): string {
   const paid = opts.paid ?? 0;
   const remaining =
     opts.remaining != null ? opts.remaining : Math.max(0, opts.total - paid);
   const generatedAt = new Date().toLocaleString("pt-BR");
+  const title = invoicePdfTitle(opts);
 
   const purchaseLines = opts.lines.filter((l) => l.amount >= 0);
   const paymentLines = opts.lines.filter((l) => l.amount < 0);
@@ -65,8 +71,11 @@ export function downloadInvoicePdf(opts: {
       })
       .join("");
 
-  const title = `Fatura ${opts.cardName} — ${opts.cycleLabel}`;
-  const html = `<!DOCTYPE html>
+  const hint = opts.hidePrintHint
+    ? ""
+    : `<p class="hint">No diálogo de impressão, escolha <strong>Salvar como PDF</strong> (ou “Microsoft Print to PDF”).</p>`;
+
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -78,10 +87,8 @@ export function downloadInvoicePdf(opts: {
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
     body {
-      margin: 0;
-      padding: 0;
-      background: #fff;
       color: #111111;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       -webkit-print-color-adjust: exact;
@@ -251,7 +258,7 @@ export function downloadInvoicePdf(opts: {
     }
     @media print {
       .sheet { padding: 0; max-width: none; }
-      .hint { display: none; }
+      .hint { display: none !important; }
       .summary-card { break-inside: avoid; }
       tr { break-inside: avoid; }
       @page { margin: 14mm; size: A4; }
@@ -339,21 +346,17 @@ export function downloadInvoicePdf(opts: {
       <span>${escapeHtml(generatedAt)}</span>
     </div>
 
-    <p class="hint">
-      No diálogo de impressão, escolha <strong>Salvar como PDF</strong> (ou “Microsoft Print to PDF”).
-    </p>
+    ${hint}
   </div>
 </body>
 </html>`;
-
-  printHtmlDocument(html, title);
 }
 
 /**
- * Impressão via iframe — sem window.open (evita “pop-up bloqueado”).
- * No Safari/iOS o iframe precisa ter tamanho real antes do print().
+ * Abre o diálogo de impressão (Salvar como PDF) a partir do HTML.
+ * Sem window.open — iframe off-screen.
  */
-function printHtmlDocument(html: string, title: string) {
+export function printInvoiceHtml(html: string, title: string) {
   if (typeof document === "undefined") {
     throw new Error("Geração de PDF só funciona no navegador.");
   }
@@ -361,7 +364,6 @@ function printHtmlDocument(html: string, title: string) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("title", title);
   iframe.setAttribute("aria-hidden", "true");
-  // Safari bloqueia print() em iframe 0×0 — usa viewport off-screen
   iframe.style.cssText = [
     "position:fixed",
     "left:0",
@@ -414,8 +416,13 @@ function printHtmlDocument(html: string, title: string) {
     cleanup();
   };
 
-  // Fonts + layout antes do print
   window.setTimeout(runPrint, 450);
+}
+
+/** @deprecated Prefira prévia + printInvoiceHtml */
+export function downloadInvoicePdf(opts: InvoicePdfOpts) {
+  const html = buildInvoicePdfHtml(opts);
+  printInvoiceHtml(html, invoicePdfTitle(opts));
 }
 
 function escapeHtml(value: string): string {

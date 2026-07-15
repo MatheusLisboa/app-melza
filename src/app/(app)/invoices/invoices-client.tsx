@@ -16,11 +16,12 @@ import {
   defaultCycleKey,
   listInvoiceCycles,
 } from "@/lib/utils/invoice-cycle";
-import { downloadInvoicePdf } from "@/lib/invoices/download-pdf";
+import type { InvoicePdfOpts } from "@/lib/invoices/download-pdf";
 import { getBankColor, getBankName } from "@/lib/utils/banks";
 import { Btn, TxRow, toDsMember } from "@/components/design-system";
 import { NubankInvoiceImportDialog } from "@/components/invoices/nubank-invoice-import";
 import { PayInvoiceDialog } from "@/components/invoices/pay-invoice-dialog";
+import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
 import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const [cardId, setCardId] = useState<string>("");
   const [importOpen, setImportOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -165,44 +167,52 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     ? "rgba(17,17,17,0.7)"
     : "rgba(255,255,255,0.7)";
 
-  function onDownloadPdf() {
-    if (!selectedCard || !cycle) return;
+  const pdfOpts = useMemo((): InvoicePdfOpts | null => {
+    if (!selectedCard || !cycle) return null;
+    return {
+      cardName: selectedCard.name,
+      cycleLabel: cycleMonthLabel(cycle.key),
+      from: cycle.from,
+      to: cycle.to,
+      total,
+      paid: paidTotal,
+      remaining,
+      ownerName: owner?.display_name,
+      lines: [
+        ...expenseTx.map((tx) => ({
+          date: tx.transaction_date,
+          description: tx.description,
+          amount: Number(tx.amount),
+          installment:
+            tx.is_installment &&
+            tx.installment_number &&
+            tx.total_installments
+              ? `${tx.installment_number}/${tx.total_installments}`
+              : null,
+        })),
+        ...payments.map((p) => ({
+          date: p.transaction_date,
+          description: `Pagamento · ${p.description}`,
+          amount: -Number(p.amount),
+          installment: null as string | null,
+        })),
+      ],
+    };
+  }, [
+    selectedCard,
+    cycle,
+    total,
+    paidTotal,
+    remaining,
+    owner?.display_name,
+    expenseTx,
+    payments,
+  ]);
+
+  function onOpenPdfPreview() {
+    if (!pdfOpts) return;
     setPdfError(null);
-    try {
-      downloadInvoicePdf({
-        cardName: selectedCard.name,
-        cycleLabel: cycleMonthLabel(cycle.key),
-        from: cycle.from,
-        to: cycle.to,
-        total,
-        paid: paidTotal,
-        remaining,
-        ownerName: owner?.display_name,
-        lines: [
-          ...expenseTx.map((tx) => ({
-            date: tx.transaction_date,
-            description: tx.description,
-            amount: Number(tx.amount),
-            installment:
-              tx.is_installment &&
-              tx.installment_number &&
-              tx.total_installments
-                ? `${tx.installment_number}/${tx.total_installments}`
-                : null,
-          })),
-          ...payments.map((p) => ({
-            date: p.transaction_date,
-            description: `Pagamento · ${p.description}`,
-            amount: -Number(p.amount),
-            installment: null as string | null,
-          })),
-        ],
-      });
-    } catch (e) {
-      setPdfError(
-        e instanceof Error ? e.message : "Não foi possível gerar a fatura"
-      );
-    }
+    setPdfPreviewOpen(true);
   }
 
   return (
@@ -221,10 +231,10 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             variant="secondary"
             size="sm"
             disabled={!effectiveCardId || !cycle}
-            onClick={onDownloadPdf}
+            onClick={onOpenPdfPreview}
             icon={<Download className="h-3.5 w-3.5" />}
           >
-            Baixar fatura
+            Ver fatura
           </Btn>
           <Btn
             variant="primary"
@@ -372,11 +382,11 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                 </button>
                 <button
                   type="button"
-                  onClick={onDownloadPdf}
+                  onClick={onOpenPdfPreview}
                   className="rounded-lg bg-white/20 px-3 py-2 text-[12px] font-semibold backdrop-blur-sm transition-colors hover:bg-white/30"
                   style={{ color: heroFg }}
                 >
-                  Baixar PDF
+                  Ver PDF
                 </button>
               </div>
             </div>
@@ -507,6 +517,12 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
           alreadyPaid={paidTotal}
         />
       )}
+
+      <InvoicePdfPreviewDialog
+        open={pdfPreviewOpen}
+        onOpenChange={setPdfPreviewOpen}
+        opts={pdfOpts}
+      />
 
       <TransactionDetailSheet
         open={Boolean(detailId)}
