@@ -1134,48 +1134,48 @@ export function pickChatTools(
   all: ChatTools,
   userText: string,
   mode: "auto" | "core" | "minimal" = "auto"
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): any {
+): ChatTools {
   const text = userText.toLowerCase();
+  const keep = new Set<string>();
 
   if (mode === "minimal") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return {
-      queryExpenses: all.queryExpenses,
-      getAccountBalances: all.getAccountBalances,
-      getCardLimits: all.getCardLimits,
-      getInvoiceCycles: all.getInvoiceCycles,
-      getEntreNos: all.getEntreNos,
-    } as any;
-  }
+    for (const key of [
+      "queryExpenses",
+      "getAccountBalances",
+      "getCardLimits",
+      "getInvoiceCycles",
+      "getEntreNos",
+    ] as const) {
+      keep.add(key);
+    }
+  } else {
+    for (const key of CORE_READ_KEYS) keep.add(key);
 
-  const wantsWrite =
-    /\b(cria|criar|lan[cç]a|lancar|cadastr|pag(a|ar)|assinatur|categoriz|confirma|confirm)/i.test(
-      text
-    ) ||
-    /\b(sim|pode|faz|execute)\b/i.test(text);
+    const wantsWrite =
+      /\b(cria|criar|lan[cç]a|lancar|cadastr|pag(a|ar)|assinatur|categoriz|confirma|confirm)/i.test(
+        text
+      ) || /\b(sim|pode|faz|execute)\b/i.test(text);
 
-  const picked: Record<string, unknown> = {};
-  for (const key of CORE_READ_KEYS) {
-    picked[key] = all[key];
-  }
+    if (mode === "auto" && wantsWrite) {
+      for (const key of WRITE_KEYS) keep.add(key);
+    }
 
-  if (mode === "auto" && wantsWrite) {
-    for (const key of WRITE_KEYS) {
-      picked[key] = all[key];
+    if (
+      mode === "auto" &&
+      /\b(despesa|receita|gasto|compra)\b/i.test(text) &&
+      /\b(no |na |cart[aã]o|conta|pix)\b/i.test(text)
+    ) {
+      keep.add("createTransaction");
     }
   }
 
-  if (
-    mode === "auto" &&
-    /\b(despesa|receita|gasto|compra)\b/i.test(text) &&
-    /\b(no |na |cart[aã]o|conta|pix)\b/i.test(text)
-  ) {
-    picked.createTransaction = all.createTransaction;
+  const out = { ...all };
+  for (const key of Object.keys(out) as (keyof ChatTools)[]) {
+    if (!keep.has(key)) {
+      delete out[key];
+    }
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return picked as any;
+  return out;
 }
 
 export function lastUserText(
