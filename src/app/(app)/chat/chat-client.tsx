@@ -102,7 +102,7 @@ export function ChatClient() {
           Chat financeiro
         </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Pergunte sobre gastos, cartões e empréstimos
+          Criar lançamentos, pagar fatura, saldos, Entre Nós e mais
         </p>
       </div>
 
@@ -112,9 +112,12 @@ export function ChatClient() {
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>Exemplos:</p>
               <ul className="list-inside list-disc space-y-1">
-                <li>Quanto gastamos de iFood em julho?</li>
-                <li>Qual cartão mais usamos este mês?</li>
-                <li>Meu pai ainda deve quanto?</li>
+                <li>Lança R$ 45 no iFood no Nubank</li>
+                <li>Quanto falta pagar na fatura do Inter?</li>
+                <li>Quem deve a quem no Entre Nós?</li>
+                <li>Saldo das contas e limite disponível</li>
+                <li>Cadastra Netflix R$ 55 no cartão XP</li>
+                <li>Categoriza as despesas sem categoria</li>
               </ul>
             </div>
           )}

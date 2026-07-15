@@ -221,7 +221,7 @@ export function TransactionFormDialog({
   const channel = form.watch("payment_channel") ?? "card";
 
   useEffect(() => {
-    if (!open || txType !== "expense") return;
+    if (!open || (txType !== "expense" && txType !== "income")) return;
     if (!description || description.trim().length < 3) {
       setAiHint(null);
       return;
@@ -237,6 +237,7 @@ export function TransactionFormDialog({
             description: description.trim(),
             amount,
             workspaceId: member.workspace_id,
+            type: txType === "income" ? "income" : "expense",
           }),
         });
         if (res.status === 503) {

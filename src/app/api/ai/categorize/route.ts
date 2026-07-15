@@ -9,6 +9,7 @@ const bodySchema = z.object({
   description: z.string().min(1),
   amount: z.number().optional(),
   workspaceId: z.string().uuid(),
+  type: z.enum(["expense", "income"]).optional().default("expense"),
 });
 
 /**
@@ -68,11 +69,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Workspace inválido" }, { status: 403 });
     }
 
+    const catType = parsed.data.type ?? "expense";
+
     const { data: categories } = await supabase
       .from("categories")
       .select("id, name, type, icon")
       .eq("workspace_id", parsed.data.workspaceId)
-      .eq("type", "expense");
+      .eq("type", catType);
 
     if (!categories?.length) {
       return NextResponse.json(
@@ -85,6 +88,11 @@ export async function POST(request: Request) {
       .map((c) => `${c.id} | ${c.icon ?? ""} ${c.name}`)
       .join("\n");
 
+    const systemHint =
+      catType === "income"
+        ? "Categorização de RECEITAS no Brasil (salário, freela, rendimento, reembolso, etc.). Retorne JSON: categoryId (da lista), categoryName e confidence (0-1)."
+        : "Categorização de DESPESAS no Brasil. Retorne JSON: categoryId (da lista), categoryName e confidence (0-1). Seja preciso: 'iFood' = Alimentação, 'Netflix' = Assinaturas, 'Posto Shell' = Transporte.";
+
     const { object } = await generateObject({
       model: ai.model,
       maxRetries: 0,
@@ -93,8 +101,7 @@ export async function POST(request: Request) {
         categoryName: z.string(),
         confidence: z.number().min(0).max(1),
       }),
-      system:
-        "Você é um assistente de categorização financeira para workspaces (pessoal/compartilhados) no Brasil. Com base na descrição e valor da transação, retorne APENAS um JSON com: categoryId (da lista fornecida), categoryName e confidence (0-1). Seja preciso: 'iFood' = Alimentação, 'Netflix' = Assinaturas, 'Posto Shell' = Transporte.",
+      system: systemHint,
       prompt: `Categorias disponíveis (id | nome):\n${list}\n\nDescrição: ${parsed.data.description}\nValor: ${parsed.data.amount ?? "N/A"}`,
     });
 

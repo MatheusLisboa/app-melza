@@ -162,6 +162,13 @@ export function MobileHeader({
         />
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
+        <Link
+          href="/chat"
+          aria-label="Chat IA"
+          className="pressable inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-text-2)] hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
+        >
+          <MessageCircle className="h-5 w-5" />
+        </Link>
         <ThemeToggle />
         <Link href="/settings" aria-label="Perfil" className="pressable">
           <MemberAvatar

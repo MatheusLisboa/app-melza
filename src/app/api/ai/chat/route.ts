@@ -1,23 +1,11 @@
-import { generateText, tool, stepCountIs } from "ai";
-import { z } from "zod";
+import { generateText, stepCountIs } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/supabase/workspace";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { mapAiProviderError } from "@/lib/ai/errors";
 import { getAiLanguageModel } from "@/lib/ai/provider";
-
-/** Groq/LLMs often pass booleans as "true"/"false" strings — schema must accept both. */
-const looseBool = z
-  .union([
-    z.boolean(),
-    z.enum(["true", "false", "1", "0"]),
-  ])
-  .optional()
-  .transform((v) => {
-    if (v === undefined) return undefined;
-    if (typeof v === "boolean") return v;
-    return v === "true" || v === "1";
-  });
+import { buildChatTools } from "@/lib/ai/chat-tools";
+import { toISODate } from "@/lib/utils/format";
 
 /**
  * POST /api/ai/chat — resposta em texto (generateText + tools)
@@ -84,6 +72,7 @@ export async function POST(request: Request) {
   }
 
   const workspaceId = member.workspace_id;
+  const tools = buildChatTools({ supabase, member, workspaceId });
 
   try {
     const { text } = await generateText({
@@ -91,199 +80,23 @@ export async function POST(request: Request) {
       maxRetries: 1,
       system: `Você é o assistente financeiro do Melza (workspaces pessoais e compartilhados, Brasil).
 Responda em português, de forma objetiva, com valores em R$.
-SEMPRE use as tools para consultar dados reais antes de responder sobre:
-assinaturas, gastos, cartões, contas, empréstimos ou saldos.
-Se a tool retornar lista vazia, diga que não há registros — não invente.`,
+
+CONSULTAS — SEMPRE use tools antes de responder sobre:
+assinaturas, gastos, cartões, saldos de contas, limite disponível, faturas/ciclos,
+empréstimos, Entre Nós (quem deve a quem), relatórios/orçamento ou categorias.
+Se a tool retornar lista vazia, diga que não há registros — não invente.
+
+AÇÕES (criar lançamento, pagar fatura, cadastrar assinatura, batch de categorização):
+1) Chame a tool com confirm=false e mostre o PREVIEW ao usuário.
+2) Só chame de novo com confirm=true depois que o usuário confirmar claramente (ex.: "sim", "confirma", "pode criar").
+3) Se faltar valor, conta/cartão ou descrição, pergunte antes de executar.
+Datas em YYYY-MM-DD. Hoje é ${toISODate(new Date())}.`,
       messages: messages.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content: m.content,
       })),
-      stopWhen: stepCountIs(6),
-    tools: {
-      listSubscriptions: tool({
-        description:
-          "Lista assinaturas/recorrências do workspace (Netflix, Spotify, etc.). Use quando perguntarem sobre assinaturas, mensalidades ou recorrentes.",
-        inputSchema: z.object({
-          activeOnly: looseBool.describe(
-            "true = só ativas (padrão); false = todas"
-          ),
-        }),
-        execute: async ({ activeOnly = true }) => {
-          let q = supabase
-            .from("subscriptions")
-            .select(
-              "name, amount, billing_cycle, next_billing_date, is_active, notes, cards(name), accounts(name), categories(name)"
-            )
-            .eq("workspace_id", workspaceId)
-            .order("name", { ascending: true });
-          if (activeOnly) q = q.eq("is_active", true);
-          const { data, error } = await q;
-          if (error) return { error: error.message };
-          const items = (data ?? []).map((s) => {
-            const card = s.cards as { name?: string } | null;
-            const account = s.accounts as { name?: string } | null;
-            const category = s.categories as { name?: string } | null;
-            return {
-              name: s.name,
-              amount: Number(s.amount),
-              cycle: s.billing_cycle,
-              nextBilling: s.next_billing_date,
-              active: s.is_active,
-              paidWith: card?.name ?? account?.name ?? null,
-              category: category?.name ?? null,
-              notes: s.notes,
-            };
-          });
-          const monthlyTotal = items
-            .filter((i) => i.active)
-            .reduce((sum, i) => {
-              if (i.cycle === "yearly") return sum + i.amount / 12;
-              if (i.cycle === "weekly") return sum + i.amount * 4.33;
-              return sum + i.amount;
-            }, 0);
-          return {
-            count: items.length,
-            monthlyEstimate: Math.round(monthlyTotal * 100) / 100,
-            subscriptions: items,
-          };
-        },
-      }),
-      listCards: tool({
-        description: "Lista cartões cadastrados no workspace.",
-        inputSchema: z.object({
-          activeOnly: looseBool,
-        }),
-        execute: async ({ activeOnly = true }) => {
-          let q = supabase
-            .from("cards")
-            .select(
-              "name, bank, last_four, card_type, closing_day, due_day, credit_limit, is_active"
-            )
-            .eq("workspace_id", workspaceId)
-            .order("name");
-          if (activeOnly) q = q.eq("is_active", true);
-          const { data, error } = await q;
-          if (error) return { error: error.message };
-          return {
-            count: data?.length ?? 0,
-            cards: (data ?? []).map((c) => ({
-              name: c.name,
-              bank: c.bank,
-              lastFour: c.last_four,
-              type: c.card_type,
-              closingDay: c.closing_day,
-              dueDay: c.due_day,
-              limit: c.credit_limit != null ? Number(c.credit_limit) : null,
-              active: c.is_active,
-            })),
-          };
-        },
-      }),
-      queryExpenses: tool({
-        description:
-          "Soma despesas/receitas no período. Datas em YYYY-MM-DD.",
-        inputSchema: z.object({
-          from: z.string(),
-          to: z.string(),
-          descriptionContains: z.string().optional(),
-          type: z.enum(["expense", "income", "all"]).optional(),
-        }),
-        execute: async ({ from, to, descriptionContains, type = "expense" }) => {
-          let q = supabase
-            .from("transactions")
-            .select("amount, description, transaction_type, transaction_date")
-            .eq("workspace_id", workspaceId)
-            .gte("transaction_date", from)
-            .lte("transaction_date", to)
-            .neq("status", "cancelled");
-
-          if (type === "expense") {
-            q = q.in("transaction_type", ["expense", "loan_given"]);
-          } else if (type === "income") {
-            q = q.in("transaction_type", ["income", "loan_received"]);
-          }
-          if (descriptionContains) {
-            q = q.ilike("description", `%${descriptionContains}%`);
-          }
-
-          const { data, error } = await q;
-          if (error) return { error: error.message };
-          const total = (data ?? []).reduce(
-            (s, t) => s + Number(t.amount),
-            0
-          );
-          return {
-            total,
-            count: data?.length ?? 0,
-            samples: (data ?? []).slice(0, 8),
-          };
-        },
-      }),
-      topCards: tool({
-        description: "Cartões mais usados (despesa) no período.",
-        inputSchema: z.object({
-          from: z.string(),
-          to: z.string(),
-        }),
-        execute: async ({ from, to }) => {
-          const { data, error } = await supabase
-            .from("transactions")
-            .select("amount, card_id, cards(name)")
-            .eq("workspace_id", workspaceId)
-            .gte("transaction_date", from)
-            .lte("transaction_date", to)
-            .in("transaction_type", ["expense", "loan_given"])
-            .neq("status", "cancelled")
-            .not("card_id", "is", null);
-          if (error) return { error: error.message };
-          const map = new Map<string, { name: string; total: number }>();
-          for (const row of data ?? []) {
-            const cards = row.cards as { name?: string } | null;
-            const name = cards?.name ?? "Cartão";
-            const key = row.card_id as string;
-            const prev = map.get(key) ?? { name, total: 0 };
-            prev.total += Number(row.amount);
-            map.set(key, prev);
-          }
-          return Array.from(map.values()).sort((a, b) => b.total - a.total);
-        },
-      }),
-      openLoans: tool({
-        description: "Empréstimos em aberto / parciais com terceiros.",
-        inputSchema: z.object({
-          thirdPartyName: z.string().optional(),
-        }),
-        execute: async ({ thirdPartyName }) => {
-          const { data, error } = await supabase
-            .from("loans")
-            .select(
-              "direction, original_amount, paid_amount, status, description, third_parties(name)"
-            )
-            .eq("workspace_id", workspaceId)
-            .in("status", ["open", "partial"]);
-          if (error) return { error: error.message };
-          let rows = data ?? [];
-          if (thirdPartyName) {
-            const needle = thirdPartyName.toLowerCase();
-            rows = rows.filter((r) => {
-              const tp = r.third_parties as { name?: string } | null;
-              return tp?.name?.toLowerCase().includes(needle);
-            });
-          }
-          return rows.map((r) => {
-            const tp = r.third_parties as { name?: string } | null;
-            return {
-              thirdParty: tp?.name,
-              direction: r.direction,
-              remaining:
-                Number(r.original_amount) - Number(r.paid_amount),
-              status: r.status,
-              description: r.description,
-            };
-          });
-        },
-      }),
-    },
+      stopWhen: stepCountIs(10),
+      tools,
     });
 
     const answer = (text ?? "").trim();

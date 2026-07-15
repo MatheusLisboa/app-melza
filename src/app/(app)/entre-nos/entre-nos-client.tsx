@@ -25,6 +25,7 @@ import {
   toDsMember,
 } from "@/components/design-system";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { computeEntreNosSettlement } from "@/lib/finance/entre-nos";
 
 type SettlementTx = {
   id: string;
@@ -69,73 +70,38 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   });
 
   const settlement = useMemo(() => {
-    const balances = new Map<string, number>();
-    const pairFlow = new Map<string, number>();
-    const timeline: {
-      id: string;
-      emoji: string;
-      title: string;
-      date: string;
-      amount: number;
-      consumerId: string;
-      payerId: string;
-    }[] = [];
-
-    for (const m of members) balances.set(m.id, 0);
-
-    for (const tx of txs) {
-      const amount = Number(tx.amount);
-      const payerId = tx.paid_by_member_id;
-      const ownerId =
-        tx.cards?.owner_member_id ?? tx.accounts?.owner_member_id ?? null;
-      if (!payerId || !ownerId || payerId === ownerId) continue;
-
-      // Owner emprestou o meio; payer deve ao owner
-      balances.set(payerId, (balances.get(payerId) ?? 0) - amount);
-      balances.set(ownerId, (balances.get(ownerId) ?? 0) + amount);
-
-      // Flow key: payer → consumer/owner asymmetry for resumo
-      const forward = `${ownerId}>${payerId}`;
-      pairFlow.set(forward, (pairFlow.get(forward) ?? 0) + amount);
-
-      timeline.push({
-        id: tx.id,
-        emoji: tx.category?.icon ?? "💸",
-        title: tx.description,
-        date: formatDate(tx.transaction_date),
-        amount,
-        consumerId: payerId,
-        payerId: ownerId,
-      });
-    }
-
-    const ranked = Array.from(balances.entries())
-      .map(([id, net]) => ({
-        member: members.find((m) => m.id === id),
-        net,
-      }))
-      .filter((r) => r.member)
-      .sort((a, b) => a.net - b.net);
-
-    const debtor = ranked.find((r) => r.net < -1);
-    const creditor = [...ranked].reverse().find((r) => r.net > 1);
-    const netAmount =
-      debtor && creditor
-        ? Math.min(Math.abs(debtor.net), Math.abs(creditor.net))
-        : 0;
-
-    const a = debtor?.member?.id;
-    const b = creditor?.member?.id;
-    const aPaidForB = a && b ? pairFlow.get(`${a}>${b}`) ?? 0 : 0;
-    const bPaidForA = a && b ? pairFlow.get(`${b}>${a}`) ?? 0 : 0;
-
+    const raw = computeEntreNosSettlement(
+      members.map((m) => ({ id: m.id, display_name: m.display_name })),
+      txs
+    );
+    const debtor = raw.debtor
+      ? {
+          member: members.find((m) => m.id === raw.debtor!.id),
+          net: raw.debtor.net,
+        }
+      : null;
+    const creditor = raw.creditor
+      ? {
+          member: members.find((m) => m.id === raw.creditor!.id),
+          net: raw.creditor.net,
+        }
+      : null;
     return {
       debtor,
       creditor,
-      netAmount,
-      timeline: timeline.slice(0, 8),
-      aPaidForB,
-      bPaidForA,
+      netAmount: raw.netAmount,
+      aPaidForB: raw.aPaidForB,
+      bPaidForA: raw.bPaidForA,
+      timeline: raw.recent.map((item) => ({
+        id: item.id,
+        emoji:
+          txs.find((t) => t.id === item.id)?.category?.icon ?? "💸",
+        title: item.title,
+        date: formatDate(item.date),
+        amount: item.amount,
+        consumerId: raw.debtor?.id ?? "",
+        payerId: raw.creditor?.id ?? "",
+      })),
     };
   }, [txs, members]);
 
