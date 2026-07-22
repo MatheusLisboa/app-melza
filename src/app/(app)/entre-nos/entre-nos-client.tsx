@@ -39,7 +39,10 @@ import {
   toISODate,
 } from "@/lib/utils/format";
 import {
+  ENTRE_NOS_TX_SELECT,
   computeEntreNosSettlement,
+  entreNosMonthQueryRange,
+  filterEntreNosTxsForMonth,
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
 
@@ -55,7 +58,9 @@ function defaultSettleDate(month: Date): string {
 }
 
 /**
- * Entre Nós — acertos por mês (parcelas entram só no mês da parcela).
+ * Entre Nós — acertos por mês.
+ * Cartão: ciclo de fechamento da fatura (compra após o fechamento → mês seguinte).
+ * Conta / acerto: mês civil. Parcelas entram só no mês da parcela.
  */
 export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -63,34 +68,25 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   const [settleOpen, setSettleOpen] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
 
-  const from = toISODate(startOfMonth(month));
-  const to = toISODate(endOfMonth(month));
+  const { from, to } = entreNosMonthQueryRange(month);
   const monthLabel = formatMonthYear(month);
   const isCurrentMonth = monthKey(month) === monthKey(new Date());
 
   const {
-    data: txs = [],
+    data: rawTxs = [],
     isLoading,
     isError,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["entre-nos", member.workspace_id, from, to],
+    queryKey: ["entre-nos", member.workspace_id, monthKey(month)],
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error: qError } = await supabase
         .from("transactions")
-        .select(
-          `
-          id, amount, description, transaction_type, paid_by_member_id,
-          consumer_member_id, consumer_share_percent, transaction_date,
-          category:categories(icon, name),
-          card:cards!card_id(id, name, owner_member_id),
-          account:accounts!account_id(id, name, owner_member_id)
-        `
-        )
+        .select(ENTRE_NOS_TX_SELECT)
         .eq("workspace_id", member.workspace_id)
         .in("transaction_type", ["expense", "loan_given", "settlement"])
         .neq("status", "cancelled")
@@ -102,6 +98,11 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
       return (data ?? []) as EntreNosTx[];
     },
   });
+
+  const txs = useMemo(
+    () => filterEntreNosTxsForMonth(rawTxs, month),
+    [rawTxs, month]
+  );
 
   const settlement = useMemo(() => {
     const raw = computeEntreNosSettlement(
@@ -195,7 +196,9 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               {monthLabel}
             </p>
             <p className="text-[11px] text-[#8E8E93]">
-              {isCurrentMonth ? "Mês atual" : "Dívida deste mês"}
+              {isCurrentMonth
+                ? "Mês atual · cartão pelo fechamento"
+                : "Cartão pelo fechamento da fatura"}
             </p>
           </div>
           <button
@@ -233,7 +236,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             description={
               settlement.settledAmount > 0
                 ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
-                : `Não há saldo em ${monthLabel}. Parcelas de outros meses ficam no mês de cada parcela.`
+                : `Não há saldo em ${monthLabel}. Compras no cartão após o fechamento entram no mês seguinte.`
             }
           />
         ) : (

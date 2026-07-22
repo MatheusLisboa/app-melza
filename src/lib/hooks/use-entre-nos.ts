@@ -1,55 +1,49 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import {
+  ENTRE_NOS_TX_SELECT,
   computeEntreNosSettlement,
+  entreNosMonthQueryRange,
+  filterEntreNosTxsForMonth,
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
 import { isSharedWorkspace } from "@/lib/utils/workspace";
-import {
-  endOfMonth,
-  startOfMonth,
-  toISODate,
-} from "@/lib/utils/format";
+import { startOfMonth } from "@/lib/utils/format";
 import type { WorkspaceMember } from "@/types";
 
 const REMINDER_DAYS = 7;
 
-/** Dívida / lembrete do mês civil atual (não acumula meses anteriores). */
+/** Dívida / lembrete do mês atual (cartão pelo ciclo de fechamento). */
 export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
   const workspaceId = member?.workspace_id;
   const shared = isSharedWorkspace(member?.workspace?.type);
   const { data: members = [] } = useWorkspaceMembers(workspaceId ?? "");
 
-  const now = new Date();
-  const from = toISODate(startOfMonth(now));
-  const to = toISODate(endOfMonth(now));
+  const monthKey = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  })();
 
   const query = useQuery({
-    queryKey: ["entre-nos", workspaceId, from, to],
+    queryKey: ["entre-nos", workspaceId, monthKey],
     enabled: Boolean(workspaceId && shared),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const supabase = createClient();
+      const range = entreNosMonthQueryRange(startOfMonth(new Date()));
       const { data, error } = await supabase
         .from("transactions")
-        .select(
-          `
-          id, amount, description, transaction_type, paid_by_member_id,
-          consumer_member_id, consumer_share_percent, transaction_date,
-          category:categories(icon, name),
-          card:cards!card_id(id, name, owner_member_id),
-          account:accounts!account_id(id, name, owner_member_id)
-        `
-        )
+        .select(ENTRE_NOS_TX_SELECT)
         .eq("workspace_id", workspaceId!)
         .in("transaction_type", ["expense", "loan_given", "settlement"])
         .neq("status", "cancelled")
-        .gte("transaction_date", from)
-        .lte("transaction_date", to)
+        .gte("transaction_date", range.from)
+        .lte("transaction_date", range.to)
         .order("transaction_date", { ascending: false })
         .limit(500);
       if (error) throw new Error(error.message);
@@ -57,13 +51,17 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
     },
   });
 
-  const settlement = (() => {
+  const settlement = useMemo(() => {
     if (!shared || members.length < 2 || !query.data) return null;
+    const txs = filterEntreNosTxsForMonth(
+      query.data,
+      startOfMonth(new Date())
+    );
     return computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
-      query.data
+      txs
     );
-  })();
+  }, [shared, members, query.data]);
 
   const hasDebt = Boolean(
     settlement && !settlement.balanced && settlement.netAmount >= 1

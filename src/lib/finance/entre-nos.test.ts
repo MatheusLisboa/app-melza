@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   computeEntreNosSettlement,
   resolveEntreNosPair,
+  filterEntreNosTxsForMonth,
+  txBelongsToEntreNosMonth,
 } from "@/lib/finance/entre-nos";
+import { startOfMonth } from "@/lib/utils/format";
 
 const members = [
   { id: "a", display_name: "Matheus" },
@@ -64,6 +67,73 @@ describe("resolveEntreNosPair", () => {
         card: { owner_member_id: "b", name: "Nubank dela" },
       })
     ).toEqual({ consumerId: "a", payerId: "b" });
+  });
+});
+
+describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
+  it("compra após o fechamento entra no mês seguinte", () => {
+    // Fecha dia 20: ciclo de julho = 20/jun … 19/jul
+    const purchase = {
+      id: "1",
+      amount: 100,
+      description: "Após fechamento",
+      transaction_date: "2026-06-21",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card: {
+        owner_member_id: "b",
+        name: "Nubank",
+        closing_day: 20,
+      },
+    };
+
+    const june = startOfMonth(new Date(2026, 5, 1));
+    const july = startOfMonth(new Date(2026, 6, 1));
+
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
+    expect(filterEntreNosTxsForMonth([purchase], june)).toHaveLength(0);
+    expect(filterEntreNosTxsForMonth([purchase], july)).toHaveLength(1);
+  });
+
+  it("compra antes do fechamento fica no mês do fechamento", () => {
+    const purchase = {
+      id: "2",
+      amount: 50,
+      description: "Antes do fechamento",
+      transaction_date: "2026-06-19",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card: {
+        owner_member_id: "b",
+        name: "Nubank",
+        closing_day: 20,
+      },
+    };
+
+    const june = startOfMonth(new Date(2026, 5, 1));
+    const july = startOfMonth(new Date(2026, 6, 1));
+
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
+  });
+
+  it("sem closing_day usa mês civil", () => {
+    const purchase = {
+      id: "3",
+      amount: 30,
+      description: "Débito",
+      transaction_date: "2026-06-21",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      account: { owner_member_id: "b", name: "Conta" },
+    };
+
+    const june = startOfMonth(new Date(2026, 5, 1));
+    const july = startOfMonth(new Date(2026, 6, 1));
+
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
   });
 });
 

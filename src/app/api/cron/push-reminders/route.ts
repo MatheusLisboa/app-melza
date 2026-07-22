@@ -4,9 +4,12 @@ import { isPushConfigured } from "@/lib/push/web-push";
 import { notifyUserOnce } from "@/lib/push/notify";
 import {
   computeEntreNosSettlement,
+  ENTRE_NOS_TX_SELECT,
+  entreNosMonthQueryRange,
+  filterEntreNosTxsForMonth,
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
-import { formatCurrency, toISODate, startOfMonth, endOfMonth } from "@/lib/utils/format";
+import { formatCurrency, toISODate, startOfMonth } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -39,8 +42,8 @@ function daysUntilDue(dueDay: number, today = new Date()): number | null {
 async function runEntreNosReminders(todayISO: string) {
   const admin = createAdminClient();
   const today = new Date(todayISO + "T12:00:00");
-  const from = toISODate(startOfMonth(today));
-  const to = toISODate(endOfMonth(today));
+  const month = startOfMonth(today);
+  const range = entreNosMonthQueryRange(month);
 
   const { data: workspaces } = await admin
     .from("workspaces")
@@ -56,27 +59,24 @@ async function runEntreNosReminders(todayISO: string) {
       .eq("workspace_id", ws.id);
     if (!members || members.length < 2) continue;
 
-    const { data: txs } = await admin
+    const { data: txsRaw } = await admin
       .from("transactions")
-      .select(
-        `
-        id, amount, description, transaction_type, paid_by_member_id,
-        consumer_member_id, consumer_share_percent, transaction_date,
-        card:cards!card_id(id, name, owner_member_id),
-        account:accounts!account_id(id, name, owner_member_id)
-      `
-      )
+      .select(ENTRE_NOS_TX_SELECT)
       .eq("workspace_id", ws.id)
       .in("transaction_type", ["expense", "loan_given", "settlement"])
       .neq("status", "cancelled")
-      .gte("transaction_date", from)
-      .lte("transaction_date", to)
+      .gte("transaction_date", range.from)
+      .lte("transaction_date", range.to)
       .order("transaction_date", { ascending: false })
       .limit(500);
 
+    const txs = filterEntreNosTxsForMonth(
+      (txsRaw ?? []) as EntreNosTx[],
+      month
+    );
     const settlement = computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
-      (txs ?? []) as EntreNosTx[]
+      txs
     );
 
     if (settlement.balanced || !settlement.debtor || settlement.netAmount < 1) {

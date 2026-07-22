@@ -1,7 +1,18 @@
 /**
  * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
  * Rateio: consumer_share_percent (ex. 50 = metade do valor).
+ *
+ * Mês do acerto: cartão segue o ciclo de fechamento da fatura
+ * (compra após o fechamento entra no mês seguinte). Conta/acerto = mês civil.
  */
+
+import { buildInvoiceCycle } from "@/lib/utils/invoice-cycle";
+import {
+  addMonths,
+  endOfMonth,
+  startOfMonth,
+  toISODate,
+} from "@/lib/utils/format";
 
 export type EntreNosMember = {
   id: string;
@@ -12,7 +23,72 @@ type Instrument = {
   id?: string;
   name?: string | null;
   owner_member_id?: string | null;
+  closing_day?: number | null;
 } | null;
+
+/** Select embutido de cartão/conta para queries Entre Nós. */
+export const ENTRE_NOS_TX_SELECT = `
+  id, amount, description, transaction_type, paid_by_member_id,
+  consumer_member_id, consumer_share_percent, transaction_date,
+  category:categories(icon, name),
+  card:cards!card_id(id, name, owner_member_id, closing_day),
+  account:accounts!account_id(id, name, owner_member_id)
+`;
+
+/** Janela de fetch: mês anterior + mês visto (cobre ciclos de fatura). */
+export function entreNosMonthQueryRange(month: Date): {
+  from: string;
+  to: string;
+} {
+  return {
+    from: toISODate(startOfMonth(addMonths(month, -1))),
+    to: toISODate(endOfMonth(month)),
+  };
+}
+
+/**
+ * Cartão com closing_day → ciclo da fatura do mês (key YYYY-MM).
+ * Sem cartão / sem fechamento / acerto → mês civil.
+ */
+export function txBelongsToEntreNosMonth(
+  tx: EntreNosTx,
+  month: Date
+): boolean {
+  const calFrom = toISODate(startOfMonth(month));
+  const calTo = toISODate(endOfMonth(month));
+
+  if (tx.transaction_type === "settlement") {
+    return tx.transaction_date >= calFrom && tx.transaction_date <= calTo;
+  }
+
+  const card = getTxCard(tx);
+  const closingDay = card?.closing_day;
+  if (
+    card &&
+    typeof closingDay === "number" &&
+    closingDay >= 1 &&
+    closingDay <= 31
+  ) {
+    const cycle = buildInvoiceCycle(
+      month.getFullYear(),
+      month.getMonth(),
+      closingDay,
+      null
+    );
+    return (
+      tx.transaction_date >= cycle.from && tx.transaction_date <= cycle.to
+    );
+  }
+
+  return tx.transaction_date >= calFrom && tx.transaction_date <= calTo;
+}
+
+export function filterEntreNosTxsForMonth(
+  txs: EntreNosTx[],
+  month: Date
+): EntreNosTx[] {
+  return txs.filter((tx) => txBelongsToEntreNosMonth(tx, month));
+}
 
 export type EntreNosTx = {
   id: string;

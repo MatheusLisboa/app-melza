@@ -17,7 +17,12 @@ import {
   sumCardCommittedLimit,
   type CardCycleTx,
 } from "@/lib/finance/card-cycle";
-import { computeEntreNosSettlement } from "@/lib/finance/entre-nos";
+import {
+  computeEntreNosSettlement,
+  ENTRE_NOS_TX_SELECT,
+  entreNosMonthQueryRange,
+  filterEntreNosTxsForMonth,
+} from "@/lib/finance/entre-nos";
 import { listInvoiceCycles } from "@/lib/utils/invoice-cycle";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
 import { toISODate, startOfMonth, endOfMonth } from "@/lib/utils/format";
@@ -490,37 +495,30 @@ export function buildChatTools(opts: {
           };
         }
 
-        const monthStart = toISODate(startOfMonth(new Date()));
-        const monthEnd = toISODate(endOfMonth(new Date()));
-        const { data: txs, error } = await supabase
+        const month = startOfMonth(new Date());
+        const range = entreNosMonthQueryRange(month);
+        const { data: txsRaw, error } = await supabase
           .from("transactions")
-          .select(
-            `
-            id, amount, description, transaction_type, paid_by_member_id,
-            consumer_member_id, consumer_share_percent, transaction_date,
-            category:categories(icon, name),
-            card:cards!card_id(id, name, owner_member_id),
-            account:accounts!account_id(id, name, owner_member_id)
-          `
-          )
+          .select(ENTRE_NOS_TX_SELECT)
           .eq("workspace_id", workspaceId)
           .in("transaction_type", ["expense", "loan_given", "settlement"])
           .neq("status", "cancelled")
-          .gte("transaction_date", monthStart)
-          .lte("transaction_date", monthEnd)
+          .gte("transaction_date", range.from)
+          .lte("transaction_date", range.to)
           .order("transaction_date", { ascending: false })
           .limit(500);
         if (error) return { error: error.message };
 
-        const settlement = computeEntreNosSettlement(
-          members ?? [],
-          (txs ?? []) as Parameters<typeof computeEntreNosSettlement>[1]
+        const txs = filterEntreNosTxsForMonth(
+          (txsRaw ?? []) as Parameters<typeof computeEntreNosSettlement>[1],
+          month
         );
+        const settlement = computeEntreNosSettlement(members ?? [], txs);
 
         if (settlement.balanced || !settlement.debtor || !settlement.creditor) {
           return {
             balanced: true,
-            month: monthStart.slice(0, 7),
+            month: toISODate(month).slice(0, 7),
             message: "Estão quites neste mês (ou sem divisões pendentes).",
             balances: settlement.balances,
           };
@@ -528,7 +526,7 @@ export function buildChatTools(opts: {
 
         return {
           balanced: false,
-          month: monthStart.slice(0, 7),
+          month: toISODate(month).slice(0, 7),
           summary: `Neste mês ${settlement.debtor.name} deve ${settlement.netAmount.toFixed(2)} a ${settlement.creditor.name}`,
           debtor: settlement.debtor,
           creditor: settlement.creditor,
