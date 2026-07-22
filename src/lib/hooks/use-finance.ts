@@ -8,7 +8,8 @@ import type { AccountInput, CardInput } from "@/lib/validations/card";
 export function useWorkspaceMembers(workspaceId: string) {
   return useQuery({
     queryKey: ["workspace-members", workspaceId],
-    staleTime: 5 * 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase

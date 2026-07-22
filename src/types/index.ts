@@ -10,7 +10,8 @@ export type TransactionType =
   | "transfer"
   | "loan_given"
   | "loan_received"
-  | "loan_repayment";
+  | "loan_repayment"
+  | "settlement";
 export type TransactionStatus =
   | "pending"
   | "confirmed"

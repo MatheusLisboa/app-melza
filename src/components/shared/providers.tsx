@@ -25,10 +25,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 90_000,
+            staleTime: 60_000,
             gcTime: 10 * 60_000,
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
+            // PWA standalone: ao voltar do background, dados (ex.: novo membro) atualizam
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
           },
         },
       })

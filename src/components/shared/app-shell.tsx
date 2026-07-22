@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
@@ -56,15 +57,47 @@ export function AppShellProvider({
     queryKey: ["app-shell"],
     queryFn: fetchShell,
     initialData,
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    // PWA na home screen fica aberto por dias — precisa refrescar membros/workspace
+    staleTime: 30_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 1,
   });
 
   const refreshShell = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ["app-shell"] });
+    await qc.invalidateQueries({ queryKey: ["workspace-members"] });
+  }, [qc]);
+
+  // iOS PWA: ao voltar do background, atualiza membros (ex.: convite aceito)
+  useEffect(() => {
+    let hiddenAt = 0;
+    const refreshLiveData = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      // Evita refetch em trocas rápidas de aba (<2s)
+      if (hiddenAt && Date.now() - hiddenAt < 2_000) return;
+      void qc.invalidateQueries({ queryKey: ["app-shell"] });
+      void qc.invalidateQueries({ queryKey: ["workspace-members"] });
+      void qc.invalidateQueries({ queryKey: ["entre-nos"] });
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        void qc.invalidateQueries({ queryKey: ["app-shell"] });
+        void qc.invalidateQueries({ queryKey: ["workspace-members"] });
+      }
+    };
+    document.addEventListener("visibilitychange", refreshLiveData);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("online", refreshLiveData);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshLiveData);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("online", refreshLiveData);
+    };
   }, [qc]);
 
   const value = useMemo<ShellContextValue | null>(() => {

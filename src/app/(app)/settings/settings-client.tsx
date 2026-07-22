@@ -286,7 +286,7 @@ export function SettingsClient({
       setDeletingWs(false);
       return;
     }
-    // Hard reload limpa shell com staleTime: Infinity
+    // Hard reload limpa shell / QueryClient do PWA
     window.location.assign("/dashboard");
   }
 

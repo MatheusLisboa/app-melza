@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const AVATAR_COLORS = [
 ];
 
 export function InviteAcceptForm({ token }: { token: string }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +60,7 @@ export function InviteAcceptForm({ token }: { token: string }) {
 
         if (existing) {
           await setActiveWorkspaceAction(invite.workspace_id);
-          router.replace("/dashboard");
+          window.location.assign("/dashboard");
           return;
         }
       }
@@ -76,7 +74,7 @@ export function InviteAcceptForm({ token }: { token: string }) {
     }
 
     void check();
-  }, [router, token]);
+  }, [token]);
 
   async function accept() {
     setSubmitting(true);
@@ -101,8 +99,8 @@ export function InviteAcceptForm({ token }: { token: string }) {
       await setActiveWorkspaceAction(workspaceId as string);
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // Hard reload limpa QueryClient (shell com staleTime antigo / PWA)
+    window.location.assign("/dashboard");
   }
 
   if (loading) {

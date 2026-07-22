@@ -352,6 +352,8 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                     const isIncome =
                       tx.transaction_type === "income" ||
                       tx.transaction_type === "loan_received";
+                    const isSettlement =
+                      tx.transaction_type === "settlement";
 
                     return (
                       <div
@@ -362,9 +364,15 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                       >
                         <TxRow
                           embedded
-                          emoji={tx.category?.icon}
+                          emoji={
+                            isSettlement ? "🤝" : tx.category?.icon
+                          }
                           title={tx.displayDescription}
-                          category={tx.category?.name}
+                          category={
+                            isSettlement
+                              ? "Acerto Entre Nós"
+                              : tx.category?.name
+                          }
                           dateLabel={formatDate(tx.transaction_date)}
                           amount={tx.displayAmount}
                           type={

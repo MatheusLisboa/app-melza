@@ -15,6 +15,8 @@ const FINANCE_ROOTS = new Set([
   "loans",
   "entre-nos",
   "categories",
+  "workspace-members",
+  "app-shell",
 ]);
 
 /**

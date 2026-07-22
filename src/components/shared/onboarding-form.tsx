@@ -132,9 +132,7 @@ export function OnboardingForm({
     if (workspaceId) {
       await setActiveWorkspaceAction(workspaceId as string);
     }
-    setLoading(false);
-    router.push("/dashboard");
-    router.refresh();
+    window.location.assign("/dashboard");
   }
 
   async function continuePersonal() {

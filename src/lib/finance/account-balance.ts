@@ -6,7 +6,8 @@ type TxType =
   | "transfer"
   | "loan_given"
   | "loan_received"
-  | "loan_repayment";
+  | "loan_repayment"
+  | "settlement";
 
 /** Delta no saldo da conta: receita +, despesa −. Transferências tratadas à parte. */
 export function accountBalanceDelta(
@@ -23,7 +24,8 @@ export function accountBalanceDelta(
   if (
     transactionType === "expense" ||
     transactionType === "loan_given" ||
-    transactionType === "loan_repayment"
+    transactionType === "loan_repayment" ||
+    transactionType === "settlement"
   ) {
     return -n;
   }

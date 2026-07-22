@@ -495,15 +495,17 @@ export function buildChatTools(opts: {
           .select(
             `
             id, amount, description, transaction_type, paid_by_member_id,
-            transaction_date, category:categories(icon, name),
-            cards(owner_member_id), accounts(owner_member_id)
+            consumer_member_id, transaction_date,
+            category:categories(icon, name),
+            cards(id, name, owner_member_id),
+            accounts(id, name, owner_member_id)
           `
           )
           .eq("workspace_id", workspaceId)
-          .in("transaction_type", ["expense", "loan_given"])
+          .in("transaction_type", ["expense", "loan_given", "settlement"])
           .neq("status", "cancelled")
           .order("transaction_date", { ascending: false })
-          .limit(80);
+          .limit(200);
         if (error) return { error: error.message };
 
         const settlement = computeEntreNosSettlement(

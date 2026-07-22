@@ -133,6 +133,7 @@ export function TransactionDetailClient({
   const isIncome =
     tx.transaction_type === "income" ||
     tx.transaction_type === "loan_received";
+  const isSettlement = tx.transaction_type === "settlement";
 
   const statusLabel =
     tx.status === "confirmed"
@@ -159,14 +160,17 @@ export function TransactionDetailClient({
       <div className="px-5">
         <div className="flex flex-col items-center gap-3 py-8">
           <div className="flex h-16 w-16 items-center justify-center rounded-[10px] bg-[var(--color-chip)] text-4xl">
-            {tx.category?.icon || "💸"}
+            {isSettlement ? "🤝" : tx.category?.icon || "💸"}
           </div>
           <div className="text-center">
             <p className="text-lg font-medium text-[var(--color-text)]">
               {tx.description}
             </p>
             <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
-              {[tx.category?.name, formatDate(tx.transaction_date)]
+              {[
+                isSettlement ? "Acerto Entre Nós" : tx.category?.name,
+                formatDate(tx.transaction_date),
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -181,27 +185,35 @@ export function TransactionDetailClient({
         {(consumer || payer || cardOwner) && (
           <div className="mb-4 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
             <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
-              Atribuição
+              {isSettlement ? "Acerto" : "Atribuição"}
             </p>
             <Divider />
             {[
               {
-                label: "Quem consumiu",
+                label: isSettlement ? "Quem recebeu" : "Quem consumiu",
                 m: consumer,
-                desc: "Beneficiário da despesa",
+                desc: isSettlement
+                  ? "Recebeu o reembolso"
+                  : "Beneficiário da despesa",
               },
               {
-                label: "Quem pagou",
+                label: isSettlement ? "Quem pagou o acerto" : "Quem pagou",
                 m: payer,
-                desc: "Desembolsou o dinheiro",
+                desc: isSettlement
+                  ? "Quitou (parcial ou total) a dívida"
+                  : "Desembolsou o dinheiro",
               },
-              {
-                label: "Dono do cartão",
-                m: cardOwner,
-                desc: tx.card
-                  ? `${tx.card.name}${tx.card.bank ? ` · ${getBankName(tx.card.bank)}` : ""}`
-                  : "Cartão utilizado",
-              },
+              ...(isSettlement
+                ? []
+                : [
+                    {
+                      label: "Dono do cartão",
+                      m: cardOwner,
+                      desc: tx.card
+                        ? `${tx.card.name}${tx.card.bank ? ` · ${getBankName(tx.card.bank)}` : ""}`
+                        : "Cartão utilizado",
+                    },
+                  ]),
             ]
               .filter((row) => row.m)
               .map((row, i, arr) => (
