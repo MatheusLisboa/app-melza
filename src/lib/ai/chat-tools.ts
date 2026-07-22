@@ -497,8 +497,8 @@ export function buildChatTools(opts: {
             id, amount, description, transaction_type, paid_by_member_id,
             consumer_member_id, transaction_date,
             category:categories(icon, name),
-            cards(id, name, owner_member_id),
-            accounts(id, name, owner_member_id)
+            card:cards!card_id(id, name, owner_member_id),
+            account:accounts!account_id(id, name, owner_member_id)
           `
           )
           .eq("workspace_id", workspaceId)

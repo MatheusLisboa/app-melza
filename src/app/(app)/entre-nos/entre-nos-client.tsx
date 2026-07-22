@@ -42,21 +42,28 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   const [settleOpen, setSettleOpen] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
 
-  const { data: txs = [], isLoading } = useQuery({
+  const {
+    data: txs = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["entre-nos", member.workspace_id],
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const supabase = createClient();
-      const { data, error } = await supabase
+      // accounts!account_id — há 2 FKs (account_id / transfer_to_account_id)
+      const { data, error: qError } = await supabase
         .from("transactions")
         .select(
           `
           id, amount, description, transaction_type, paid_by_member_id,
           consumer_member_id, transaction_date,
           category:categories(icon, name),
-          cards(id, name, owner_member_id),
-          accounts(id, name, owner_member_id)
+          card:cards!card_id(id, name, owner_member_id),
+          account:accounts!account_id(id, name, owner_member_id)
         `
         )
         .eq("workspace_id", member.workspace_id)
@@ -64,7 +71,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         .neq("status", "cancelled")
         .order("transaction_date", { ascending: false })
         .limit(300);
-      if (error) throw error;
+      if (qError) throw new Error(qError.message);
       return (data ?? []) as EntreNosTx[];
     },
   });
@@ -148,6 +155,17 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
       <div className="page-pad space-y-5 md:px-6">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Calculando acertos…</p>
+        ) : isError ? (
+          <EmptyState
+            title="Não foi possível carregar"
+            description={
+              error instanceof Error
+                ? error.message
+                : "Tente de novo em instantes."
+            }
+            actionLabel="Tentar de novo"
+            onAction={() => void refetch()}
+          />
         ) : members.length < 2 ? (
           <EmptyState
             title="Aguardando membros"

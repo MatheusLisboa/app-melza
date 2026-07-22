@@ -51,6 +51,20 @@ describe("resolveEntreNosPair", () => {
       })
     ).toEqual({ consumerId: "b", payerId: "a" });
   });
+
+  it("consumer no cartão de outro mesmo com paid_by = consumer", () => {
+    expect(
+      resolveEntreNosPair({
+        id: "1",
+        amount: 100,
+        description: "Mercado",
+        transaction_date: "2026-07-22",
+        paid_by_member_id: "a",
+        consumer_member_id: "a",
+        card: { owner_member_id: "b", name: "Nubank dela" },
+      })
+    ).toEqual({ consumerId: "a", payerId: "b" });
+  });
 });
 
 describe("computeEntreNosSettlement", () => {

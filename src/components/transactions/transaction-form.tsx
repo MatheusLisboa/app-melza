@@ -17,6 +17,7 @@ import { CardSelector } from "@/components/transactions/card-selector";
 import { useAccounts, useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { AccountType, Category, WorkspaceMember } from "@/types";
 import { toISODate } from "@/lib/utils/format";
+import { parsePaymentMethod } from "@/lib/utils/payment-method";
 import { Btn } from "@/components/design-system";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -502,7 +503,20 @@ export function TransactionFormDialog({
                   accountsOnly={channel !== "card"}
                   accountTypes={accountTypesForChannel}
                   value={form.watch("payment_method")}
-                  onChange={(v) => form.setValue("payment_method", v)}
+                  onChange={(v) => {
+                    form.setValue("payment_method", v);
+                    // Cartão de outra pessoa → "quem pagou" = dono do cartão
+                    const parsed = parsePaymentMethod(v);
+                    if (parsed?.kind === "card") {
+                      const selected = cards.find((c) => c.id === parsed.id);
+                      if (selected?.owner_member_id) {
+                        form.setValue(
+                          "paid_by_member_id",
+                          selected.owner_member_id
+                        );
+                      }
+                    }
+                  }}
                   placeholder={paymentPlaceholder}
                   triggerClassName="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
                 />
@@ -602,6 +616,10 @@ export function TransactionFormDialog({
               </div>
               <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
                 <FieldLabel>Quem pagou</FieldLabel>
+                <p className="text-[11px] leading-snug text-[var(--color-text-3)]">
+                  No cartão de outra pessoa, deixe o dono do cartão como quem
+                  pagou. Você em &quot;quem consumiu&quot;.
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {members.map((m) => (
                     <MemberChip

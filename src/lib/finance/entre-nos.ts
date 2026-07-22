@@ -1,6 +1,5 @@
 /**
- * Acerto "Entre Nós": quem consumiu vs quem pagou.
- * Fallback: quem pagou com cartão/conta de outra pessoa.
+ * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
  * Settlements (acerto) usam a mesma matemática e reduzem o saldo.
  */
 
@@ -8,6 +7,12 @@ export type EntreNosMember = {
   id: string;
   display_name: string;
 };
+
+type Instrument = {
+  id?: string;
+  name?: string | null;
+  owner_member_id?: string | null;
+} | null;
 
 export type EntreNosTx = {
   id: string;
@@ -18,16 +23,11 @@ export type EntreNosTx = {
   paid_by_member_id: string | null;
   consumer_member_id?: string | null;
   category?: { icon?: string | null; name?: string | null } | null;
-  cards?: {
-    id?: string;
-    name?: string | null;
-    owner_member_id?: string | null;
-  } | null;
-  accounts?: {
-    id?: string;
-    name?: string | null;
-    owner_member_id?: string | null;
-  } | null;
+  /** PostgREST: objeto, array ou aliases card/account */
+  cards?: Instrument | Instrument[];
+  accounts?: Instrument | Instrument[];
+  card?: Instrument;
+  account?: Instrument;
 };
 
 export type EntreNosRecentItem = {
@@ -35,10 +35,8 @@ export type EntreNosRecentItem = {
   title: string;
   date: string;
   amount: number;
-  /** Quem ficou devendo neste lançamento (ou quem recebeu o acerto) */
   consumerId: string;
   consumerName: string;
-  /** Quem adiantou / pagou (ou quem quitou no acerto) */
   payerId: string;
   payerName: string;
   cardName: string | null;
@@ -52,36 +50,60 @@ export type EntreNosSettlement = {
   debtor: { id: string; name: string; net: number } | null;
   creditor: { id: string; name: string; net: number } | null;
   netAmount: number;
-  /** Gastos: credor pagou por devedor */
   aPaidForB: number;
   bPaidForA: number;
-  /** Soma dos acertos já registrados entre o par */
   settledAmount: number;
   balances: { id: string; name: string; net: number }[];
   recent: EntreNosRecentItem[];
 };
 
-/** Resolve o par (devedor, credor) de um lançamento, ou null se não gera dívida. */
+function asInstrument(
+  value: Instrument | Instrument[] | undefined
+): Instrument {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
+export function getTxCard(tx: EntreNosTx): Instrument {
+  return asInstrument(tx.card) ?? asInstrument(tx.cards);
+}
+
+export function getTxAccount(tx: EntreNosTx): Instrument {
+  return asInstrument(tx.account) ?? asInstrument(tx.accounts);
+}
+
+/**
+ * Resolve o par (devedor, credor) de um lançamento, ou null se não gera dívida.
+ *
+ * Prioridade:
+ * 1. consumer ≠ paid_by → consumer deve a paid_by
+ * 2. consumer ≠ dono do cartão/conta → consumer deve ao dono (usou cartão de outro)
+ * 3. paid_by ≠ dono → paid_by deve ao dono
+ */
 export function resolveEntreNosPair(tx: EntreNosTx): {
   consumerId: string;
   payerId: string;
 } | null {
-  const payerId = tx.paid_by_member_id;
-  if (!payerId) return null;
-
+  const paidById = tx.paid_by_member_id;
   const consumerId = tx.consumer_member_id ?? null;
-  if (consumerId && consumerId !== payerId) {
-    return { consumerId, payerId };
+  const card = getTxCard(tx);
+  const account = getTxAccount(tx);
+  const ownerId = card?.owner_member_id ?? account?.owner_member_id ?? null;
+
+  if (consumerId && paidById && consumerId !== paidById) {
+    return { consumerId, payerId: paidById };
   }
 
-  // Settlement sem consumer inválido
   if (tx.transaction_type === "settlement") return null;
 
-  // Fallback: pagou com cartão/conta de outra pessoa → quem pagou deve ao dono
-  const ownerId =
-    tx.cards?.owner_member_id ?? tx.accounts?.owner_member_id ?? null;
-  if (ownerId && payerId !== ownerId) {
-    return { consumerId: payerId, payerId: ownerId };
+  // Caso comum: eu consumi no cartão dela, e "quem pagou" ficou como eu
+  if (consumerId && ownerId && consumerId !== ownerId) {
+    return { consumerId, payerId: ownerId };
+  }
+
+  if (paidById && ownerId && paidById !== ownerId) {
+    return { consumerId: paidById, payerId: ownerId };
   }
 
   return null;
@@ -108,8 +130,9 @@ export function computeEntreNosSettlement(
 
     const { consumerId, payerId } = pair;
     const isSettlement = tx.transaction_type === "settlement";
+    const card = getTxCard(tx);
+    const account = getTxAccount(tx);
 
-    // Consumidor deve; quem pagou tem crédito (acerto: quem recebe “consome” o crédito)
     balances.set(consumerId, (balances.get(consumerId) ?? 0) - amount);
     balances.set(payerId, (balances.get(payerId) ?? 0) + amount);
 
@@ -129,8 +152,8 @@ export function computeEntreNosSettlement(
       consumerName: byId.get(consumerId)?.display_name ?? "?",
       payerId,
       payerName: byId.get(payerId)?.display_name ?? "?",
-      cardName: tx.cards?.name ?? null,
-      accountName: tx.accounts?.name ?? null,
+      cardName: card?.name ?? null,
+      accountName: account?.name ?? null,
       categoryIcon: isSettlement ? "🤝" : (tx.category?.icon ?? null),
       isSettlement,
     });
@@ -153,10 +176,8 @@ export function computeEntreNosSettlement(
 
   const a = debtor?.id;
   const b = creditor?.id;
-  // Gastos: B pagou por A / A pagou por B
   const bPaidForA = a && b ? expenseFlow.get(`${a}>${b}`) ?? 0 : 0;
   const aPaidForB = a && b ? expenseFlow.get(`${b}>${a}`) ?? 0 : 0;
-  // Acertos: A pagou B → consumer=B, payer=A → key b>a
   const settledAmount =
     a && b
       ? (settlementFlow.get(`${b}>${a}`) ?? 0) +
