@@ -20,7 +20,7 @@ import {
 import { computeEntreNosSettlement } from "@/lib/finance/entre-nos";
 import { listInvoiceCycles } from "@/lib/utils/invoice-cycle";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
-import { toISODate } from "@/lib/utils/format";
+import { toISODate, startOfMonth, endOfMonth } from "@/lib/utils/format";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -490,6 +490,8 @@ export function buildChatTools(opts: {
           };
         }
 
+        const monthStart = toISODate(startOfMonth(new Date()));
+        const monthEnd = toISODate(endOfMonth(new Date()));
         const { data: txs, error } = await supabase
           .from("transactions")
           .select(
@@ -504,8 +506,10 @@ export function buildChatTools(opts: {
           .eq("workspace_id", workspaceId)
           .in("transaction_type", ["expense", "loan_given", "settlement"])
           .neq("status", "cancelled")
+          .gte("transaction_date", monthStart)
+          .lte("transaction_date", monthEnd)
           .order("transaction_date", { ascending: false })
-          .limit(200);
+          .limit(500);
         if (error) return { error: error.message };
 
         const settlement = computeEntreNosSettlement(
@@ -516,14 +520,16 @@ export function buildChatTools(opts: {
         if (settlement.balanced || !settlement.debtor || !settlement.creditor) {
           return {
             balanced: true,
-            message: "Estão quites (ou sem divisões pendentes).",
+            month: monthStart.slice(0, 7),
+            message: "Estão quites neste mês (ou sem divisões pendentes).",
             balances: settlement.balances,
           };
         }
 
         return {
           balanced: false,
-          summary: `${settlement.debtor.name} deve ${settlement.netAmount.toFixed(2)} a ${settlement.creditor.name}`,
+          month: monthStart.slice(0, 7),
+          summary: `Neste mês ${settlement.debtor.name} deve ${settlement.netAmount.toFixed(2)} a ${settlement.creditor.name}`,
           debtor: settlement.debtor,
           creditor: settlement.creditor,
           netAmount: settlement.netAmount,

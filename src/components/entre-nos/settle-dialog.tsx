@@ -35,6 +35,8 @@ export function SettleEntreNosDialog({
   creditor,
   netAmount,
   alreadySettled,
+  defaultPaymentDate,
+  monthLabel,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +45,9 @@ export function SettleEntreNosDialog({
   creditor: WorkspaceMember;
   netAmount: number;
   alreadySettled: number;
+  /** Data do acerto no mês visualizado (parcelas ficam no mês da parcela) */
+  defaultPaymentDate?: string;
+  monthLabel?: string;
 }) {
   const qc = useQueryClient();
   const { data: accounts = [] } = useAccounts(member.workspace_id);
@@ -63,7 +68,9 @@ export function SettleEntreNosDialog({
   const remaining = Math.max(0, netAmount);
   const [amount, setAmount] = useState(remaining);
   const [accountId, setAccountId] = useState("");
-  const [paymentDate, setPaymentDate] = useState(toISODate(new Date()));
+  const [paymentDate, setPaymentDate] = useState(
+    defaultPaymentDate ?? toISODate(new Date())
+  );
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,11 +88,11 @@ export function SettleEntreNosDialog({
   useEffect(() => {
     if (!open) return;
     setAmount(remaining);
-    setPaymentDate(toISODate(new Date()));
+    setPaymentDate(defaultPaymentDate ?? toISODate(new Date()));
     setNotes("");
     setError(null);
     setAccountId((prev) => prev || activeAccounts[0]?.id || "");
-  }, [open, remaining, activeAccounts]);
+  }, [open, remaining, activeAccounts, defaultPaymentDate]);
 
   async function onSubmit() {
     if (!accountId) {
@@ -137,6 +144,7 @@ export function SettleEntreNosDialog({
               <DialogTitle>Registrar acerto</DialogTitle>
               <DialogDescription className="truncate">
                 {debtor.display_name} → {creditor.display_name}
+                {monthLabel ? ` · ${monthLabel}` : ""}
               </DialogDescription>
             </DialogHeader>
             <button

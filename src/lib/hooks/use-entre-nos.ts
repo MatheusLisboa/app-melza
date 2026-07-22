@@ -8,17 +8,27 @@ import {
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
 import { isSharedWorkspace } from "@/lib/utils/workspace";
+import {
+  endOfMonth,
+  startOfMonth,
+  toISODate,
+} from "@/lib/utils/format";
 import type { WorkspaceMember } from "@/types";
 
 const REMINDER_DAYS = 7;
 
+/** Dívida / lembrete do mês civil atual (não acumula meses anteriores). */
 export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
   const workspaceId = member?.workspace_id;
   const shared = isSharedWorkspace(member?.workspace?.type);
   const { data: members = [] } = useWorkspaceMembers(workspaceId ?? "");
 
+  const now = new Date();
+  const from = toISODate(startOfMonth(now));
+  const to = toISODate(endOfMonth(now));
+
   const query = useQuery({
-    queryKey: ["entre-nos", workspaceId],
+    queryKey: ["entre-nos", workspaceId, from, to],
     enabled: Boolean(workspaceId && shared),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
@@ -38,8 +48,10 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
         .eq("workspace_id", workspaceId!)
         .in("transaction_type", ["expense", "loan_given", "settlement"])
         .neq("status", "cancelled")
+        .gte("transaction_date", from)
+        .lte("transaction_date", to)
         .order("transaction_date", { ascending: false })
-        .limit(300);
+        .limit(500);
       if (error) throw new Error(error.message);
       return (data ?? []) as EntreNosTx[];
     },
@@ -60,10 +72,10 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
   let daysOpen = 0;
   if (hasDebt && settlement?.oldestOpenDate) {
     const then = new Date(settlement.oldestOpenDate + "T12:00:00");
-    const now = new Date();
+    const today = new Date();
     daysOpen = Math.max(
       0,
-      Math.floor((now.getTime() - then.getTime()) / 86_400_000)
+      Math.floor((today.getTime() - then.getTime()) / 86_400_000)
     );
   }
 

@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CreditCard,
   QrCode,
@@ -28,19 +29,44 @@ import {
   toDsMember,
 } from "@/components/design-system";
 import { SettleEntreNosDialog } from "@/components/entre-nos/settle-dialog";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
+import {
+  addMonths,
+  endOfMonth,
+  formatCurrency,
+  formatDate,
+  formatMonthYear,
+  startOfMonth,
+  toISODate,
+} from "@/lib/utils/format";
 import {
   computeEntreNosSettlement,
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
 
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Data padrão do acerto: hoje se for o mês atual; senão o último dia do mês. */
+function defaultSettleDate(month: Date): string {
+  const today = new Date();
+  if (monthKey(month) === monthKey(today)) return toISODate(today);
+  return toISODate(endOfMonth(month));
+}
+
 /**
- * Entre Nós — acertos entre membros (consumiu vs pagou + settlements).
+ * Entre Nós — acertos por mês (parcelas entram só no mês da parcela).
  */
 export function EntreNosClient({ member }: { member: WorkspaceMember }) {
+  const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [showDebtDetail, setShowDebtDetail] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
+
+  const from = toISODate(startOfMonth(month));
+  const to = toISODate(endOfMonth(month));
+  const monthLabel = formatMonthYear(month);
+  const isCurrentMonth = monthKey(month) === monthKey(new Date());
 
   const {
     data: txs = [],
@@ -49,12 +75,11 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["entre-nos", member.workspace_id],
+    queryKey: ["entre-nos", member.workspace_id, from, to],
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const supabase = createClient();
-      // accounts!account_id — há 2 FKs (account_id / transfer_to_account_id)
       const { data, error: qError } = await supabase
         .from("transactions")
         .select(
@@ -69,8 +94,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         .eq("workspace_id", member.workspace_id)
         .in("transaction_type", ["expense", "loan_given", "settlement"])
         .neq("status", "cancelled")
+        .gte("transaction_date", from)
+        .lte("transaction_date", to)
         .order("transaction_date", { ascending: false })
-        .limit(300);
+        .limit(500);
       if (qError) throw new Error(qError.message);
       return (data ?? []) as EntreNosTx[];
     },
@@ -153,6 +180,35 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
       />
 
       <div className="page-pad space-y-5 md:px-6">
+        {/* Seletor de mês — dívida não acumula entre meses */}
+        <div className="flex items-center justify-between rounded-xl border border-[#E5E5EA] bg-white px-2 py-2">
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7]"
+            aria-label="Mês anterior"
+            onClick={() => setMonth((m) => startOfMonth(addMonths(m, -1)))}
+          >
+            <ChevronLeft size={18} strokeWidth={2} />
+          </button>
+          <div className="text-center">
+            <p className="text-[14px] font-semibold capitalize text-[#111111]">
+              {monthLabel}
+            </p>
+            <p className="text-[11px] text-[#8E8E93]">
+              {isCurrentMonth ? "Mês atual" : "Dívida deste mês"}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7] disabled:opacity-30"
+            aria-label="Próximo mês"
+            disabled={isCurrentMonth}
+            onClick={() => setMonth((m) => startOfMonth(addMonths(m, 1)))}
+          >
+            <ChevronRight size={18} strokeWidth={2} />
+          </button>
+        </div>
+
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Calculando acertos…</p>
         ) : isError ? (
@@ -173,11 +229,11 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
           />
         ) : !hasDebt ? (
           <EmptyState
-            title="Tudo certo entre vocês"
+            title="Tudo certo neste mês"
             description={
               settlement.settledAmount > 0
-                ? `Últimos acertos cobriram o saldo (${formatCurrency(settlement.settledAmount)} registrados).`
-                : "Não há saldo líquido: quem consumiu e quem pagou estão quites (incluindo compras no cartão)."
+                ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
+                : `Não há saldo em ${monthLabel}. Parcelas de outros meses ficam no mês de cada parcela.`
             }
           />
         ) : (
@@ -217,7 +273,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                     <div className="h-px flex-1 bg-[#E5E5EA]" />
                   </div>
                   <span className="text-[10px] font-medium text-[#3A3A3C]">
-                    transferência sugerida
+                    saldo do mês
                   </span>
                 </div>
 
@@ -244,7 +300,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
               <div className="flex flex-col items-center gap-1.5 border-t border-[#E5E5EA] py-5">
                 <p className="text-xs font-medium uppercase tracking-wider text-[#8E8E93]">
-                  Saldo líquido
+                  Saldo de {monthLabel}
                 </p>
                 <MoneyDisplay
                   amount={settlement.netAmount}
@@ -274,7 +330,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 </p>
                 <p className="mt-0.5 text-[12px] text-[#8E8E93]">
                   {settlement.debtTxs.length} lançamento
-                  {settlement.debtTxs.length === 1 ? "" : "s"}
+                  {settlement.debtTxs.length === 1 ? "" : "s"} neste mês
                   {cardPurchases.length > 0
                     ? ` · ${cardPurchases.length} no cartão`
                     : ""}
@@ -293,7 +349,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             {showDebtDetail && (
               <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
                 <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
-                  Lançamentos que formam o saldo
+                  Lançamentos de {monthLabel}
                 </p>
                 <Divider />
                 <div className="divide-y divide-[#E5E5EA]">
@@ -314,7 +370,9 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[14px] font-medium text-[#111111]">
-                            {item.isSettlement ? "Acerto registrado" : item.title}
+                            {item.isSettlement
+                              ? "Acerto registrado"
+                              : item.title}
                           </p>
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                             {item.isSettlement ? (
@@ -363,7 +421,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
             <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
               <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
-                Resumo
+                Resumo do mês
               </p>
               <Divider />
               <div className="flex items-center justify-between px-4 py-3.5">
@@ -409,7 +467,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             {settlement.preview.length > 0 && !showDebtDetail && (
               <div>
                 <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-[#8E8E93]">
-                  Histórico
+                  Histórico do mês
                 </p>
                 <div className="flex flex-col gap-0.5">
                   {settlement.preview.map((item) => (
@@ -452,7 +510,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 icon={<Check size={18} strokeWidth={2.5} />}
                 onClick={() => setSettleOpen(true)}
               >
-                Registrar acerto
+                Registrar acerto do mês
               </Btn>
               <Btn
                 variant="secondary"
@@ -460,7 +518,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 fullWidth
                 icon={<QrCode size={16} />}
                 onClick={() => {
-                  const text = `PIX: ${formatCurrency(settlement.netAmount)} de ${settlement.debtor!.member!.display_name} para ${settlement.creditor!.member!.display_name}`;
+                  const text = `PIX: ${formatCurrency(settlement.netAmount)} de ${settlement.debtor!.member!.display_name} para ${settlement.creditor!.member!.display_name} (${monthLabel})`;
                   void navigator.clipboard?.writeText(text);
                 }}
               >
@@ -476,6 +534,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               creditor={settlement.creditor!.member!}
               netAmount={settlement.netAmount}
               alreadySettled={settlement.settledAmount}
+              defaultPaymentDate={defaultSettleDate(month)}
+              monthLabel={monthLabel}
             />
           </>
         )}

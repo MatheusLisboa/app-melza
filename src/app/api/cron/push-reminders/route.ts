@@ -6,7 +6,7 @@ import {
   computeEntreNosSettlement,
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
-import { formatCurrency, toISODate } from "@/lib/utils/format";
+import { formatCurrency, toISODate, startOfMonth, endOfMonth } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -38,6 +38,10 @@ function daysUntilDue(dueDay: number, today = new Date()): number | null {
 
 async function runEntreNosReminders(todayISO: string) {
   const admin = createAdminClient();
+  const today = new Date(todayISO + "T12:00:00");
+  const from = toISODate(startOfMonth(today));
+  const to = toISODate(endOfMonth(today));
+
   const { data: workspaces } = await admin
     .from("workspaces")
     .select("id, name, type")
@@ -65,8 +69,10 @@ async function runEntreNosReminders(todayISO: string) {
       .eq("workspace_id", ws.id)
       .in("transaction_type", ["expense", "loan_given", "settlement"])
       .neq("status", "cancelled")
+      .gte("transaction_date", from)
+      .lte("transaction_date", to)
       .order("transaction_date", { ascending: false })
-      .limit(300);
+      .limit(500);
 
     const settlement = computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
@@ -93,7 +99,7 @@ async function runEntreNosReminders(todayISO: string) {
       `${ws.id}:${todayISO}`,
       {
         title: "Lembrete Entre Nós",
-        body: `Você deve ${formatCurrency(settlement.netAmount)}${
+        body: `Neste mês você deve ${formatCurrency(settlement.netAmount)}${
           creditor ? ` a ${creditor.display_name}` : ""
         } há ${daysOpen} dias`,
         url: "/entre-nos",
