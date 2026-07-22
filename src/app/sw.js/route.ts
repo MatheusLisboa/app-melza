@@ -105,6 +105,53 @@ self.addEventListener("fetch", (event) => {
       )
   );
 });
+
+self.addEventListener("push", (event) => {
+  let data = {
+    title: "Melza",
+    body: "Você tem um aviso",
+    url: "/dashboard",
+    tag: "melza",
+  };
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (_) {
+    try {
+      const text = event.data && event.data.text();
+      if (text) data.body = text;
+    } catch (__) {}
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Melza", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag || "melza",
+      data: { url: data.url || "/dashboard" },
+      renotify: true,
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/dashboard";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
+  );
+});
 `;
 
   return new Response(body, {

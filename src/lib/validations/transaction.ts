@@ -20,7 +20,7 @@ export const transactionSchema = z
     paid_by_member_id: z.string().uuid().optional().nullable(),
     consumer_member_id: z.string().uuid().optional().nullable(),
     /** 100 = valor integral; 50 = rateio 50/50 */
-    consumer_share_percent: z.number().int().min(1).max(100).optional().default(100),
+    consumer_share_percent: z.number().int().min(1).max(100).optional(),
     payment_method: z.string().min(1, "Selecione o meio de pagamento"),
     payment_channel: paymentChannelSchema.optional().nullable(),
     notes: z.string().optional().nullable(),

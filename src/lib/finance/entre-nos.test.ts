@@ -168,6 +168,11 @@ describe("computeEntreNosSettlement", () => {
         consumer_member_id: "b",
       },
     ]);
+    expect(full.balanced).toBe(true);
+    expect(full.netAmount).toBe(0);
+    expect(full.settledAmount).toBe(1000);
+  });
+
   it("rateio 50/50 reduz a dívida pela metade", () => {
     const settlement = computeEntreNosSettlement(members, [
       {

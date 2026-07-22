@@ -21,6 +21,7 @@ import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import { workspaceTypeLabel } from "@/lib/utils/workspace";
 import { Copy, Download, LogOut, RefreshCw, Trash2, Camera } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { PushNotificationsSettings } from "@/components/shared/push-notifications-settings";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { signOutAction } from "@/lib/actions/auth";
 import { deleteWorkspaceAction } from "@/lib/actions/workspace";
@@ -341,6 +342,18 @@ export function SettingsClient({
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Notificações</CardTitle>
+          <CardDescription>
+            Avisos do sistema (Entre Nós, fatura e acertos)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PushNotificationsSettings />
         </CardContent>
       </Card>
 

@@ -89,5 +89,29 @@ export async function createSettlementAction(raw: SettlementInput) {
 
   void adjustAccountBalance(supabase, input.accountId, -input.amount);
 
+  // Notifica o outro membro (quem recebe o acerto, se quem pagou registrou;
+  // ou quem pagou, se quem recebeu registrou)
+  const notifyMemberId =
+    member.id === input.fromMemberId
+      ? input.toMemberId
+      : member.id === input.toMemberId
+        ? input.fromMemberId
+        : input.toMemberId;
+
+  void (async () => {
+    try {
+      const { notifyMember } = await import("@/lib/push/notify");
+      const actorName = member.display_name;
+      await notifyMember(notifyMemberId, {
+        title: "Acerto Entre Nós",
+        body: `${actorName} registrou acerto de ${formatCurrency(input.amount)}`,
+        url: "/entre-nos",
+        tag: `settlement-${created.id}`,
+      });
+    } catch {
+      /* push opcional */
+    }
+  })();
+
   return { success: true, id: created.id };
 }
