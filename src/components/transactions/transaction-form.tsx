@@ -197,6 +197,7 @@ export function TransactionFormDialog({
       category_id: null,
       paid_by_member_id: member.id,
       consumer_member_id: member.id,
+      consumer_share_percent: 100,
       payment_method: "",
       payment_channel: "card",
       notes: "",
@@ -632,6 +633,40 @@ export function TransactionFormDialog({
                   ))}
                 </div>
               </div>
+              {txType === "expense" && members.length >= 2 ? (
+                <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
+                  <FieldLabel>Rateio</FieldLabel>
+                  <p className="text-[11px] leading-snug text-[var(--color-text-3)]">
+                    Quanto do valor quem consumiu deve no Entre Nós.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { label: "100%", value: 100 },
+                        { label: "50/50", value: 50 },
+                        { label: "70/30", value: 70 },
+                        { label: "30/70", value: 30 },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() =>
+                          form.setValue("consumer_share_percent", opt.value)
+                        }
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                          form.watch("consumer_share_percent") === opt.value
+                            ? "border-[#111111] bg-[#111111] text-white"
+                            : "border-[#E5E5EA] bg-white text-[#3A3A3C]"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {(txType === "loan_given" || txType === "loan_received") && (

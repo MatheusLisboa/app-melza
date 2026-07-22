@@ -10,6 +10,7 @@ export function useWorkspaceMembers(workspaceId: string) {
     queryKey: ["workspace-members", workspaceId],
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    enabled: Boolean(workspaceId),
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase

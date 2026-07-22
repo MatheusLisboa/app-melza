@@ -46,10 +46,19 @@ export function SettleEntreNosDialog({
 }) {
   const qc = useQueryClient();
   const { data: accounts = [] } = useAccounts(member.workspace_id);
-  const activeAccounts = useMemo(
-    () => accounts.filter((a) => a.is_active),
-    [accounts]
-  );
+  const activeAccounts = useMemo(() => {
+    const list = accounts.filter((a) => a.is_active);
+    // Pessoal do devedor primeiro, depois compartilhadas, depois outras
+    return [...list].sort((a, b) => {
+      const score = (acc: (typeof list)[0]) => {
+        if (acc.is_shared === false && acc.owner_member_id === debtor.id)
+          return 0;
+        if (acc.is_shared !== false) return 1;
+        return 2;
+      };
+      return score(a) - score(b);
+    });
+  }, [accounts, debtor.id]);
 
   const remaining = Math.max(0, netAmount);
   const [amount, setAmount] = useState(remaining);
@@ -219,6 +228,9 @@ export function SettleEntreNosDialog({
                       <SelectItem key={a.id} value={a.id}>
                         {a.name}
                         {a.bank ? ` · ${a.bank}` : ""}
+                        {a.is_shared === false
+                          ? " · pessoal"
+                          : " · compartilhada"}
                       </SelectItem>
                     ))
                   )}

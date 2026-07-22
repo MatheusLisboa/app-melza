@@ -147,6 +147,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                       {TYPE_LABEL[account.account_type] ?? account.account_type}
                       {account.bank ? ` · ${getBankName(account.bank)}` : ""}
                       {owner ? ` · ${owner.display_name}` : ""}
+                      {account.is_shared === false ? " · pessoal" : " · compartilhada"}
                     </p>
                   </div>
                   <div className="text-right">

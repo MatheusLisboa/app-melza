@@ -171,6 +171,7 @@ export async function createTransactionAction(raw: TransactionInput) {
           input.consumer_member_id ||
           input.paid_by_member_id ||
           member.id,
+        consumer_share_percent: input.consumer_share_percent ?? 100,
         amount,
         currency: "BRL",
         transaction_type: input.transaction_type,
@@ -214,6 +215,7 @@ export async function createTransactionAction(raw: TransactionInput) {
       input.consumer_member_id ||
       input.paid_by_member_id ||
       member.id,
+    consumer_share_percent: input.consumer_share_percent ?? 100,
     amount: input.amount,
     currency: "BRL",
     transaction_type: input.transaction_type,

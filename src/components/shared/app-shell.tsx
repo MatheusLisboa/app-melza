@@ -17,6 +17,10 @@ import {
 import type { MembershipOption } from "@/components/shared/workspace-switcher";
 import type { WorkspaceMember } from "@/types";
 import { workspaceAccent, isSharedWorkspace } from "@/lib/utils/workspace";
+import { WorkspaceRealtime } from "@/components/shared/workspace-realtime";
+import { useEntreNosDebt } from "@/lib/hooks/use-entre-nos";
+import { formatCurrency } from "@/lib/utils/format";
+import Link from "next/link";
 
 type ShellData = {
   member: WorkspaceMember;
@@ -130,29 +134,81 @@ export function AppShellProvider({
 
   return (
     <AppShellContext.Provider value={value}>
-      <div className="flex h-dvh overflow-hidden bg-[var(--color-page)]">
-        <AppSidebar
-          member={value.member}
-          memberships={value.memberships}
-        />
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden lg:mx-0 lg:max-w-none">
-          <MobileHeader
-            member={value.member}
-            memberships={value.memberships}
-          />
-          {isFetching && !isLoading ? (
-            <div
-              className="h-0.5 w-full animate-pulse bg-[var(--color-chip)]"
-              aria-hidden
-            />
-          ) : null}
-          <main className="app-main min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-            {children}
-          </main>
-          <MobileNav wsColor={wsColor} showEntreNos={showEntreNos} />
-        </div>
-      </div>
+      <WorkspaceRealtime workspaceId={value.member.workspace_id} />
+      <ShellChrome
+        member={value.member}
+        memberships={value.memberships}
+        wsColor={wsColor}
+        showEntreNos={showEntreNos}
+        isFetching={isFetching && !isLoading}
+      >
+        {children}
+      </ShellChrome>
     </AppShellContext.Provider>
+  );
+}
+
+function ShellChrome({
+  children,
+  member,
+  memberships,
+  wsColor,
+  showEntreNos,
+  isFetching,
+}: {
+  children: ReactNode;
+  member: WorkspaceMember;
+  memberships: MembershipOption[];
+  wsColor: string;
+  showEntreNos: boolean;
+  isFetching: boolean;
+}) {
+  const debt = useEntreNosDebt(showEntreNos ? member : null);
+
+  return (
+    <div className="flex h-dvh overflow-hidden bg-[var(--color-page)]">
+      <AppSidebar
+        member={member}
+        memberships={memberships}
+        entreNosBadge={debt.hasDebt}
+      />
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden lg:mx-0 lg:max-w-none">
+        <MobileHeader member={member} memberships={memberships} />
+        {isFetching ? (
+          <div
+            className="h-0.5 w-full animate-pulse bg-[var(--color-chip)]"
+            aria-hidden
+          />
+        ) : null}
+        {debt.showReminder ? (
+          <Link
+            href="/entre-nos"
+            className="flex items-center justify-between gap-3 border-b border-[#E5E5EA] bg-white px-4 py-2.5"
+          >
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[#111111]">
+                Lembrete Entre Nós
+              </p>
+              <p className="truncate text-[12px] text-[#8E8E93]">
+                Saldo de {formatCurrency(debt.netAmount)} há {debt.daysOpen}{" "}
+                dias
+              </p>
+            </div>
+            <span className="shrink-0 text-[12px] font-medium text-[#111111]">
+              Ver →
+            </span>
+          </Link>
+        ) : null}
+        <main className="app-main min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+          {children}
+        </main>
+        <MobileNav
+          wsColor={wsColor}
+          showEntreNos={showEntreNos}
+          entreNosBadge={debt.hasDebt}
+        />
+      </div>
+    </div>
   );
 }
 

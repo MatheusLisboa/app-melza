@@ -510,6 +510,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
           member={member}
           cardId={selectedCard.id}
           cardName={selectedCard.name}
+          cardOwnerMemberId={selectedCard.owner_member_id}
           cycleKey={cycle.key}
           cycleFrom={cycle.from}
           cycleTo={cycle.to}

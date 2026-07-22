@@ -495,7 +495,7 @@ export function buildChatTools(opts: {
           .select(
             `
             id, amount, description, transaction_type, paid_by_member_id,
-            consumer_member_id, transaction_date,
+            consumer_member_id, consumer_share_percent, transaction_date,
             category:categories(icon, name),
             card:cards!card_id(id, name, owner_member_id),
             account:accounts!account_id(id, name, owner_member_id)

@@ -60,7 +60,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         .select(
           `
           id, amount, description, transaction_type, paid_by_member_id,
-          consumer_member_id, transaction_date,
+          consumer_member_id, consumer_share_percent, transaction_date,
           category:categories(icon, name),
           card:cards!card_id(id, name, owner_member_id),
           account:accounts!account_id(id, name, owner_member_id)
@@ -325,6 +325,9 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                               <span className="text-[11px] text-[#3A3A3C]">
                                 {item.consumerName} consumiu · {item.payerName}{" "}
                                 pagou
+                                {item.sharePercent < 100
+                                  ? ` · rateio ${item.sharePercent}%`
+                                  : ""}
                               </span>
                             )}
                             {item.cardName ? (
@@ -424,6 +427,9 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-[#3A3A3C]">
                           {item.consumerName} consumiu · {item.payerName} pagou
+                          {item.sharePercent < 100
+                            ? ` · ${item.sharePercent}%`
+                            : ""}
                           {item.cardName ? ` · ${item.cardName}` : ""} ·{" "}
                           {formatDate(item.date)}
                         </p>

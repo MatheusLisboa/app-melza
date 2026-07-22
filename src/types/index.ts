@@ -86,6 +86,8 @@ export interface Account {
   current_balance: number | null;
   color: string | null;
   is_active: boolean;
+  /** false = conta pessoal do dono; true = compartilhada (default) */
+  is_shared?: boolean;
   created_at: string;
 }
 
@@ -136,6 +138,8 @@ export interface Transaction {
   created_by_member_id: string | null;
   paid_by_member_id: string | null;
   consumer_member_id: string | null;
+  /** % do valor que o consumidor deve (100 = integral, 50 = rateio) */
+  consumer_share_percent: number;
   amount: number;
   currency: string;
   transaction_type: TransactionType;

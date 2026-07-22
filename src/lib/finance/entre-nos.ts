@@ -1,6 +1,6 @@
 /**
  * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
- * Settlements (acerto) usam a mesma matemática e reduzem o saldo.
+ * Rateio: consumer_share_percent (ex. 50 = metade do valor).
  */
 
 export type EntreNosMember = {
@@ -22,8 +22,9 @@ export type EntreNosTx = {
   transaction_type?: string | null;
   paid_by_member_id: string | null;
   consumer_member_id?: string | null;
+  /** 1–100; default 100 */
+  consumer_share_percent?: number | null;
   category?: { icon?: string | null; name?: string | null } | null;
-  /** PostgREST: objeto, array ou aliases card/account */
   cards?: Instrument | Instrument[];
   accounts?: Instrument | Instrument[];
   card?: Instrument;
@@ -35,6 +36,9 @@ export type EntreNosRecentItem = {
   title: string;
   date: string;
   amount: number;
+  /** Valor bruto do lançamento (antes do rateio) */
+  grossAmount: number;
+  sharePercent: number;
   consumerId: string;
   consumerName: string;
   payerId: string;
@@ -53,6 +57,8 @@ export type EntreNosSettlement = {
   aPaidForB: number;
   bPaidForA: number;
   settledAmount: number;
+  /** Data do gasto aberto mais antigo (para lembrete) */
+  oldestOpenDate: string | null;
   balances: { id: string; name: string; net: number }[];
   recent: EntreNosRecentItem[];
 };
@@ -73,12 +79,19 @@ export function getTxAccount(tx: EntreNosTx): Instrument {
   return asInstrument(tx.account) ?? asInstrument(tx.accounts);
 }
 
+export function debtAmountForTx(tx: EntreNosTx): number {
+  const gross = Number(tx.amount);
+  if (!Number.isFinite(gross) || gross <= 0) return 0;
+  if (tx.transaction_type === "settlement") return gross;
+  const pct = Number(tx.consumer_share_percent ?? 100);
+  const share = Math.min(100, Math.max(1, Number.isFinite(pct) ? pct : 100));
+  return Math.round(gross * share) / 100;
+}
+
 /**
- * Resolve o par (devedor, credor) de um lançamento, ou null se não gera dívida.
- *
  * Prioridade:
  * 1. consumer ≠ paid_by → consumer deve a paid_by
- * 2. consumer ≠ dono do cartão/conta → consumer deve ao dono (usou cartão de outro)
+ * 2. consumer ≠ dono do cartão/conta → consumer deve ao dono
  * 3. paid_by ≠ dono → paid_by deve ao dono
  */
 export function resolveEntreNosPair(tx: EntreNosTx): {
@@ -97,7 +110,6 @@ export function resolveEntreNosPair(tx: EntreNosTx): {
 
   if (tx.transaction_type === "settlement") return null;
 
-  // Caso comum: eu consumi no cartão dela, e "quem pagou" ficou como eu
   if (consumerId && ownerId && consumerId !== ownerId) {
     return { consumerId, payerId: ownerId };
   }
@@ -118,12 +130,13 @@ export function computeEntreNosSettlement(
   const settlementFlow = new Map<string, number>();
   const recent: EntreNosRecentItem[] = [];
   const byId = new Map(members.map((m) => [m.id, m]));
+  let oldestOpenDate: string | null = null;
 
   for (const m of members) balances.set(m.id, 0);
 
   for (const tx of txs) {
-    const amount = Number(tx.amount);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const amount = debtAmountForTx(tx);
+    if (amount <= 0) continue;
 
     const pair = resolveEntreNosPair(tx);
     if (!pair) continue;
@@ -132,6 +145,9 @@ export function computeEntreNosSettlement(
     const isSettlement = tx.transaction_type === "settlement";
     const card = getTxCard(tx);
     const account = getTxAccount(tx);
+    const sharePercent = isSettlement
+      ? 100
+      : Math.min(100, Math.max(1, Number(tx.consumer_share_percent ?? 100)));
 
     balances.set(consumerId, (balances.get(consumerId) ?? 0) - amount);
     balances.set(payerId, (balances.get(payerId) ?? 0) + amount);
@@ -141,6 +157,12 @@ export function computeEntreNosSettlement(
       settlementFlow.set(forward, (settlementFlow.get(forward) ?? 0) + amount);
     } else {
       expenseFlow.set(forward, (expenseFlow.get(forward) ?? 0) + amount);
+      if (
+        !oldestOpenDate ||
+        tx.transaction_date < oldestOpenDate
+      ) {
+        oldestOpenDate = tx.transaction_date;
+      }
     }
 
     recent.push({
@@ -148,6 +170,8 @@ export function computeEntreNosSettlement(
       title: tx.description,
       date: tx.transaction_date,
       amount,
+      grossAmount: Number(tx.amount),
+      sharePercent,
       consumerId,
       consumerName: byId.get(consumerId)?.display_name ?? "?",
       payerId,
@@ -192,6 +216,7 @@ export function computeEntreNosSettlement(
     aPaidForB,
     bPaidForA,
     settledAmount,
+    oldestOpenDate: netAmount >= 1 ? oldestOpenDate : null,
     balances: ranked,
     recent,
   };

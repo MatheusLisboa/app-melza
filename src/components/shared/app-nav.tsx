@@ -51,11 +51,13 @@ function NavLink({
   label,
   icon: Icon,
   active,
+  badge,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
+  badge?: boolean;
 }) {
   const router = useRouter();
 
@@ -65,14 +67,20 @@ function NavLink({
       prefetch
       onMouseEnter={() => router.prefetch(href)}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+        "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
         active
           ? "bg-[var(--color-chip)] font-semibold text-[var(--color-text)]"
           : "text-[var(--color-text-2)] hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {label}
+      <span className="flex-1 truncate">{label}</span>
+      {badge ? (
+        <span
+          className="h-2 w-2 shrink-0 rounded-full bg-[#EF4444]"
+          aria-label="Saldo pendente"
+        />
+      ) : null}
     </Link>
   );
 }
@@ -80,9 +88,11 @@ function NavLink({
 export function AppSidebar({
   member,
   memberships,
+  entreNosBadge,
 }: {
   member: WorkspaceMember;
   memberships: MembershipOption[];
+  entreNosBadge?: boolean;
 }) {
   const pathname = usePathname();
   const shared = isSharedWorkspace(member.workspace?.type);
@@ -110,6 +120,7 @@ export function AppSidebar({
               label={item.label}
               icon={item.icon}
               active={active}
+              badge={item.href === "/entre-nos" ? entreNosBadge : false}
             />
           );
         })}
@@ -187,14 +198,17 @@ export function MobileHeader({
 export function MobileNav({
   wsColor,
   showEntreNos,
+  entreNosBadge,
 }: {
   wsColor?: string;
   showEntreNos?: boolean;
+  entreNosBadge?: boolean;
 }) {
   return (
     <BottomNav
       wsColor={wsColor ?? "#111111"}
       showEntreNos={showEntreNos ?? true}
+      entreNosBadge={entreNosBadge}
     />
   );
 }

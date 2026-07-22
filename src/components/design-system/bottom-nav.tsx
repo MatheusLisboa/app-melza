@@ -98,11 +98,13 @@ function resolveActive(pathname: string): BottomNavId | null {
 export function BottomNav({
   className,
   showEntreNos = true,
+  entreNosBadge = false,
 }: {
   /** Aceito por compatibilidade; ícones usam tokens Melza. */
   wsColor?: string;
   className?: string;
   showEntreNos?: boolean;
+  entreNosBadge?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -113,6 +115,9 @@ export function BottomNav({
     () => MORE_LINKS.filter((l) => (l.sharedOnly ? showEntreNos : true)),
     [showEntreNos]
   );
+
+  const showMoreBadge =
+    entreNosBadge && moreLinks.some((l) => l.href === "/entre-nos");
 
   useEffect(() => {
     setPendingHref(null);
@@ -196,6 +201,9 @@ export function BottomNav({
               aria-label="Mais módulos"
               aria-expanded={moreOpen}
             >
+              {showMoreBadge ? (
+                <span className="absolute right-[22%] top-1.5 h-2 w-2 rounded-full bg-[#EF4444]" />
+              ) : null}
               <span
                 className={cn(
                   "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1.5 transition-colors",
@@ -248,14 +256,17 @@ export function BottomNav({
                       setMoreOpen(false);
                     }}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
+                      "relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
                       isHere
                         ? "bg-[var(--color-chip)] font-semibold text-[var(--color-text)]"
                         : "text-[var(--color-text-2)] hover:bg-[var(--color-chip)]"
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    {label}
+                    <span className="flex-1 truncate">{label}</span>
+                    {href === "/entre-nos" && entreNosBadge ? (
+                      <span className="h-2 w-2 rounded-full bg-[#EF4444]" />
+                    ) : null}
                   </Link>
                 </li>
               );

@@ -72,6 +72,7 @@ export function AccountFormDialog({
       color: getBankColor("nubank"),
       owner_member_id: members[0]?.id ?? null,
       current_balance: 0,
+      is_shared: true,
     },
   });
 
@@ -85,6 +86,7 @@ export function AccountFormDialog({
         color: initial.color ?? getBankColor("other"),
         owner_member_id: initial.owner_member_id,
         current_balance: Number(initial.current_balance ?? 0),
+        is_shared: initial.is_shared !== false,
       });
     } else {
       form.reset({
@@ -94,6 +96,7 @@ export function AccountFormDialog({
         color: getBankColor("nubank"),
         owner_member_id: members[0]?.id ?? null,
         current_balance: 0,
+        is_shared: true,
       });
     }
     setError(null);
@@ -224,6 +227,41 @@ export function AccountFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <FieldLabel>Tipo de conta</FieldLabel>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => form.setValue("is_shared", true)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors",
+                    form.watch("is_shared") !== false
+                      ? "border-[#111111] bg-[#111111] text-white"
+                      : "border-[#E5E5EA] bg-white text-[#111111]"
+                  )}
+                >
+                  <span className="block font-medium">Compartilhada</span>
+                  <span className="mt-0.5 block text-[11px] opacity-70">
+                    Do workspace
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setValue("is_shared", false)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors",
+                    form.watch("is_shared") === false
+                      ? "border-[#111111] bg-[#111111] text-white"
+                      : "border-[#E5E5EA] bg-white text-[#111111]"
+                  )}
+                >
+                  <span className="block font-medium">Pessoal</span>
+                  <span className="mt-0.5 block text-[11px] opacity-70">
+                    Só do dono
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
 

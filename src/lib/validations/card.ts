@@ -19,6 +19,7 @@ export const accountSchema = z.object({
   color: z.string().optional().nullable(),
   owner_member_id: z.string().uuid().optional().nullable(),
   current_balance: z.number().nullable().optional(),
+  is_shared: z.boolean().optional().default(true),
 });
 
 export type CardInput = z.infer<typeof cardSchema>;
