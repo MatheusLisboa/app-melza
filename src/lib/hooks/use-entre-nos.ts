@@ -59,7 +59,8 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
     );
     return computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
-      txs
+      txs,
+      { month: startOfMonth(new Date()) }
     );
   }, [shared, members, query.data]);
 

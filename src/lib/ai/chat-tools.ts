@@ -513,7 +513,9 @@ export function buildChatTools(opts: {
           (txsRaw ?? []) as Parameters<typeof computeEntreNosSettlement>[1],
           month
         );
-        const settlement = computeEntreNosSettlement(members ?? [], txs);
+        const settlement = computeEntreNosSettlement(members ?? [], txs, {
+          month,
+        });
 
         if (settlement.balanced || !settlement.debtor || !settlement.creditor) {
           return {

@@ -76,7 +76,8 @@ async function runEntreNosReminders(todayISO: string) {
     );
     const settlement = computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
-      txs
+      txs,
+      { month }
     );
 
     if (settlement.balanced || !settlement.debtor || settlement.netAmount < 1) {

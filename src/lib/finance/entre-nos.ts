@@ -2,7 +2,7 @@
  * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
  * Rateio: consumer_share_percent (ex. 50 = metade do valor).
  *
- * Mês do acerto: cartão segue o ciclo de fechamento da fatura
+ * Mês do acerto: cada cartão soma só na janela do fechamento da fatura
  * (compra após o fechamento entra no mês seguinte). Conta/acerto = mês civil.
  */
 
@@ -10,6 +10,7 @@ import { buildInvoiceCycle } from "@/lib/utils/invoice-cycle";
 import {
   addMonths,
   endOfMonth,
+  formatDate,
   startOfMonth,
   toISODate,
 } from "@/lib/utils/format";
@@ -26,16 +27,19 @@ type Instrument = {
   closing_day?: number | null;
 } | null;
 
+/** "all" | "other" (sem cartão) | id do cartão */
+export type EntreNosCardFilter = "all" | "other" | (string & {});
+
 /** Select embutido de cartão/conta para queries Entre Nós. */
 export const ENTRE_NOS_TX_SELECT = `
   id, amount, description, transaction_type, paid_by_member_id,
-  consumer_member_id, consumer_share_percent, transaction_date,
+  consumer_member_id, consumer_share_percent, transaction_date, card_id,
   category:categories(icon, name),
   card:cards!card_id(id, name, owner_member_id, closing_day),
   account:accounts!account_id(id, name, owner_member_id)
 `;
 
-/** Janela de fetch: mês anterior + mês visto (cobre ciclos de fatura). */
+/** Janela de fetch: 2 meses atrás até o fim do mês visto (cobre ciclos). */
 export function entreNosMonthQueryRange(month: Date): {
   from: string;
   to: string;
@@ -46,8 +50,36 @@ export function entreNosMonthQueryRange(month: Date): {
   };
 }
 
+/** Ciclo de fatura do cartão para o mês selecionado (YYYY-MM do fechamento). */
+export function entreNosCardCycle(
+  month: Date,
+  closingDay: number | null | undefined
+): { from: string; to: string; key: string } | null {
+  if (
+    typeof closingDay !== "number" ||
+    closingDay < 1 ||
+    closingDay > 31
+  ) {
+    return null;
+  }
+  const cycle = buildInvoiceCycle(
+    month.getFullYear(),
+    month.getMonth(),
+    closingDay,
+    null
+  );
+  return { from: cycle.from, to: cycle.to, key: cycle.key };
+}
+
+export function formatEntreNosCycleRange(
+  from: string,
+  to: string
+): string {
+  return `${formatDate(from)} — ${formatDate(to)}`;
+}
+
 /**
- * Cartão com closing_day → ciclo da fatura do mês (key YYYY-MM).
+ * Cartão com closing_day → ciclo da fatura do mês.
  * Sem cartão / sem fechamento / acerto → mês civil.
  */
 export function txBelongsToEntreNosMonth(
@@ -63,18 +95,8 @@ export function txBelongsToEntreNosMonth(
 
   const card = getTxCard(tx);
   const closingDay = card?.closing_day;
-  if (
-    card &&
-    typeof closingDay === "number" &&
-    closingDay >= 1 &&
-    closingDay <= 31
-  ) {
-    const cycle = buildInvoiceCycle(
-      month.getFullYear(),
-      month.getMonth(),
-      closingDay,
-      null
-    );
+  const cycle = entreNosCardCycle(month, closingDay);
+  if (cycle) {
     return (
       tx.transaction_date >= cycle.from && tx.transaction_date <= cycle.to
     );
@@ -90,6 +112,26 @@ export function filterEntreNosTxsForMonth(
   return txs.filter((tx) => txBelongsToEntreNosMonth(tx, month));
 }
 
+export function filterEntreNosTxsByCard(
+  txs: EntreNosTx[],
+  filter: EntreNosCardFilter
+): EntreNosTx[] {
+  if (filter === "all") return txs;
+
+  if (filter === "other") {
+    return txs.filter((tx) => {
+      if (tx.transaction_type === "settlement") return true;
+      return !getTxCard(tx)?.id && !tx.card_id;
+    });
+  }
+
+  return txs.filter((tx) => {
+    if (tx.transaction_type === "settlement") return false;
+    const card = getTxCard(tx);
+    return (card?.id ?? tx.card_id) === filter;
+  });
+}
+
 export type EntreNosTx = {
   id: string;
   amount: number;
@@ -98,6 +140,7 @@ export type EntreNosTx = {
   transaction_type?: string | null;
   paid_by_member_id: string | null;
   consumer_member_id?: string | null;
+  card_id?: string | null;
   /** 1–100; default 100 */
   consumer_share_percent?: number | null;
   category?: { icon?: string | null; name?: string | null } | null;
@@ -119,24 +162,47 @@ export type EntreNosRecentItem = {
   consumerName: string;
   payerId: string;
   payerName: string;
+  cardId: string | null;
   cardName: string | null;
+  closingDay: number | null;
   accountName: string | null;
   categoryIcon: string | null;
   isSettlement: boolean;
 };
 
+export type EntreNosMemberBalance = {
+  id: string;
+  name: string;
+  /** Negativo = deve; positivo = a receber */
+  net: number;
+};
+
+export type EntreNosCardBreakdown = {
+  cardId: string;
+  cardName: string;
+  closingDay: number | null;
+  cycleFrom: string | null;
+  cycleTo: string | null;
+  balances: EntreNosMemberBalance[];
+  debtor: EntreNosMemberBalance | null;
+  creditor: EntreNosMemberBalance | null;
+  netAmount: number;
+  expenseCount: number;
+};
+
 export type EntreNosSettlement = {
   balanced: boolean;
-  debtor: { id: string; name: string; net: number } | null;
-  creditor: { id: string; name: string; net: number } | null;
+  debtor: EntreNosMemberBalance | null;
+  creditor: EntreNosMemberBalance | null;
   netAmount: number;
   aPaidForB: number;
   bPaidForA: number;
   settledAmount: number;
   /** Data do gasto aberto mais antigo (para lembrete) */
   oldestOpenDate: string | null;
-  balances: { id: string; name: string; net: number }[];
+  balances: EntreNosMemberBalance[];
   recent: EntreNosRecentItem[];
+  byCard: EntreNosCardBreakdown[];
 };
 
 function asInstrument(
@@ -197,9 +263,99 @@ export function resolveEntreNosPair(tx: EntreNosTx): {
   return null;
 }
 
+function rankedBalances(
+  balances: Map<string, number>,
+  byId: Map<string, EntreNosMember>
+): EntreNosMemberBalance[] {
+  return Array.from(balances.entries())
+    .map(([id, net]) => ({
+      id,
+      name: byId.get(id)?.display_name ?? id,
+      net: Math.round(net * 100) / 100,
+    }))
+    .sort((a, b) => a.net - b.net);
+}
+
+function pickDebtorCreditor(ranked: EntreNosMemberBalance[]): {
+  debtor: EntreNosMemberBalance | null;
+  creditor: EntreNosMemberBalance | null;
+  netAmount: number;
+} {
+  const debtor = ranked.find((r) => r.net < -1) ?? null;
+  const creditor = [...ranked].reverse().find((r) => r.net > 1) ?? null;
+  const netAmount =
+    debtor && creditor
+      ? Math.min(Math.abs(debtor.net), Math.abs(creditor.net))
+      : 0;
+  return { debtor, creditor, netAmount };
+}
+
+function buildCardBreakdowns(
+  members: EntreNosMember[],
+  recent: EntreNosRecentItem[],
+  month: Date | null
+): EntreNosCardBreakdown[] {
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const groups = new Map<
+    string,
+    {
+      cardName: string;
+      closingDay: number | null;
+      balances: Map<string, number>;
+      count: number;
+    }
+  >();
+
+  for (const item of recent) {
+    if (item.isSettlement || !item.cardId) continue;
+    let g = groups.get(item.cardId);
+    if (!g) {
+      g = {
+        cardName: item.cardName ?? "Cartão",
+        closingDay: item.closingDay,
+        balances: new Map(members.map((m) => [m.id, 0])),
+        count: 0,
+      };
+      groups.set(item.cardId, g);
+    }
+    g.count += 1;
+    g.balances.set(
+      item.consumerId,
+      (g.balances.get(item.consumerId) ?? 0) - item.amount
+    );
+    g.balances.set(
+      item.payerId,
+      (g.balances.get(item.payerId) ?? 0) + item.amount
+    );
+  }
+
+  return Array.from(groups.entries())
+    .map(([cardId, g]) => {
+      const balances = rankedBalances(g.balances, byId);
+      const { debtor, creditor, netAmount } = pickDebtorCreditor(balances);
+      const cycle = month
+        ? entreNosCardCycle(month, g.closingDay)
+        : null;
+      return {
+        cardId,
+        cardName: g.cardName,
+        closingDay: g.closingDay,
+        cycleFrom: cycle?.from ?? null,
+        cycleTo: cycle?.to ?? null,
+        balances,
+        debtor,
+        creditor,
+        netAmount,
+        expenseCount: g.count,
+      };
+    })
+    .sort((a, b) => b.netAmount - a.netAmount);
+}
+
 export function computeEntreNosSettlement(
   members: EntreNosMember[],
-  txs: EntreNosTx[]
+  txs: EntreNosTx[],
+  opts?: { month?: Date | null }
 ): EntreNosSettlement {
   const balances = new Map<string, number>();
   const expenseFlow = new Map<string, number>();
@@ -233,10 +389,7 @@ export function computeEntreNosSettlement(
       settlementFlow.set(forward, (settlementFlow.get(forward) ?? 0) + amount);
     } else {
       expenseFlow.set(forward, (expenseFlow.get(forward) ?? 0) + amount);
-      if (
-        !oldestOpenDate ||
-        tx.transaction_date < oldestOpenDate
-      ) {
+      if (!oldestOpenDate || tx.transaction_date < oldestOpenDate) {
         oldestOpenDate = tx.transaction_date;
       }
     }
@@ -252,27 +405,18 @@ export function computeEntreNosSettlement(
       consumerName: byId.get(consumerId)?.display_name ?? "?",
       payerId,
       payerName: byId.get(payerId)?.display_name ?? "?",
+      cardId: card?.id ?? tx.card_id ?? null,
       cardName: card?.name ?? null,
+      closingDay:
+        typeof card?.closing_day === "number" ? card.closing_day : null,
       accountName: account?.name ?? null,
       categoryIcon: isSettlement ? "🤝" : (tx.category?.icon ?? null),
       isSettlement,
     });
   }
 
-  const ranked = Array.from(balances.entries())
-    .map(([id, net]) => ({
-      id,
-      name: byId.get(id)?.display_name ?? id,
-      net,
-    }))
-    .sort((a, b) => a.net - b.net);
-
-  const debtor = ranked.find((r) => r.net < -1) ?? null;
-  const creditor = [...ranked].reverse().find((r) => r.net > 1) ?? null;
-  const netAmount =
-    debtor && creditor
-      ? Math.min(Math.abs(debtor.net), Math.abs(creditor.net))
-      : 0;
+  const ranked = rankedBalances(balances, byId);
+  const { debtor, creditor, netAmount } = pickDebtorCreditor(ranked);
 
   const a = debtor?.id;
   const b = creditor?.id;
@@ -295,5 +439,6 @@ export function computeEntreNosSettlement(
     oldestOpenDate: netAmount >= 1 ? oldestOpenDate : null,
     balances: ranked,
     recent,
+    byCard: buildCardBreakdowns(members, recent, opts?.month ?? null),
   };
 }

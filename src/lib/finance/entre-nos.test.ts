@@ -3,7 +3,9 @@ import {
   computeEntreNosSettlement,
   resolveEntreNosPair,
   filterEntreNosTxsForMonth,
+  filterEntreNosTxsByCard,
   txBelongsToEntreNosMonth,
+  entreNosCardCycle,
 } from "@/lib/finance/entre-nos";
 import { startOfMonth } from "@/lib/utils/format";
 
@@ -135,22 +137,84 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
     expect(txBelongsToEntreNosMonth(purchase, june)).toBe(true);
     expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
   });
+
+  it("filtra por cartão e ignora acertos no filtro de cartão", () => {
+    const txs = [
+      {
+        id: "1",
+        amount: 100,
+        description: "Card A",
+        transaction_date: "2026-07-01",
+        paid_by_member_id: "b",
+        consumer_member_id: "a",
+        card_id: "card-a",
+        card: {
+          id: "card-a",
+          name: "Nubank",
+          owner_member_id: "b",
+          closing_day: 20,
+        },
+      },
+      {
+        id: "2",
+        amount: 50,
+        description: "Card B",
+        transaction_date: "2026-07-02",
+        paid_by_member_id: "b",
+        consumer_member_id: "a",
+        card_id: "card-b",
+        card: {
+          id: "card-b",
+          name: "Inter",
+          owner_member_id: "b",
+          closing_day: 10,
+        },
+      },
+      {
+        id: "3",
+        amount: 40,
+        description: "Acerto",
+        transaction_type: "settlement",
+        transaction_date: "2026-07-05",
+        paid_by_member_id: "a",
+        consumer_member_id: "b",
+      },
+    ];
+
+    expect(filterEntreNosTxsByCard(txs, "card-a")).toHaveLength(1);
+    expect(filterEntreNosTxsByCard(txs, "all")).toHaveLength(3);
+    expect(filterEntreNosTxsByCard(txs, "other")).toHaveLength(1);
+  });
+
+  it("ciclo do cartão fecha 20 em julho = 20/jun … 19/jul", () => {
+    const july = startOfMonth(new Date(2026, 6, 1));
+    const cycle = entreNosCardCycle(july, 20);
+    expect(cycle).toEqual({
+      from: "2026-06-20",
+      to: "2026-07-19",
+      key: "2026-07",
+    });
+  });
 });
 
 describe("computeEntreNosSettlement", () => {
   it("mostra dívida quando esposa consumiu e marido pagou no cartão", () => {
-    const settlement = computeEntreNosSettlement(members, [
-      {
-        id: "tx1",
-        amount: 120,
-        description: "Farmácia",
-        transaction_date: "2026-07-01",
-        paid_by_member_id: "a",
-        consumer_member_id: "b",
-        cards: { id: "c1", name: "Nubank", owner_member_id: "a" },
-        category: { icon: "💊", name: "Saúde" },
-      },
-    ]);
+    const settlement = computeEntreNosSettlement(
+      members,
+      [
+        {
+          id: "tx1",
+          amount: 120,
+          description: "Farmácia",
+          transaction_date: "2026-07-01",
+          paid_by_member_id: "a",
+          consumer_member_id: "b",
+          cards: { id: "c1", name: "Nubank", owner_member_id: "a" },
+          category: { icon: "💊", name: "Saúde" },
+        },
+      ],
+      { month: startOfMonth(new Date(2026, 6, 1)) }
+    );
 
     expect(settlement.balanced).toBe(false);
     expect(settlement.debtor?.id).toBe("b");
@@ -161,6 +225,10 @@ describe("computeEntreNosSettlement", () => {
     expect(settlement.recent[0]?.consumerId).toBe("b");
     expect(settlement.recent[0]?.payerId).toBe("a");
     expect(settlement.recent[0]?.isSettlement).toBe(false);
+    expect(settlement.byCard).toHaveLength(1);
+    expect(settlement.byCard[0]?.netAmount).toBe(120);
+    expect(settlement.balances.find((b) => b.id === "b")?.net).toBe(-120);
+    expect(settlement.balances.find((b) => b.id === "a")?.net).toBe(120);
   });
 
   it("fica balanceado quando cada um pagou o próprio consumo", () => {
