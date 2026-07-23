@@ -162,10 +162,7 @@ export function MobileHeader({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <BrandMark
-          size="sm"
-          className="!h-8 !w-8 shrink-0 !rounded-lg !text-xs"
-        />
+        <BrandMark size="sm" className="!h-8 !w-8 shrink-0 !rounded-[9px]" />
         <WorkspaceSwitcher
           member={member}
           memberships={memberships}

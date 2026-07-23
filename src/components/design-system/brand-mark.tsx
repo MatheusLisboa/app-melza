@@ -1,60 +1,47 @@
+"use client";
+
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-function MelzaMPath({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      className={className}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <g transform="skewX(-10) translate(4 0)">
-        <path
-          fill="currentColor"
-          d="M9.2 49.2 18.6 14.4h7.1L36 35.6 45.1 14.4h7.1L43.4 49.2h-7.3l5.6-20.4L33.4 49.2h-5.1L20 28.8l-4.1 20.4H9.2Z"
-        />
-      </g>
-    </svg>
-  );
-}
+const MARK = {
+  sm: { px: 36, className: "h-9 w-9 rounded-[10px]" },
+  md: { px: 56, className: "h-14 w-14 rounded-2xl" },
+  lg: { px: 80, className: "h-20 w-20 rounded-[22px]" },
+} as const;
 
 /**
- * Melza — monograma M itálico, preto e branco.
+ * Monograma Melza (M geométrico em fundo ink).
  */
 export function BrandMark({
   size = "md",
   className,
-  inverted = false,
+  inverted: _inverted = false,
 }: {
   size?: "sm" | "md" | "lg";
   className?: string;
-  /** Fundo branco / M preto */
+  /** Mantido por compatibilidade — a marca oficial já é ink + prata. */
   inverted?: boolean;
 }) {
-  const sizes = {
-    sm: "h-9 w-9 rounded-[10px]",
-    md: "h-14 w-14 rounded-2xl",
-    lg: "h-20 w-20 rounded-[22px]",
-  };
-
+  const s = MARK[size];
   return (
-    <div
+    <Image
+      src="/brand/melza-icon.png"
+      alt="Melza"
+      width={s.px}
+      height={s.px}
       className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden",
-        inverted ? "bg-white text-black" : "bg-black text-white",
-        sizes[size],
+        "shrink-0 object-cover shadow-[0_0_0_1px_rgba(0,0,0,0.06)]",
+        s.className,
         className
       )}
-      aria-label="Melza"
-      role="img"
-    >
-      <MelzaMPath className="h-[78%] w-[78%]" />
-    </div>
+      priority
+    />
   );
 }
 
-/** Wordmark “Melza” com mark */
+/**
+ * Mark + wordmark MELZA (tracking largo, alinhado à identidade).
+ */
 export function BrandWordmark({
   size = "md",
   className,
@@ -65,20 +52,54 @@ export function BrandWordmark({
   markClassName?: string;
 }) {
   const text = {
-    sm: "text-base font-bold tracking-tight text-[#111111]",
-    md: "text-2xl font-bold tracking-tight text-[#111111]",
-    lg: "text-3xl font-bold tracking-tight text-[#111111]",
+    sm: "text-[13px] tracking-[0.28em]",
+    md: "text-[17px] tracking-[0.32em]",
+    lg: "text-[22px] tracking-[0.36em]",
   };
 
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <BrandMark size={size === "lg" ? "md" : size} className={markClassName} />
+    <div className={cn("flex items-center gap-3", className)}>
+      <BrandMark
+        size={size === "lg" ? "md" : size}
+        className={markClassName}
+      />
       <span
-        className={cn(text[size])}
-        style={{ fontStyle: "italic", letterSpacing: "-0.035em" }}
+        className={cn(
+          "select-none font-medium uppercase text-[var(--color-ink)]",
+          text[size]
+        )}
       >
-        Melza
+        MELZA
       </span>
+    </div>
+  );
+}
+
+/**
+ * Lockup oficial (M + MELZA) — ideal para login / onboarding.
+ */
+export function BrandLockup({
+  className,
+  priority = true,
+}: {
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative mx-auto w-full max-w-[280px] overflow-hidden rounded-[28px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06]",
+        className
+      )}
+    >
+      <Image
+        src="/brand/melza-lockup.png"
+        alt="Melza"
+        width={880}
+        height={640}
+        className="h-auto w-full object-cover"
+        priority={priority}
+      />
     </div>
   );
 }

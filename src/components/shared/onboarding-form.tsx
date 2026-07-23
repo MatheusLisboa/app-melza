@@ -12,7 +12,7 @@ import {
   type CreateWorkspaceInput,
 } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
-import { BrandMark, InputField } from "@/components/design-system";
+import { BrandLockup, BrandMark, InputField } from "@/components/design-system";
 import {
   Select,
   SelectContent,
@@ -518,8 +518,8 @@ function IntroAttributionVisual() {
 
 function IntroReadyVisual() {
   return (
-    <div className="flex w-full flex-col items-center gap-4">
-      <BrandMark size="lg" />
+    <div className="flex w-full flex-col items-center gap-5">
+      <BrandLockup className="max-w-[200px]" priority={false} />
       <div className="flex flex-col items-center gap-2">
         <p className="text-[15px] font-medium text-foreground/90">
           Meu Financeiro

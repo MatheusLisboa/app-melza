@@ -8,7 +8,7 @@ import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { activatePersonalWorkspaceAction } from "@/lib/actions/workspace";
-import { BrandWordmark, Btn, InputField } from "@/components/design-system";
+import { BrandLockup, Btn, InputField } from "@/components/design-system";
 
 function safeRedirect(path: string | null): string {
   if (path && path.startsWith("/") && !path.startsWith("//")) return path;
@@ -83,8 +83,8 @@ export function LoginForm() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background px-5 sm:px-6">
       <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center gap-7 py-10 sm:gap-8 sm:py-12">
-        <div className="flex flex-col items-center gap-3 pb-1">
-          <BrandWordmark size="md" />
+        <div className="flex flex-col items-center gap-4 pb-1">
+          <BrandLockup className="max-w-[220px] sm:max-w-[240px]" />
           <p className="text-center text-sm text-foreground/35">
             Finanças que fazem sentido.
           </p>

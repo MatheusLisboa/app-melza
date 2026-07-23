@@ -9,7 +9,7 @@ import { ChevronLeft, Lock, Mail, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { activatePersonalWorkspaceAction } from "@/lib/actions/workspace";
-import { Btn, InputField } from "@/components/design-system";
+import { BrandMark, Btn, InputField } from "@/components/design-system";
 
 function safeRedirect(path: string | null): string {
   if (path && path.startsWith("/") && !path.startsWith("//")) return path;
@@ -78,16 +78,19 @@ export function SignupForm() {
         </div>
 
         <div className="flex flex-1 flex-col gap-7 pb-8 pt-2 sm:gap-8 sm:pt-4">
-          <div>
-            <h2
-              className="text-[26px] font-semibold tracking-tight text-foreground"
-              style={{ letterSpacing: "-0.025em" }}
-            >
-              Bem-vindo ao Melza
-            </h2>
-            <p className="mt-1.5 text-sm text-foreground/35">
-              Crie sua conta em 30 segundos.
-            </p>
+          <div className="flex flex-col gap-4">
+            <BrandMark size="md" />
+            <div>
+              <h2
+                className="text-[26px] font-semibold tracking-tight text-foreground"
+                style={{ letterSpacing: "-0.025em" }}
+              >
+                Bem-vindo ao Melza
+              </h2>
+              <p className="mt-1.5 text-sm text-foreground/35">
+                Crie sua conta em 30 segundos.
+              </p>
+            </div>
           </div>
 
           <form

@@ -17,6 +17,7 @@ const PRECACHE = [
   "/manifest.webmanifest",
   "/favicon.ico",
   "/favicon.svg",
+  "/brand/melza-icon.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-512-maskable.png",
