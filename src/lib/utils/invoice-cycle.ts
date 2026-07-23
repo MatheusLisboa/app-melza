@@ -1,11 +1,21 @@
 import { addMonths, endOfMonth, toISODate } from "@/lib/utils/format";
 
 export type InvoiceCycle = {
-  /** Chave YYYY-MM do mês de fechamento */
+  /**
+   * Chave estável do ciclo = mês do *fechamento* (YYYY-MM).
+   * Usada em queries / pay invoice.
+   */
   key: string;
+  /**
+   * Chave de exibição = mês do *vencimento* (YYYY-MM).
+   * Alinhada ao seletor do Entre Nós.
+   */
+  paymentKey: string;
   label: string;
   from: string;
   to: string;
+  closingDate: string;
+  dueDate: string | null;
   /** Dia civil do fechamento (00:01 deste dia encerra o ciclo anterior) */
   closingDay: number;
   dueDay: number | null;
@@ -26,13 +36,71 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-function cycleLabel(closing: Date, dueDay: number | null): string {
-  const month = closing.toLocaleDateString("pt-BR", {
+function monthKeyFromParts(year: number, monthIndex: number): string {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+}
+
+/** Vencimento cai no mês seguinte ao fechamento? (fecha 24, vence 10 → sim) */
+export function dueFallsNextMonth(
+  closingDay: number,
+  dueDay: number | null | undefined
+): boolean {
+  if (typeof dueDay !== "number" || dueDay < 1 || dueDay > 31) return false;
+  return dueDay <= closingDay;
+}
+
+/**
+ * Mês civil do vencimento da fatura que fecha em `closingDate`.
+ * Sem due_day → mês do fechamento.
+ */
+export function paymentMonthForClosingDate(
+  closingDate: Date,
+  closingDay: number,
+  dueDay?: number | null
+): Date {
+  if (dueFallsNextMonth(closingDay, dueDay)) {
+    return new Date(closingDate.getFullYear(), closingDate.getMonth() + 1, 1);
+  }
+  return new Date(closingDate.getFullYear(), closingDate.getMonth(), 1);
+}
+
+export function dueDateForClosing(
+  closingDate: Date,
+  closingDay: number,
+  dueDay: number | null
+): Date | null {
+  if (dueDay == null || dueDay < 1 || dueDay > 31) return null;
+  if (dueFallsNextMonth(closingDay, dueDay)) {
+    const next = addMonths(closingDate, 1);
+    return clampDay(next.getFullYear(), next.getMonth(), dueDay);
+  }
+  return clampDay(
+    closingDate.getFullYear(),
+    closingDate.getMonth(),
+    dueDay
+  );
+}
+
+function cycleLabel(
+  closingDate: Date,
+  dueDate: Date | null,
+  dueDay: number | null
+): string {
+  const closeLabel = closingDate.toLocaleDateString("pt-BR", {
+    day: "numeric",
     month: "short",
-    year: "numeric",
   });
-  const due = dueDay ? ` · vence dia ${dueDay}` : "";
-  return `Fecha ${closing.getDate()} ${month}${due}`;
+  if (dueDate) {
+    const dueLabel = dueDate.toLocaleDateString("pt-BR", {
+      day: "numeric",
+      month: "short",
+    });
+    return `Vence ${dueLabel} · fecha ${closeLabel}`;
+  }
+  if (dueDay) {
+    return `Fecha ${closeLabel} · vence dia ${dueDay}`;
+  }
+  return `Fecha ${closeLabel}`;
 }
 
 /**
@@ -54,25 +122,39 @@ export function buildInvoiceCycle(
   today = new Date()
 ): InvoiceCycle {
   const closingDate = clampDay(closingYear, closingMonth, closingDay);
+  const prev = addMonths(closingDate, -1);
   const prevClose = clampDay(
-    addMonths(closingDate, -1).getFullYear(),
-    addMonths(closingDate, -1).getMonth(),
+    prev.getFullYear(),
+    prev.getMonth(),
     closingDay
   );
 
   // Inclusivo: do dia do fechamento anterior até o dia antes do fechamento atual
   const fromISO = toISODate(prevClose);
   const toISO = toISODate(addDays(closingDate, -1));
+  const dueDate = dueDateForClosing(closingDate, closingDay, dueDay);
+  const paymentMonth = paymentMonthForClosingDate(
+    closingDate,
+    closingDay,
+    dueDay
+  );
 
   const todayISO = toISODate(today);
   const isCurrent = todayISO >= fromISO && todayISO <= toISO;
-  const key = `${closingYear}-${String(closingMonth + 1).padStart(2, "0")}`;
+  const key = monthKeyFromParts(closingYear, closingMonth);
+  const paymentKey = monthKeyFromParts(
+    paymentMonth.getFullYear(),
+    paymentMonth.getMonth()
+  );
 
   return {
     key,
-    label: cycleLabel(closingDate, dueDay),
+    paymentKey,
+    label: cycleLabel(closingDate, dueDate, dueDay),
     from: fromISO,
     to: toISO,
+    closingDate: toISODate(closingDate),
+    dueDate: dueDate ? toISODate(dueDate) : null,
     closingDay,
     dueDay,
     isCurrent,
@@ -117,7 +199,8 @@ export function listInvoiceCycles(
     );
   }
 
-  cycles.sort((a, b) => (a.to < b.to ? 1 : -1));
+  // Mais recente (fecha depois) primeiro
+  cycles.sort((a, b) => (a.closingDate < b.closingDate ? 1 : -1));
 
   const todayISO = toISODate(today);
   for (const c of cycles) {
@@ -147,4 +230,15 @@ export function defaultCycleKey(cycles: InvoiceCycle[]): string {
   const next = cycles.find((c) => c.isNext);
   if (next) return next.key;
   return cycles[0]?.key ?? "";
+}
+
+/** Rótulo curto do ciclo pelo mês de vencimento (Entre Nós / chips). */
+export function invoicePaymentMonthLabel(cycle: Pick<InvoiceCycle, "paymentKey" | "key">): string {
+  const key = cycle.paymentKey || cycle.key;
+  const [y, m] = key.split("-").map(Number);
+  if (!y || !m) return key;
+  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
+    month: "short",
+    year: "2-digit",
+  });
 }

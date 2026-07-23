@@ -12,15 +12,16 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { WorkspaceMember, TransactionWithRelations } from "@/types";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
 import {
   defaultCycleKey,
+  invoicePaymentMonthLabel,
   listInvoiceCycles,
 } from "@/lib/utils/invoice-cycle";
 import type { InvoicePdfOpts } from "@/lib/invoices/download-pdf";
 import { getBankName } from "@/lib/utils/banks";
 import { Btn, DsSkeleton, TxRow, toDsMember } from "@/components/design-system";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 const NubankInvoiceImportDialog = dynamic(
   () =>
@@ -50,15 +51,6 @@ const TransactionDetailSheet = dynamic(
     })),
   { ssr: false }
 );
-
-function cycleMonthLabel(key: string) {
-  const [y, m] = key.split("-").map(Number);
-  if (!y || !m) return key;
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", {
-    month: "short",
-    year: "2-digit",
-  });
-}
 
 export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const { data: cards = [] } = useCards(member.workspace_id);
@@ -184,7 +176,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     if (!selectedCard || !cycle) return null;
     return {
       cardName: selectedCard.name,
-      cycleLabel: cycleMonthLabel(cycle.key),
+      cycleLabel: invoicePaymentMonthLabel(cycle),
       from: cycle.from,
       to: cycle.to,
       total,
@@ -236,7 +228,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
             Faturas
           </h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
-            Ciclo mensal pelo fechamento do cartão
+            Mês do vencimento · compras pelo fechamento do cartão
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -348,7 +340,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                             : "bg-[var(--color-pearl)] text-[var(--color-silver)]"
                         )}
                       >
-                        {cycleMonthLabel(c.key)}
+                        {invoicePaymentMonthLabel(c)}
                         {c.isCurrent ? " · atual" : ""}
                       </button>
                     );
@@ -358,7 +350,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
 
               <div className="bg-[var(--color-ink)] px-5 py-5">
                 <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-mist)]">
-                  {selectedCard?.name} · {cycleMonthLabel(cycle.key)}
+                  {selectedCard?.name} · {invoicePaymentMonthLabel(cycle)}
                 </p>
                 <p className="mt-2 font-mono text-3xl font-extrabold text-white">
                   {formatCurrency(remaining)}
@@ -369,11 +361,13 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                     : `Total da fatura · ${formatCurrency(total)}`}
                 </p>
                 <p className="mt-2 text-sm text-[var(--color-silver)]">
-                  {formatDate(cycle.from)} — {formatDate(cycle.to)}
+                  Compras {formatDate(cycle.from)} — {formatDate(cycle.to)}
+                  {cycle.dueDate
+                    ? ` · vence ${formatDate(cycle.dueDate)}`
+                    : selectedCard?.due_day
+                      ? ` · vence dia ${selectedCard.due_day}`
+                      : ""}
                   {owner ? ` · ${owner.display_name}` : ""}
-                  {selectedCard?.due_day
-                    ? ` · vence dia ${selectedCard.due_day}`
-                    : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button

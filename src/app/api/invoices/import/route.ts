@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     const { data: card, error: cardError } = await supabase
       .from("cards")
-      .select("id")
+      .select("id, closing_day, due_day")
       .eq("id", cardId)
       .eq("workspace_id", member.workspace_id)
       .maybeSingle();
@@ -101,15 +101,22 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const expanded = expandInstallmentRows({
-        id: "x",
-        date: line.date,
-        description: line.description,
-        amount: line.amount,
-        installmentCurrent: line.installmentCurrent ?? null,
-        installmentTotal: line.installmentTotal ?? null,
-        kind: "charge",
-      });
+      const expanded = expandInstallmentRows(
+        {
+          id: "x",
+          date: line.date,
+          description: line.description,
+          amount: line.amount,
+          installmentCurrent: line.installmentCurrent ?? null,
+          installmentTotal: line.installmentTotal ?? null,
+          kind: "charge",
+        },
+        {
+          closingDay:
+            typeof card.closing_day === "number" ? card.closing_day : null,
+          dueDay: typeof card.due_day === "number" ? card.due_day : null,
+        }
+      );
 
       const isMulti =
         Boolean(line.installmentTotal && line.installmentTotal > 1) &&

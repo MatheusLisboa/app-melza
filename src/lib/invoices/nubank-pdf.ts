@@ -1,4 +1,5 @@
-import { addMonths, toISODate } from "@/lib/utils/format";
+import { toISODate } from "@/lib/utils/format";
+import { dateForInstallmentInSeries } from "@/lib/finance/installment-dates";
 
 export type NubankInvoiceLine = {
   id: string;
@@ -225,7 +226,10 @@ export function parseNubankInvoiceText(text: string): NubankInvoiceLine[] {
 }
 
 /** Expande parcelas futuras a partir da linha da fatura atual. */
-export function expandInstallmentRows(line: NubankInvoiceLine): Array<{
+export function expandInstallmentRows(
+  line: NubankInvoiceLine,
+  opts?: { closingDay?: number | null; dueDay?: number | null }
+): Array<{
   date: string;
   description: string;
   amount: number;
@@ -248,11 +252,15 @@ export function expandInstallmentRows(line: NubankInvoiceLine): Array<{
     ];
   }
 
-  const base = new Date(line.date + "T12:00:00");
   const rows = [];
   for (let n = current; n <= total; n++) {
-    const offset = n - current;
-    const date = toISODate(addMonths(base, offset));
+    const date = dateForInstallmentInSeries({
+      knownISO: line.date,
+      knownNumber: current,
+      targetNumber: n,
+      closingDay: opts?.closingDay,
+      dueDay: opts?.dueDay,
+    });
     rows.push({
       date,
       description: `${line.description} (${n}/${total})`,

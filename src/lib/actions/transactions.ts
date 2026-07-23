@@ -6,9 +6,10 @@ import {
   transactionSchema,
   type TransactionInput,
 } from "@/lib/validations/transaction";
-import { addMonths, toISODate } from "@/lib/utils/format";
+import { toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
 import { tagsForPaymentChannel } from "@/lib/utils/payment-channel";
+import { dateForInstallmentInSeries } from "@/lib/finance/installment-dates";
 import {
   accountBalanceDelta,
   adjustAccountBalance,
@@ -149,19 +150,39 @@ export async function createTransactionAction(raw: TransactionInput) {
     const groupId = randomUUID();
     const installmentAmount =
       Math.round((input.amount / input.total_installments) * 100) / 100;
-    const startDate = new Date(input.transaction_date + "T12:00:00");
+
+    let closingDay: number | null = null;
+    let dueDay: number | null = null;
+    if (card_id) {
+      const { data: cardMeta } = await supabase
+        .from("cards")
+        .select("closing_day, due_day")
+        .eq("id", card_id)
+        .eq("workspace_id", member.workspace_id)
+        .maybeSingle();
+      closingDay =
+        typeof cardMeta?.closing_day === "number" ? cardMeta.closing_day : null;
+      dueDay = typeof cardMeta?.due_day === "number" ? cardMeta.due_day : null;
+    }
+
     const rows = [];
 
     for (let i = 1; i <= input.total_installments; i++) {
-      const date = addMonths(startDate, i - 1);
       const isFirst = i === 1;
-      // Ajusta centavos na última parcela
       let amount = installmentAmount;
       if (i === input.total_installments) {
         amount =
           Math.round((input.amount - installmentAmount * (input.total_installments - 1)) * 100) /
           100;
       }
+
+      const transaction_date = dateForInstallmentInSeries({
+        knownISO: input.transaction_date,
+        knownNumber: 1,
+        targetNumber: i,
+        closingDay,
+        dueDay,
+      });
 
       rows.push({
         workspace_id: member.workspace_id,
@@ -187,7 +208,7 @@ export async function createTransactionAction(raw: TransactionInput) {
         installment_number: i,
         total_installments: input.total_installments,
         installment_group_id: groupId,
-        transaction_date: toISODate(date),
+        transaction_date,
         status: isFirst ? "confirmed" : "scheduled",
         paid_at: isFirst ? new Date().toISOString() : null,
       });

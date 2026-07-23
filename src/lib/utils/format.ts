@@ -108,7 +108,12 @@ export function endOfMonth(date: Date): Date {
 }
 
 export function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
+  const d = new Date(date.getFullYear(), date.getMonth(), 1);
   d.setMonth(d.getMonth() + months);
+  const day = date.getDate();
+  const last = endOfMonth(d).getDate();
+  d.setDate(Math.min(day, last));
+  // preserva horário local aproximado (meio-dia evita TZ)
+  d.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
   return d;
 }

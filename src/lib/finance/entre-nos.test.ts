@@ -311,11 +311,11 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão / vencimento", () => {
     expect(txBelongsToEntreNosMonth(enriched[0]!, august)).toBe(true);
   });
 
-  it("query range cobre 4 meses atrás", () => {
+  it("query range cobre passado e parcelas futuras", () => {
     const august = startOfMonth(new Date(2026, 7, 1));
     expect(entreNosMonthQueryRange(august)).toEqual({
       from: "2026-04-01",
-      to: "2026-08-31",
+      to: "2028-08-31",
     });
   });
 });

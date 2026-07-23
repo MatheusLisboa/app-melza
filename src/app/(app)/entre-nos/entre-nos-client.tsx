@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { parseAsString, useQueryState } from "nuqs";
 import {
   ArrowDownLeft,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
+import { backfillInstallmentSchedulesAction } from "@/lib/actions/installments";
 import type { WorkspaceMember } from "@/types";
 import {
   Avatar,
@@ -98,6 +99,18 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   const [settleOpen, setSettleOpen] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
   const { data: cards = [] } = useCards(member.workspace_id);
+  const qc = useQueryClient();
+  const backfillTried = useRef(false);
+
+  useEffect(() => {
+    if (backfillTried.current) return;
+    backfillTried.current = true;
+    void backfillInstallmentSchedulesAction().then((res) => {
+      if (res && "created" in res && (res.created ?? 0) > 0) {
+        void qc.invalidateQueries({ queryKey: ["entre-nos"] });
+      }
+    });
+  }, [qc]);
 
   const month = useMemo(() => parseMonthKey(monthParam), [monthParam]);
   const setMonth = (next: Date | ((prev: Date) => Date)) => {

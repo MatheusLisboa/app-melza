@@ -9,7 +9,11 @@
  * Conta / acerto: mês civil da data.
  */
 
-import { buildInvoiceCycle } from "@/lib/utils/invoice-cycle";
+import {
+  buildInvoiceCycle,
+  dueFallsNextMonth,
+  paymentMonthForClosingDate,
+} from "@/lib/utils/invoice-cycle";
 import {
   addMonths,
   endOfMonth,
@@ -38,6 +42,7 @@ export type EntreNosCardFilter = "all" | "other" | (string & {});
 export const ENTRE_NOS_TX_SELECT = `
   id, amount, description, transaction_type, paid_by_member_id,
   consumer_member_id, consumer_share_percent, transaction_date, card_id,
+  is_installment, installment_number, total_installments, installment_group_id,
   category:categories(icon, name),
   card:cards!card_id(id, name, owner_member_id, closing_day, due_day),
   account:accounts!account_id(id, name, owner_member_id)
@@ -85,18 +90,7 @@ export function closingDateForPurchase(
   return clampDay(next.getFullYear(), next.getMonth(), closingDay);
 }
 
-/**
- * Vencimento vence no mês seguinte ao fechamento?
- * (ex.: fecha 24, vence 10 → sim; fecha 5, vence 12 → não)
- */
-export function dueFallsNextMonth(
-  closingDay: number,
-  dueDay: number | null | undefined
-): boolean {
-  const due = normalizeDueDay(dueDay);
-  if (due == null) return false;
-  return due <= closingDay;
-}
+export { dueFallsNextMonth };
 
 /**
  * Mês do Entre Nós para a fatura que fecha em `closingDate`.
@@ -107,10 +101,9 @@ export function paymentMonthForClosing(
   closingDay: number,
   dueDay?: number | null
 ): Date {
-  if (dueFallsNextMonth(closingDay, dueDay)) {
-    return startOfMonth(addMonths(closingDate, 1));
-  }
-  return startOfMonth(closingDate);
+  return startOfMonth(
+    paymentMonthForClosingDate(closingDate, closingDay, dueDay)
+  );
 }
 
 export function paymentMonthForPurchase(
@@ -131,10 +124,10 @@ export function entreNosMonthQueryRange(month: Date): {
   to: string;
 } {
   return {
-    // Até 4 meses atrás: compra em M-2 pode fechar em M-1 e vencer em M
+    // Até 4 meses atrás: compra antiga pode vencer só neste mês
     from: toISODate(startOfMonth(addMonths(month, -4))),
-    // Fim do mês selecionado (parcelas futuras entram noutros meses)
-    to: toISODate(endOfMonth(month)),
+    // Até +24 meses: parcelas agendadas dos próximos ciclos
+    to: toISODate(endOfMonth(addMonths(month, 24))),
   };
 }
 
@@ -256,6 +249,10 @@ export type EntreNosTx = {
   card_id?: string | null;
   /** 1–100; default 100 */
   consumer_share_percent?: number | null;
+  is_installment?: boolean | null;
+  installment_number?: number | null;
+  total_installments?: number | null;
+  installment_group_id?: string | null;
   category?: { icon?: string | null; name?: string | null } | null;
   cards?: Instrument | Instrument[];
   accounts?: Instrument | Instrument[];
