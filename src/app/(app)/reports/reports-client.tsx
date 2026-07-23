@@ -91,7 +91,9 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         .from("transactions")
         .select(
           `
-          *,
+          id, amount, description, transaction_type, status, transaction_date,
+          category_id, card_id, account_id, paid_by_member_id, consumer_member_id,
+          tags,
           category:categories(id, name, icon, color),
           card:cards(id, name)
         `
@@ -100,7 +102,8 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         .gte("transaction_date", from)
         .lte("transaction_date", to)
         .neq("status", "cancelled")
-        .order("transaction_date", { ascending: false });
+        .order("transaction_date", { ascending: false })
+        .limit(800);
 
       if (cardId !== "all") q = q.eq("card_id", cardId);
       if (memberId !== "all") q = q.eq("paid_by_member_id", memberId);
@@ -136,7 +139,8 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         .eq("workspace_id", member.workspace_id)
         .gte("transaction_date", prevFrom)
         .lte("transaction_date", curTo)
-        .neq("status", "cancelled");
+        .neq("status", "cancelled")
+        .limit(800);
       if (qError) throw new Error(qError.message);
       return data as {
         amount: number;

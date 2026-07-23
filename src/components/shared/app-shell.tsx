@@ -82,8 +82,8 @@ export function AppShellProvider({
         hiddenAt = Date.now();
         return;
       }
-      // Evita refetch em trocas rápidas de aba (<2s)
-      if (hiddenAt && Date.now() - hiddenAt < 2_000) return;
+      // Evita refetch em trocas rápidas de aba / resume PWA (<15s)
+      if (hiddenAt && Date.now() - hiddenAt < 15_000) return;
       void qc.invalidateQueries({ queryKey: ["app-shell"] });
       void qc.invalidateQueries({ queryKey: ["workspace-members"] });
       void qc.invalidateQueries({ queryKey: ["entre-nos"] });
@@ -172,7 +172,7 @@ function ShellChrome({
         memberships={memberships}
         entreNosBadge={debt.hasDebt}
       />
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden lg:mx-0 lg:max-w-none">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden md:max-w-2xl lg:mx-0 lg:max-w-none">
         <MobileHeader member={member} memberships={memberships} />
         {isFetching ? (
           <div
@@ -183,18 +183,18 @@ function ShellChrome({
         {debt.showReminder ? (
           <Link
             href="/entre-nos"
-            className="flex items-center justify-between gap-3 border-b border-[#E5E5EA] bg-white px-4 py-2.5"
+            className="flex items-center justify-between gap-3 border-b border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-2.5"
           >
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[#111111]">
+              <p className="text-[13px] font-medium text-[var(--color-ink)]">
                 Lembrete Entre Nós
               </p>
-              <p className="truncate text-[12px] text-[#8E8E93]">
+              <p className="truncate text-[12px] text-[var(--color-silver)]">
                 Saldo de {formatCurrency(debt.netAmount)} há {debt.daysOpen}{" "}
                 dias
               </p>
             </div>
-            <span className="shrink-0 text-[12px] font-medium text-[#111111]">
+            <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink)]">
               Ver →
             </span>
           </Link>

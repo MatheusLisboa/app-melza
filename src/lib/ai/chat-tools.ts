@@ -506,7 +506,7 @@ export function buildChatTools(opts: {
           .gte("transaction_date", range.from)
           .lte("transaction_date", range.to)
           .order("transaction_date", { ascending: false })
-          .limit(500);
+          .limit(400);
         if (error) return { error: error.message };
 
         const txs = filterEntreNosTxsForMonth(

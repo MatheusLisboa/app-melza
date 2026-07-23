@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import {
   Download,
@@ -17,13 +18,38 @@ import {
   listInvoiceCycles,
 } from "@/lib/utils/invoice-cycle";
 import type { InvoicePdfOpts } from "@/lib/invoices/download-pdf";
-import { getBankColor, getBankName } from "@/lib/utils/banks";
-import { Btn, TxRow, toDsMember } from "@/components/design-system";
-import { NubankInvoiceImportDialog } from "@/components/invoices/nubank-invoice-import";
-import { PayInvoiceDialog } from "@/components/invoices/pay-invoice-dialog";
-import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
-import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
+import { getBankName } from "@/lib/utils/banks";
+import { Btn, DsSkeleton, TxRow, toDsMember } from "@/components/design-system";
 import { cn } from "@/lib/utils";
+
+const NubankInvoiceImportDialog = dynamic(
+  () =>
+    import("@/components/invoices/nubank-invoice-import").then((m) => ({
+      default: m.NubankInvoiceImportDialog,
+    })),
+  { ssr: false }
+);
+const PayInvoiceDialog = dynamic(
+  () =>
+    import("@/components/invoices/pay-invoice-dialog").then((m) => ({
+      default: m.PayInvoiceDialog,
+    })),
+  { ssr: false }
+);
+const InvoicePdfPreviewDialog = dynamic(
+  () =>
+    import("@/components/invoices/invoice-pdf-preview-dialog").then((m) => ({
+      default: m.InvoicePdfPreviewDialog,
+    })),
+  { ssr: false }
+);
+const TransactionDetailSheet = dynamic(
+  () =>
+    import("@/components/transactions/transaction-detail-sheet").then((m) => ({
+      default: m.TransactionDetailSheet,
+    })),
+  { ssr: false }
+);
 
 function cycleMonthLabel(key: string) {
   const [y, m] = key.split("-").map(Number);
@@ -32,15 +58,6 @@ function cycleMonthLabel(key: string) {
     month: "short",
     year: "2-digit",
   });
-}
-
-function isLightBrand(color: string): boolean {
-  const hex = color.replace("#", "");
-  if (hex.length !== 6) return false;
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
 }
 
 export function InvoicesClient({ member }: { member: WorkspaceMember }) {
@@ -93,7 +110,10 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
         .from("transactions")
         .select(
           `
-          *,
+          id, amount, description, transaction_type, status, transaction_date,
+          category_id, card_id, paid_by_member_id, consumer_member_id,
+          consumer_share_percent, is_installment, installment_number,
+          total_installments,
           category:categories(id, name, icon, color),
           card:cards(id, name, owner_member_id, bank)
         `
@@ -103,7 +123,8 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
         .gte("transaction_date", cycle!.from)
         .lte("transaction_date", cycle!.to)
         .neq("status", "cancelled")
-        .order("transaction_date", { ascending: false });
+        .order("transaction_date", { ascending: false })
+        .limit(400);
       if (qError) throw new Error(qError.message);
       return data as TransactionWithRelations[];
     },
@@ -158,14 +179,6 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   const remaining = Math.max(0, total - paidTotal);
 
   const owner = members.find((m) => m.id === selectedCard?.owner_member_id);
-  const bankColor = selectedCard?.bank
-    ? getBankColor(selectedCard.bank)
-    : "#111111";
-  const lightHero = isLightBrand(bankColor);
-  const heroFg = lightHero ? "#111111" : "#FFFFFF";
-  const heroMuted = lightHero
-    ? "rgba(17,17,17,0.7)"
-    : "rgba(255,255,255,0.7)";
 
   const pdfOpts = useMemo((): InvoicePdfOpts | null => {
     if (!selectedCard || !cycle) return null;
@@ -266,13 +279,12 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
       ) : (
         <>
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
               Cartão
             </p>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {activeCards.map((c) => {
                 const active = c.id === effectiveCardId;
-                const color = c.bank ? getBankColor(c.bank) : "#111111";
                 return (
                   <button
                     key={c.id}
@@ -282,30 +294,36 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                       setCycleKey("");
                     }}
                     className={cn(
-                      "relative min-w-[148px] shrink-0 overflow-hidden rounded-[14px] px-4 py-3.5 text-left transition-all",
+                      "touch-target flex min-w-[132px] shrink-0 flex-col justify-center rounded-xl border px-3.5 py-2.5 text-left transition-colors",
                       active
-                        ? "ring-2 ring-[var(--color-text)] ring-offset-2 ring-offset-[var(--color-page)]"
-                        : "opacity-85 hover:opacity-100"
+                        ? "border-[var(--color-ink)] bg-[var(--color-pearl)]"
+                        : "border-[var(--color-fog)] bg-[var(--color-white)]"
                     )}
-                    style={{ backgroundColor: color }}
                   >
-                    <div className="relative">
-                      <div className="mb-3 flex items-center justify-between">
-                        <CreditCardIcon className="h-4 w-4 text-white/90" />
-                        {active && (
-                          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-white">
-                            Ativo
-                          </span>
+                    <span className="flex items-center gap-1.5">
+                      <CreditCardIcon
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          active
+                            ? "text-[var(--color-ink)]"
+                            : "text-[var(--color-silver)]"
                         )}
-                      </div>
-                      <p className="truncate text-sm font-semibold text-white">
+                      />
+                      <span
+                        className={cn(
+                          "truncate text-[13px] font-medium",
+                          active
+                            ? "text-[var(--color-ink)]"
+                            : "text-[var(--color-night)]"
+                        )}
+                      >
                         {c.name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-white/70">
-                        {c.bank ? getBankName(c.bank) : "Cartão"}
-                        {c.closing_day ? ` · fecha ${c.closing_day}` : ""}
-                      </p>
-                    </div>
+                      </span>
+                    </span>
+                    <span className="mt-0.5 truncate text-[11px] text-[var(--color-silver)]">
+                      {c.bank ? getBankName(c.bank) : "Cartão"}
+                      {c.closing_day ? ` · fecha ${c.closing_day}` : ""}
+                    </span>
                   </button>
                 );
               })}
@@ -313,89 +331,79 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
           </div>
 
           {cycle && (
-            <div>
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
-                Ciclo
-              </p>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {cycles.map((c) => {
-                  const active = c.key === effectiveKey;
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => setCycleKey(c.key)}
-                      className={cn(
-                        "shrink-0 rounded-full px-3.5 py-2 text-[13px] font-medium capitalize transition-colors",
-                        active
-                          ? "bg-[var(--color-ink)] text-white dark:bg-[#F2F2F7] dark:text-[#111]"
-                          : "border border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
-                      )}
-                    >
-                      {cycleMonthLabel(c.key)}
-                      {c.isCurrent ? " · atual" : ""}
-                    </button>
-                  );
-                })}
+            <div className="overflow-hidden rounded-2xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+              <div className="border-b border-[var(--color-fog)] px-4 py-3">
+                <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {cycles.map((c) => {
+                    const active = c.key === effectiveKey;
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setCycleKey(c.key)}
+                        className={cn(
+                          "touch-target shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium capitalize transition-colors",
+                          active
+                            ? "bg-[var(--color-ink)] text-white"
+                            : "bg-[var(--color-pearl)] text-[var(--color-silver)]"
+                        )}
+                      >
+                        {cycleMonthLabel(c.key)}
+                        {c.isCurrent ? " · atual" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
 
-          {cycle && (
-            <div
-              className="overflow-hidden rounded-[14px] px-5 py-5"
-              style={{ backgroundColor: bankColor }}
-            >
-              <p
-                className="text-[11px] font-medium uppercase tracking-wider"
-                style={{ color: heroMuted }}
-              >
-                {selectedCard?.name} · {cycleMonthLabel(cycle.key)}
-              </p>
-              <p
-                className="mt-2 font-mono text-3xl font-extrabold"
-                style={{ color: heroFg }}
-              >
-                {formatCurrency(remaining)}
-              </p>
-              <p className="mt-1 text-sm" style={{ color: heroMuted }}>
-                {paidTotal > 0
-                  ? `Restante · fatura ${formatCurrency(total)} · pago ${formatCurrency(paidTotal)}`
-                  : `Total da fatura · ${formatCurrency(total)}`}
-              </p>
-              <p className="mt-2 text-sm" style={{ color: heroMuted }}>
-                {formatDate(cycle.from)} — {formatDate(cycle.to)}
-                {owner ? ` · ${owner.display_name}` : ""}
-                {selectedCard?.due_day
-                  ? ` · vence dia ${selectedCard.due_day}`
-                  : ""}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPayOpen(true)}
-                  disabled={total <= 0}
-                  className="rounded-lg bg-white/20 px-3 py-2 text-[12px] font-semibold backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-40"
-                  style={{ color: heroFg }}
-                >
-                  Pagar fatura
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenPdfPreview}
-                  className="rounded-lg bg-white/20 px-3 py-2 text-[12px] font-semibold backdrop-blur-sm transition-colors hover:bg-white/30"
-                  style={{ color: heroFg }}
-                >
-                  Ver PDF
-                </button>
+              <div className="bg-[var(--color-ink)] px-5 py-5">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-mist)]">
+                  {selectedCard?.name} · {cycleMonthLabel(cycle.key)}
+                </p>
+                <p className="mt-2 font-mono text-3xl font-extrabold text-white">
+                  {formatCurrency(remaining)}
+                </p>
+                <p className="mt-1 text-sm text-[var(--color-mist)]">
+                  {paidTotal > 0
+                    ? `Restante · fatura ${formatCurrency(total)} · pago ${formatCurrency(paidTotal)}`
+                    : `Total da fatura · ${formatCurrency(total)}`}
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-silver)]">
+                  {formatDate(cycle.from)} — {formatDate(cycle.to)}
+                  {owner ? ` · ${owner.display_name}` : ""}
+                  {selectedCard?.due_day
+                    ? ` · vence dia ${selectedCard.due_day}`
+                    : ""}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayOpen(true)}
+                    disabled={total <= 0}
+                    className="rounded-lg bg-white px-3 py-2.5 text-[12px] font-semibold text-[var(--color-ink)] disabled:opacity-40"
+                  >
+                    Pagar fatura
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenPdfPreview}
+                    className="rounded-lg border border-white/25 px-3 py-2.5 text-[12px] font-semibold text-white"
+                  >
+                    Ver PDF
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {isLoading ? (
-            <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
+            <div className="space-y-3">
+              <DsSkeleton h="h-16" className="rounded-xl" />
+              <DsSkeleton h="h-16" className="rounded-xl" />
+              <DsSkeleton h="h-16" className="rounded-xl" />
+            </div>
           ) : isError ? (
-            <p className="text-sm text-[#EF4444]">
+            <p className="text-sm text-[var(--color-expense)]">
               {error instanceof Error
                 ? error.message
                 : "Não foi possível carregar a fatura."}

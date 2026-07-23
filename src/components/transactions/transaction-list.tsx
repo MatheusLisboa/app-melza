@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -19,8 +20,6 @@ import {
   formatDate,
   toISODate,
 } from "@/lib/utils/format";
-import { TransactionFormDialog } from "@/components/transactions/transaction-form";
-import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +32,21 @@ import {
 } from "@/components/ui/select";
 import { collapseInstallmentPurchases } from "@/lib/finance/collapse-installments";
 import { cn } from "@/lib/utils";
+
+const TransactionFormDialog = dynamic(
+  () =>
+    import("@/components/transactions/transaction-form").then((m) => ({
+      default: m.TransactionFormDialog,
+    })),
+  { ssr: false }
+);
+const TransactionDetailSheet = dynamic(
+  () =>
+    import("@/components/transactions/transaction-detail-sheet").then((m) => ({
+      default: m.TransactionDetailSheet,
+    })),
+  { ssr: false }
+);
 
 type FilterTab = "all" | "income" | "expense";
 
@@ -168,7 +182,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
   const accent = workspaceAccent(member.workspace?.type);
 
   return (
-    <div className="relative flex flex-col pb-28 md:pb-8">
+    <div className="relative flex flex-col pb-2 md:pb-8">
       <TopBar
         title="Histórico"
         subtitle={`Despesas: ${formatCurrency(totalExpense)}`}

@@ -176,7 +176,7 @@ export function MobileHeader({
         <Link
           href="/chat"
           aria-label="Chat IA"
-          className="pressable inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-text-2)] hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
+          className="touch-target pressable inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text-2)] hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
         >
           <MessageCircle className="h-5 w-5" />
         </Link>

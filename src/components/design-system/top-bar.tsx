@@ -27,7 +27,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] transition-colors hover:bg-[var(--color-chip)]"
+          className="touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--color-line)] bg-[var(--color-card)] transition-colors hover:bg-[var(--color-chip)]"
           aria-label="Voltar"
         >
           <ChevronLeft

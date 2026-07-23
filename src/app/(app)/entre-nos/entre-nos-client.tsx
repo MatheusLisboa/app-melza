@@ -2,7 +2,9 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
+import { parseAsString, useQueryState } from "nuqs";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -24,12 +26,12 @@ import {
   Badge,
   Btn,
   Divider,
+  DsSkeleton,
   EmptyState,
   MoneyDisplay,
   TopBar,
   toDsMember,
 } from "@/components/design-system";
-import { SettleEntreNosDialog } from "@/components/entre-nos/settle-dialog";
 import {
   addMonths,
   endOfMonth,
@@ -51,8 +53,22 @@ import {
   type EntreNosTx,
 } from "@/lib/finance/entre-nos";
 
+const SettleEntreNosDialog = dynamic(
+  () =>
+    import("@/components/entre-nos/settle-dialog").then((m) => ({
+      default: m.SettleEntreNosDialog,
+    })),
+  { ssr: false }
+);
+
 function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseMonthKey(key: string): Date {
+  const [y, m] = key.split("-").map(Number);
+  if (!y || !m || m < 1 || m > 12) return startOfMonth(new Date());
+  return startOfMonth(new Date(y, m - 1, 1));
 }
 
 /** Data padrão do acerto: hoje se for o mês atual; senão o último dia do mês. */
@@ -64,14 +80,29 @@ function defaultSettleDate(month: Date): string {
 
 /**
  * Entre Nós — acertos por mês / ciclo de fechamento do cartão.
+ * Estado de mês e cartão na URL (?mes=YYYY-MM&cartao=id).
  */
 export function EntreNosClient({ member }: { member: WorkspaceMember }) {
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
-  const [cardFilter, setCardFilter] = useState<EntreNosCardFilter>("all");
+  const defaultMonth = monthKey(new Date());
+  const [monthParam, setMonthParam] = useQueryState(
+    "mes",
+    parseAsString.withDefault(defaultMonth).withOptions({ history: "push" })
+  );
+  const [cardFilter, setCardFilter] = useQueryState(
+    "cartao",
+    parseAsString.withDefault("all").withOptions({ history: "replace" })
+  );
   const [showDebtDetail, setShowDebtDetail] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
   const { data: cards = [] } = useCards(member.workspace_id);
+
+  const month = useMemo(() => parseMonthKey(monthParam), [monthParam]);
+  const setMonth = (next: Date | ((prev: Date) => Date)) => {
+    const value = typeof next === "function" ? next(month) : next;
+    void setMonthParam(monthKey(startOfMonth(value)));
+  };
+  const cardFilterValue = (cardFilter || "all") as EntreNosCardFilter;
 
   const activeCards = useMemo(
     () => cards.filter((c) => c.is_active !== false),
@@ -129,7 +160,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         .gte("transaction_date", range.from)
         .lte("transaction_date", range.to)
         .order("transaction_date", { ascending: false })
-        .limit(800);
+        .limit(400);
       if (qError) throw new Error(qError.message);
       return (data ?? []) as EntreNosTx[];
     },
@@ -137,8 +168,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
   const txs = useMemo(() => {
     const inMonth = filterEntreNosTxsForMonth(rawTxs, month);
-    return filterEntreNosTxsByCard(inMonth, cardFilter);
-  }, [rawTxs, month, cardFilter]);
+    return filterEntreNosTxsByCard(inMonth, cardFilterValue);
+  }, [rawTxs, month, cardFilterValue]);
 
   const settlement = useMemo(() => {
     const raw = computeEntreNosSettlement(
@@ -207,10 +238,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
     (t) => t.cardName && !t.isSettlement
   );
 
-  const canSettle = hasDebt && cardFilter === "all";
+  const canSettle = hasDebt && cardFilterValue === "all";
 
   return (
-    <div className="flex flex-col pb-28 md:pb-8">
+    <div className="flex flex-col pb-2 md:pb-8">
       <TopBar
         title="Entre Nós"
         subtitle={subtitle}
@@ -218,34 +249,34 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         rightEl={
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)]"
+            className="touch-target flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-chip)]"
             aria-label="Compartilhar"
           >
-            <Share2 size={16} strokeWidth={2} className="text-[#8E8E93]" />
+            <Share2 size={16} strokeWidth={2} className="text-[var(--color-silver)]" />
           </button>
         }
       />
 
       <div className="page-pad space-y-5 md:px-6">
         {/* Seletor de mês */}
-        <div className="flex items-center justify-between rounded-xl border border-[#E5E5EA] bg-white px-2 py-2">
+        <div className="flex items-center justify-between rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-2 py-2">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7]"
+            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
             aria-label="Mês anterior"
             onClick={() => setMonth((m) => startOfMonth(addMonths(m, -1)))}
           >
             <ChevronLeft size={18} strokeWidth={2} />
           </button>
           <div className="min-w-0 flex-1 px-2 text-center">
-            <p className="text-[14px] font-semibold capitalize text-[#111111]">
+            <p className="text-[14px] font-semibold capitalize text-[var(--color-ink)]">
               {monthLabel}
             </p>
-            <p className="truncate text-[11px] text-[#8E8E93]">{cycleHint}</p>
+            <p className="truncate text-[11px] text-[var(--color-silver)]">{cycleHint}</p>
           </div>
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7]"
+            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
             aria-label="Próximo mês"
             onClick={() => setMonth((m) => startOfMonth(addMonths(m, 1)))}
           >
@@ -254,32 +285,36 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         </div>
 
         {/* Filtro por cartão */}
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <FilterChip
-            active={cardFilter === "all"}
-            onClick={() => setCardFilter("all")}
+            active={cardFilterValue === "all"}
+            onClick={() => void setCardFilter("all")}
             label="Todos"
           />
           {activeCards.map((card) => (
             <FilterChip
               key={card.id}
-              active={cardFilter === card.id}
-              onClick={() => setCardFilter(card.id)}
+              active={cardFilterValue === card.id}
+              onClick={() => void setCardFilter(card.id)}
               label={card.name}
               icon={<CreditCard size={12} strokeWidth={2} />}
               hint={card.closing_day ? `fecha ${card.closing_day}` : undefined}
             />
           ))}
           <FilterChip
-            active={cardFilter === "other"}
-            onClick={() => setCardFilter("other")}
+            active={cardFilterValue === "other"}
+            onClick={() => void setCardFilter("other")}
             label="Conta"
             icon={<Wallet size={12} strokeWidth={2} />}
           />
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Calculando acertos…</p>
+          <div className="space-y-3">
+            <DsSkeleton h="h-24" className="rounded-xl" />
+            <DsSkeleton h="h-40" className="rounded-xl" />
+            <DsSkeleton h="h-28" className="rounded-xl" />
+          </div>
         ) : isError ? (
           <EmptyState
             title="Não foi possível carregar"
@@ -310,12 +345,12 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         ) : (
           <>
             {/* Quanto cada um deve */}
-            <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
-              <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
+            <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+              <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
                 Quanto cada um deve
               </p>
               <Divider />
-              <div className="divide-y divide-[#E5E5EA]">
+              <div className="divide-y divide-[var(--color-fog)]">
                 {settlement.balances.map((bal) => {
                   const m = members.find((x) => x.id === bal.id);
                   if (!m) return null;
@@ -328,10 +363,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                     >
                       <Avatar member={toDsMember(m)} size={40} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-medium text-[#111111]">
+                        <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
                           {m.display_name}
                         </p>
-                        <p className="text-[12px] text-[#8E8E93]">
+                        <p className="text-[12px] text-[var(--color-silver)]">
                           {owes
                             ? "Deve neste período"
                             : receives
@@ -342,10 +377,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       <span
                         className={`shrink-0 font-mono text-[15px] font-semibold ${
                           owes
-                            ? "text-[#EF4444]"
+                            ? "text-[var(--color-expense)]"
                             : receives
-                              ? "text-[#22C55E]"
-                              : "text-[#8E8E93]"
+                              ? "text-[var(--color-income)]"
+                              : "text-[var(--color-silver)]"
                         }`}
                       >
                         {owes
@@ -361,7 +396,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             </div>
 
             {hasDebt && (
-              <div className="relative overflow-hidden rounded-xl border border-[#E5E5EA] bg-white p-6">
+              <div className="relative overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] p-6">
                 <div className="relative z-10 mb-6 flex items-center justify-between">
                   <div className="flex flex-col items-center gap-2">
                     <div className="relative">
@@ -369,33 +404,37 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         member={toDsMember(settlement.debtor!.member!)}
                         size={56}
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-white bg-[#EF4444]">
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-white)] bg-[var(--color-expense)]">
                         <ArrowUpRight
                           size={10}
                           strokeWidth={3}
-                          className="text-white"
+                          className="text-[var(--color-white)]"
                         />
                       </div>
                     </div>
-                    <p className="text-[13px] font-medium text-[#111111]">
+                    <p className="text-[13px] font-medium text-[var(--color-ink)]">
                       {settlement.debtor!.member!.display_name}
                     </p>
-                    <Badge label="Deve" color="#EF4444" bg="#EF444415" />
+                    <Badge
+                      label="Deve"
+                      color="var(--color-expense)"
+                      bg="color-mix(in srgb, var(--color-expense) 8%, transparent)"
+                    />
                   </div>
 
                   <div className="flex flex-1 flex-col items-center gap-2 px-4">
                     <div className="flex w-full items-center">
-                      <div className="h-px flex-1 bg-[#E5E5EA]" />
+                      <div className="h-px flex-1 bg-[var(--color-fog)]" />
                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-chip)]">
                         <ArrowRight
                           size={12}
                           strokeWidth={2.5}
-                          className="text-[#8E8E93]"
+                          className="text-[var(--color-silver)]"
                         />
                       </div>
-                      <div className="h-px flex-1 bg-[#E5E5EA]" />
+                      <div className="h-px flex-1 bg-[var(--color-fog)]" />
                     </div>
-                    <span className="text-[10px] font-medium text-[#3A3A3C]">
+                    <span className="text-[10px] font-medium text-[var(--color-graphite)]">
                       acerto líquido
                     </span>
                   </div>
@@ -406,23 +445,27 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         member={toDsMember(settlement.creditor!.member!)}
                         size={56}
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-white bg-[#22C55E]">
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-white)] bg-[var(--color-income)]">
                         <ArrowDownLeft
                           size={10}
                           strokeWidth={3}
-                          className="text-white"
+                          className="text-[var(--color-white)]"
                         />
                       </div>
                     </div>
-                    <p className="text-[13px] font-medium text-[#111111]">
+                    <p className="text-[13px] font-medium text-[var(--color-ink)]">
                       {settlement.creditor!.member!.display_name}
                     </p>
-                    <Badge label="Recebe" color="#22C55E" bg="#22C55E15" />
+                    <Badge
+                      label="Recebe"
+                      color="var(--color-income)"
+                      bg="color-mix(in srgb, var(--color-income) 8%, transparent)"
+                    />
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-1.5 border-t border-[#E5E5EA] py-5">
-                  <p className="text-xs font-medium uppercase tracking-wider text-[#8E8E93]">
+                <div className="flex flex-col items-center gap-1.5 border-t border-[var(--color-fog)] py-5">
+                  <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-silver)]">
                     {selectedCard
                       ? `Saldo · ${selectedCard.name}`
                       : `Saldo de ${monthLabel}`}
@@ -430,14 +473,14 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   <MoneyDisplay
                     amount={settlement.netAmount}
                     size="xl"
-                    color="#EF4444"
+                    color="var(--color-expense)"
                   />
-                  <p className="text-center text-sm text-[#8E8E93]">
-                    <span className="font-medium text-[#111111]">
+                  <p className="text-center text-sm text-[var(--color-silver)]">
+                    <span className="font-medium text-[var(--color-ink)]">
                       {settlement.debtor!.member!.display_name}
                     </span>{" "}
                     deve pagar para{" "}
-                    <span className="font-medium text-[#111111]">
+                    <span className="font-medium text-[var(--color-ink)]">
                       {settlement.creditor!.member!.display_name}
                     </span>
                   </p>
@@ -446,32 +489,32 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             )}
 
             {/* Por cartão (só em Todos) */}
-            {cardFilter === "all" && settlement.byCard.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
-                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
+            {cardFilterValue === "all" && settlement.byCard.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
                   Por cartão neste mês
                 </p>
                 <Divider />
-                <div className="divide-y divide-[#E5E5EA]">
+                <div className="divide-y divide-[var(--color-fog)]">
                   {settlement.byCard.map((card) => (
                     <button
                       key={card.cardId}
                       type="button"
-                      onClick={() => setCardFilter(card.cardId)}
-                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-[#F2F2F7]"
+                      onClick={() => void setCardFilter(card.cardId)}
+                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-[var(--color-pearl)]"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F2F2F7]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--color-pearl)]">
                         <CreditCard
                           size={16}
                           strokeWidth={2}
-                          className="text-[#3A3A3C]"
+                          className="text-[var(--color-graphite)]"
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-medium text-[#111111]">
+                        <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
                           {card.cardName}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[#8E8E93]">
+                        <p className="mt-0.5 text-[11px] text-[var(--color-silver)]">
                           {card.cycleFrom && card.cycleTo
                             ? formatEntreNosCycleRange(
                                 card.cycleFrom,
@@ -488,8 +531,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       <span
                         className={`shrink-0 font-mono text-[14px] font-medium ${
                           card.netAmount >= 1
-                            ? "text-[#EF4444]"
-                            : "text-[#8E8E93]"
+                            ? "text-[var(--color-expense)]"
+                            : "text-[var(--color-silver)]"
                         }`}
                       >
                         {card.netAmount >= 1
@@ -505,13 +548,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             <button
               type="button"
               onClick={() => setShowDebtDetail((v) => !v)}
-              className="flex w-full items-center justify-between rounded-xl border border-[#E5E5EA] bg-white px-4 py-3.5 text-left"
+              className="flex w-full items-center justify-between rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-3.5 text-left"
             >
               <div>
-                <p className="text-[14px] font-medium text-[#111111]">
+                <p className="text-[14px] font-medium text-[var(--color-ink)]">
                   Ver lançamentos
                 </p>
-                <p className="mt-0.5 text-[12px] text-[#8E8E93]">
+                <p className="mt-0.5 text-[12px] text-[var(--color-silver)]">
                   {settlement.debtTxs.length} lançamento
                   {settlement.debtTxs.length === 1 ? "" : "s"}
                   {cardPurchases.length > 0
@@ -523,19 +566,19 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 </p>
               </div>
               {showDebtDetail ? (
-                <ChevronDown size={18} className="text-[#8E8E93]" />
+                <ChevronDown size={18} className="text-[var(--color-silver)]" />
               ) : (
-                <ChevronRight size={18} className="text-[#8E8E93]" />
+                <ChevronRight size={18} className="text-[var(--color-silver)]" />
               )}
             </button>
 
             {showDebtDetail && settlement.debtTxs.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
-                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
                   Lançamentos de {monthLabel}
                 </p>
                 <Divider />
-                <div className="divide-y divide-[#E5E5EA]">
+                <div className="divide-y divide-[var(--color-fog)]">
                   {settlement.debtTxs.map((item) => {
                     const towardCreditor =
                       item.consumerId === settlement.debtor?.member?.id &&
@@ -544,32 +587,32 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       <Link
                         key={item.id}
                         href={`/transactions/${item.id}`}
-                        className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-[#F2F2F7]"
+                        className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-[var(--color-pearl)]"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F2F2F7] text-base">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--color-pearl)] text-base">
                           {item.isSettlement
                             ? "🤝"
                             : (item.categoryIcon ?? "💸")}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium text-[#111111]">
+                          <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
                             {item.isSettlement
                               ? "Acerto registrado"
                               : item.title}
                           </p>
                           <div className="mt-0.5 flex flex-col gap-0.5">
                             {item.isSettlement ? (
-                              <span className="text-[11px] text-[#3A3A3C]">
+                              <span className="text-[11px] text-[var(--color-graphite)]">
                                 {item.payerName} pagou {item.consumerName}
                               </span>
                             ) : item.isSplit ? (
                               <>
-                                <span className="text-[11px] font-medium text-[#111111]">
+                                <span className="text-[11px] font-medium text-[var(--color-ink)]">
                                   Rateio {item.sharePercent}/
                                   {item.otherSharePercent} · total{" "}
                                   {formatCurrency(item.grossAmount)}
                                 </span>
-                                <span className="text-[11px] text-[#3A3A3C]">
+                                <span className="text-[11px] text-[var(--color-graphite)]">
                                   {item.consumerName} deve{" "}
                                   {formatCurrency(item.consumerShareAmount)} ·{" "}
                                   {item.payerName} fica com{" "}
@@ -577,19 +620,19 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                                 </span>
                               </>
                             ) : (
-                              <span className="text-[11px] text-[#3A3A3C]">
+                              <span className="text-[11px] text-[var(--color-graphite)]">
                                 {item.consumerName} consumiu · {item.payerName}{" "}
                                 pagou
                               </span>
                             )}
                             <div className="flex flex-wrap items-center gap-x-1.5">
                               {item.cardName ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-[#8E8E93]">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-silver)]">
                                   <CreditCard size={10} strokeWidth={2} />
                                   {item.cardName}
                                 </span>
                               ) : null}
-                              <span className="text-[11px] text-[#C7C7CC]">
+                              <span className="text-[11px] text-[var(--color-mist)]">
                                 {item.cardName ? "· " : ""}
                                 {formatDate(item.date)}
                               </span>
@@ -600,19 +643,19 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                           <span
                             className={`font-mono text-[14px] font-medium ${
                               item.isSettlement || !towardCreditor
-                                ? "text-[#22C55E]"
-                                : "text-[#EF4444]"
+                                ? "text-[var(--color-income)]"
+                                : "text-[var(--color-expense)]"
                             }`}
                           >
                             {item.isSettlement || !towardCreditor ? "−" : "+"}
                             {formatCurrency(item.amount)}
                           </span>
                           {item.isSplit ? (
-                            <span className="text-[10px] text-[#8E8E93]">
+                            <span className="text-[10px] text-[var(--color-silver)]">
                               dívida
                             </span>
                           ) : (
-                            <ChevronRight size={14} className="text-[#C7C7CC]" />
+                            <ChevronRight size={14} className="text-[var(--color-mist)]" />
                           )}
                         </div>
                       </Link>
@@ -623,27 +666,27 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             )}
 
             {hasDebt && (
-              <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
-                <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+                <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
                   Resumo do período
                 </p>
                 <Divider />
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-[13px] text-[#8E8E93]">
+                  <p className="text-[13px] text-[var(--color-silver)]">
                     {settlement.creditor!.member!.display_name} pagou por{" "}
                     {settlement.debtor!.member!.display_name}
                   </p>
-                  <span className="font-mono text-[14px] font-medium text-[#EF4444]">
+                  <span className="font-mono text-[14px] font-medium text-[var(--color-expense)]">
                     {formatCurrency(settlement.bPaidForA)}
                   </span>
                 </div>
                 <Divider />
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-[13px] text-[#8E8E93]">
+                  <p className="text-[13px] text-[var(--color-silver)]">
                     {settlement.debtor!.member!.display_name} pagou por{" "}
                     {settlement.creditor!.member!.display_name}
                   </p>
-                  <span className="font-mono text-[14px] font-medium text-[#22C55E]">
+                  <span className="font-mono text-[14px] font-medium text-[var(--color-income)]">
                     {formatCurrency(settlement.aPaidForB)}
                   </span>
                 </div>
@@ -651,18 +694,18 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   <>
                     <Divider />
                     <div className="flex items-center justify-between px-4 py-3.5">
-                      <p className="text-[13px] text-[#8E8E93]">Já acertado</p>
-                      <span className="font-mono text-[14px] font-medium text-[#22C55E]">
+                      <p className="text-[13px] text-[var(--color-silver)]">Já acertado</p>
+                      <span className="font-mono text-[14px] font-medium text-[var(--color-income)]">
                         −{formatCurrency(settlement.settledAmount)}
                       </span>
                     </div>
                   </>
                 ) : null}
-                <div className="flex items-center justify-between border-t border-[#E5E5EA] px-4 py-3.5">
-                  <p className="text-[13px] font-medium text-[#111111]">
+                <div className="flex items-center justify-between border-t border-[var(--color-fog)] px-4 py-3.5">
+                  <p className="text-[13px] font-medium text-[var(--color-ink)]">
                     Diferença
                   </p>
-                  <span className="font-mono text-[15px] font-medium text-[#EF4444]">
+                  <span className="font-mono text-[15px] font-medium text-[var(--color-expense)]">
                     {formatCurrency(settlement.netAmount)}
                   </span>
                 </div>
@@ -675,7 +718,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   variant="primary"
                   size="lg"
                   fullWidth
-                  wsColor="#111111"
+                  wsColor="var(--color-ink)"
                   icon={<Check size={18} strokeWidth={2.5} />}
                   onClick={() => setSettleOpen(true)}
                 >
@@ -696,13 +739,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               </div>
             )}
 
-            {cardFilter !== "all" && hasDebt && (
-              <p className="text-center text-[12px] text-[#8E8E93]">
+            {cardFilterValue !== "all" && hasDebt && (
+              <p className="text-center text-[12px] text-[var(--color-silver)]">
                 Para registrar acerto, volte ao filtro{" "}
                 <button
                   type="button"
-                  className="font-medium text-[#111111] underline"
-                  onClick={() => setCardFilter("all")}
+                  className="font-medium text-[var(--color-ink)] underline"
+                  onClick={() => void setCardFilter("all")}
                 >
                   Todos
                 </button>
@@ -747,17 +790,22 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors ${
+      className={`touch-target inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-medium transition-colors ${
         active
-          ? "border-[#111111] bg-[#111111] text-white"
-          : "border-[#E5E5EA] bg-white text-[#3A3A3C] active:bg-[#F2F2F7]"
+          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-white)]"
+          : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
       }`}
     >
       {icon}
       <span>{label}</span>
       {hint ? (
-        <span className={active ? "text-white/70" : "text-[#8E8E93]"}>
-          · {hint}
+        <span
+          className={
+            active
+              ? "text-[var(--color-white)]/70"
+              : "text-[var(--color-silver)]"
+          }
+        >          · {hint}
         </span>
       ) : null}
     </button>

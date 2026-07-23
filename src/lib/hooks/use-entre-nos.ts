@@ -45,7 +45,7 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
         .gte("transaction_date", range.from)
         .lte("transaction_date", range.to)
         .order("transaction_date", { ascending: false })
-        .limit(500);
+        .limit(400);
       if (error) throw new Error(error.message);
       return (data ?? []) as EntreNosTx[];
     },

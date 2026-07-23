@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Toaster } from "sonner";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { PwaRegister } from "@/components/shared/pwa-register";
 
@@ -27,7 +28,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60_000,
             gcTime: 10 * 60_000,
-            // PWA standalone: ao voltar do background, dados (ex.: novo membro) atualizam
             refetchOnWindowFocus: true,
             refetchOnReconnect: true,
           },
@@ -37,10 +37,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <ThemeSync>
-        <PwaRegister />
-        {children}
-      </ThemeSync>
+      <NuqsAdapter>
+        <ThemeSync>
+          <PwaRegister />
+          {children}
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+            toastOptions={{
+              className:
+                "!rounded-xl !border-[var(--color-fog)] !bg-[var(--color-white)] !text-[var(--color-ink)] !shadow-none",
+            }}
+          />
+        </ThemeSync>
+      </NuqsAdapter>
     </QueryClientProvider>
   );
 }

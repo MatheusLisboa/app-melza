@@ -65,7 +65,7 @@ export function DashboardCardsSection({
     staleTime: 30_000,
     queryFn: async () => {
       const supabase = createClient();
-      // Ciclo atual + parcelas futuras (scheduled) p/ compromisso de limite
+      const cardIds = activeCards.map((c) => c.id);
       const { data, error } = await supabase
         .from("transactions")
         .select(
@@ -76,13 +76,13 @@ export function DashboardCardsSection({
         `
         )
         .eq("workspace_id", member.workspace_id)
-        .not("card_id", "is", null)
+        .in("card_id", cardIds)
         .neq("status", "cancelled")
         .or(
           `status.eq.scheduled,and(transaction_date.gte.${range.from},transaction_date.lte.${range.to})`
         )
         .order("transaction_date", { ascending: false })
-        .limit(1500);
+        .limit(600);
       if (error) throw error;
       return (data ?? []) as CardCycleTx[];
     },

@@ -68,7 +68,7 @@ async function runEntreNosReminders(todayISO: string) {
       .gte("transaction_date", range.from)
       .lte("transaction_date", range.to)
       .order("transaction_date", { ascending: false })
-      .limit(500);
+      .limit(400);
 
     const txs = filterEntreNosTxsForMonth(
       (txsRaw ?? []) as EntreNosTx[],

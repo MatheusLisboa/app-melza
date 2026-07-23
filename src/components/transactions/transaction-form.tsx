@@ -10,6 +10,7 @@ import {
   type PaymentChannel,
   type TransactionInput,
 } from "@/lib/validations/transaction";
+import { toast } from "sonner";
 import { createTransactionAction } from "@/lib/actions/transactions";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { MoneyInput } from "@/components/transactions/money-input";
@@ -328,6 +329,7 @@ export function TransactionFormDialog({
 
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
 
@@ -336,6 +338,7 @@ export function TransactionFormDialog({
     setAiHint(null);
     form.reset(defaults);
     invalidateFinanceQueries(qc);
+    toast.success("Lançamento salvo");
   }
 
   const showPaymentChannels = txType !== "transfer";
@@ -395,7 +398,7 @@ export function TransactionFormDialog({
             {/* Tipo */}
             <div className="space-y-2">
               <FieldLabel>Tipo</FieldLabel>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {TX_TYPES.map((t) => (
                   <Chip
                     key={t.value}

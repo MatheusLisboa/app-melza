@@ -13,6 +13,7 @@ import {
   QrCode,
   Wallet,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import {
   useAccounts,
@@ -42,8 +43,6 @@ import {
 } from "@/components/design-system";
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
-import { TransactionFormDialog } from "@/components/transactions/transaction-form";
-import { TransactionDetailSheet } from "@/components/transactions/transaction-detail-sheet";
 import { DashboardCardsSection } from "@/components/dashboard/cards-overview";
 import {
   paymentMethodCaption,
@@ -52,6 +51,21 @@ import {
 import type { PaymentChannel } from "@/lib/validations/transaction";
 import { collapseInstallmentPurchases } from "@/lib/finance/collapse-installments";
 import { cn } from "@/lib/utils";
+
+const TransactionFormDialog = dynamic(
+  () =>
+    import("@/components/transactions/transaction-form").then((m) => ({
+      default: m.TransactionFormDialog,
+    })),
+  { ssr: false }
+);
+const TransactionDetailSheet = dynamic(
+  () =>
+    import("@/components/transactions/transaction-detail-sheet").then((m) => ({
+      default: m.TransactionDetailSheet,
+    })),
+  { ssr: false }
+);
 
 function greetingLabel(date = new Date()): string {
   const h = date.getHours();
@@ -149,6 +163,7 @@ export function DashboardClient({
   memberships?: MembershipOption[];
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [showMore, setShowMore] = useState(false);
   const monthAnchor = useMemo(() => new Date(), []);
   const from = toISODate(startOfMonth(monthAnchor));
   const to = toISODate(endOfMonth(monthAnchor));
@@ -207,7 +222,7 @@ export function DashboardClient({
         .not("account_id", "is", null)
         .neq("status", "cancelled")
         .neq("status", "scheduled")
-        .limit(2000);
+        .limit(1000);
       if (error) throw error;
       return data as {
         amount: number;
@@ -225,7 +240,9 @@ export function DashboardClient({
       const supabase = createClient();
       const { data, error } = await supabase
         .from("subscriptions")
-        .select("*")
+        .select(
+          "id, name, amount, billing_cycle, next_billing_date, is_active, notes"
+        )
         .eq("workspace_id", member.workspace_id)
         .eq("is_active", true)
         .order("next_billing_date", { ascending: true })
@@ -427,7 +444,7 @@ export function DashboardClient({
   }, [confirmedMonth]);
 
   const recent = useMemo(
-    () => collapseInstallmentPurchases(recentTx).slice(0, 8),
+    () => collapseInstallmentPurchases(recentTx).slice(0, 5),
     [recentTx]
   );
   const monthLabel = formatMonthYear(monthAnchor);
@@ -462,7 +479,7 @@ export function DashboardClient({
   ] as const;
 
   return (
-    <div className="relative pb-28 md:pb-8">
+    <div className="relative pb-2 md:pb-8">
       {/* Saudação */}
       <div className="px-5 pt-3 md:px-6">
         <div className="flex items-start justify-between gap-3">
@@ -559,6 +576,121 @@ export function DashboardClient({
         </div>
       )}
 
+      {/* Recentes / Timeline */}
+      <div className="mt-6 px-5 md:px-6">
+        <SectionHeader
+          title={isShared ? "Timeline" : "Últimas transações"}
+          large
+          href="/transactions"
+          linkLabel="Ver todas"
+        />
+        {recentLoading ? (
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <DsSkeleton h="h-9" w="w-9" className="rounded-full" />
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <DsSkeleton h="h-3.5" w="w-32" />
+                    <DsSkeleton h="h-3" w="w-20" />
+                  </div>
+                  <DsSkeleton h="h-3.5" w="w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : recent.length === 0 ? (
+          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
+            <p className="text-sm text-[var(--color-text-2)]">
+              Nenhum lançamento recente.
+            </p>
+            <p className="mt-1 text-[12px] text-[var(--color-text-3)]">
+              Toque no + para registrar a primeira despesa.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+            {recent.map((tx, i) => {
+              const payerMember = members.find(
+                (m) => m.id === tx.paid_by_member_id
+              );
+              const consumerMember = members.find(
+                (m) => m.id === tx.consumer_member_id
+              );
+              const payer = payerMember ? toDsMember(payerMember) : null;
+              const consumer = consumerMember
+                ? toDsMember(consumerMember)
+                : payer;
+              const cardOwnerMember = members.find(
+                (m) => m.id === tx.card?.owner_member_id
+              );
+              const cardOwner = cardOwnerMember
+                ? toDsMember(cardOwnerMember)
+                : payer;
+              const isExpense =
+                tx.transaction_type === "expense" ||
+                tx.transaction_type === "loan_given";
+              const isIncome =
+                tx.transaction_type === "income" ||
+                tx.transaction_type === "loan_received";
+
+              return (
+                <div
+                  key={tx.id}
+                  className={cn(
+                    i > 0 && "border-t border-[var(--color-line)]"
+                  )}
+                >
+                  <TxRow
+                    embedded
+                    emoji={tx.category?.icon}
+                    title={tx.displayDescription}
+                    category={tx.category?.name}
+                    paymentLabel={paymentMethodCaption(tx)}
+                    dateLabel={formatDate(tx.transaction_date)}
+                    amount={tx.displayAmount}
+                    type={
+                      isIncome ? "income" : isExpense ? "expense" : "other"
+                    }
+                    pending={tx.status === "scheduled"}
+                    installments={
+                      tx.purchaseInstallments
+                        ? {
+                            current: tx.purchaseInstallments,
+                            total: tx.purchaseInstallments,
+                            asPurchase: true,
+                          }
+                        : null
+                    }
+                    consumer={consumer}
+                    payer={payer}
+                    cardOwner={cardOwner}
+                    onClick={() => setDetailId(tx.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+
+      <div className="mt-5 px-5 md:px-6">
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-3.5 text-[13px] font-medium text-[var(--color-ink)] active:bg-[var(--color-pearl)]"
+        >
+          {showMore ? "Ocultar detalhes do mês" : "Ver cartões, gastos e assinaturas"}
+          <ChevronRight
+            size={16}
+            className={`text-[var(--color-silver)] transition-transform ${showMore ? "rotate-90" : ""}`}
+          />
+        </button>
+      </div>
+
+      {showMore ? (
+        <>
       <DashboardCardsSection member={member} />
 
       {/* Como pagou este mês */}
@@ -803,103 +935,8 @@ export function DashboardClient({
         )}
       </div>
 
-      {/* Recentes / Timeline */}
-      <div className="mt-6 px-5 md:px-6">
-        <SectionHeader
-          title={isShared ? "Timeline" : "Últimas transações"}
-          large
-          href="/transactions"
-          linkLabel="Ver todas"
-        />
-        {recentLoading ? (
-          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
-            <div className="flex flex-col gap-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <DsSkeleton h="h-9" w="w-9" className="rounded-full" />
-                  <div className="flex flex-1 flex-col gap-1.5">
-                    <DsSkeleton h="h-3.5" w="w-32" />
-                    <DsSkeleton h="h-3" w="w-20" />
-                  </div>
-                  <DsSkeleton h="h-3.5" w="w-16" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : recent.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
-            <p className="text-sm text-[var(--color-text-2)]">
-              Nenhum lançamento recente.
-            </p>
-            <p className="mt-1 text-[12px] text-[var(--color-text-3)]">
-              Toque no + para registrar a primeira despesa.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
-            {recent.map((tx, i) => {
-              const payerMember = members.find(
-                (m) => m.id === tx.paid_by_member_id
-              );
-              const consumerMember = members.find(
-                (m) => m.id === tx.consumer_member_id
-              );
-              const payer = payerMember ? toDsMember(payerMember) : null;
-              const consumer = consumerMember
-                ? toDsMember(consumerMember)
-                : payer;
-              const cardOwnerMember = members.find(
-                (m) => m.id === tx.card?.owner_member_id
-              );
-              const cardOwner = cardOwnerMember
-                ? toDsMember(cardOwnerMember)
-                : payer;
-              const isExpense =
-                tx.transaction_type === "expense" ||
-                tx.transaction_type === "loan_given";
-              const isIncome =
-                tx.transaction_type === "income" ||
-                tx.transaction_type === "loan_received";
-
-              return (
-                <div
-                  key={tx.id}
-                  className={cn(
-                    i > 0 && "border-t border-[var(--color-line)]"
-                  )}
-                >
-                  <TxRow
-                    embedded
-                    emoji={tx.category?.icon}
-                    title={tx.displayDescription}
-                    category={tx.category?.name}
-                    paymentLabel={paymentMethodCaption(tx)}
-                    dateLabel={formatDate(tx.transaction_date)}
-                    amount={tx.displayAmount}
-                    type={
-                      isIncome ? "income" : isExpense ? "expense" : "other"
-                    }
-                    pending={tx.status === "scheduled"}
-                    installments={
-                      tx.purchaseInstallments
-                        ? {
-                            current: tx.purchaseInstallments,
-                            total: tx.purchaseInstallments,
-                            asPurchase: true,
-                          }
-                        : null
-                    }
-                    consumer={consumer}
-                    payer={payer}
-                    cardOwner={cardOwner}
-                    onClick={() => setDetailId(tx.id)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+        </>
+      ) : null}
 
       <TransactionFormDialog
         member={member}
