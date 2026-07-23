@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { payInvoiceAction } from "@/lib/actions/invoices";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { useAccounts } from "@/lib/hooks/use-finance";
@@ -11,12 +12,13 @@ import { Btn } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Select,
   SelectContent,
@@ -97,11 +99,15 @@ export function PayInvoiceDialog({
 
   async function onSubmit() {
     if (!accountId) {
-      setError("Selecione a conta de pagamento");
+      const msg = "Selecione a conta de pagamento";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (!(amount > 0)) {
-      setError("Informe um valor válido");
+      const msg = "Informe um valor válido";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setBusy(true);
@@ -120,8 +126,10 @@ export function PayInvoiceDialog({
     setBusy(false);
     if (res.error) {
       setError(res.error);
+      toast.error(res.error);
       return;
     }
+    toast.success(`Pagamento de ${formatCurrency(amount)} registrado`);
     invalidateFinanceQueries(qc);
     onOpenChange(false);
 
@@ -151,185 +159,161 @@ export function PayInvoiceDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          hideClose
-          className="flex max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
-        >
-          <div className="shrink-0 border-b border-[var(--color-line)]">
-            <div className="flex justify-center pb-1 pt-2.5 sm:hidden">
-              <div className="h-1 w-10 rounded-full bg-[var(--color-mist)]" />
-            </div>
-            <div className="relative flex items-start justify-between gap-3 px-4 pb-3.5 pt-1 sm:px-5 sm:pt-5">
-              <DialogHeader className="min-w-0 space-y-1 pr-10">
-                <DialogTitle>Pagar fatura</DialogTitle>
-                <DialogDescription className="truncate">
-                  {cardName} · ciclo {cycleKey}
-                </DialogDescription>
-              </DialogHeader>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)] sm:right-4 sm:top-4"
-                aria-label="Fechar"
-              >
-                <span className="text-lg leading-none">×</span>
-              </button>
-            </div>
-          </div>
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent>
+          <DrawerHeader className="border-b border-[var(--color-fog)]">
+            <DrawerTitle>Pagar fatura</DrawerTitle>
+            <DrawerDescription className="truncate">
+              {cardName} · ciclo {cycleKey}
+            </DrawerDescription>
+          </DrawerHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-              <div className="rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] px-4 py-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-3)]">
-                  Restante a pagar
-                </p>
-                <p className="mt-1 font-mono text-[28px] font-extrabold leading-none tracking-tight text-[var(--color-text)] sm:text-[32px]">
-                  {formatCurrency(remaining)}
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--color-line)] pt-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-[var(--color-text-3)]">
-                      Total
-                    </p>
-                    <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[var(--color-text)]">
-                      {formatCurrency(invoiceTotal)}
-                    </p>
-                  </div>
-                  <div className="min-w-0 text-right">
-                    <p className="text-[11px] text-[var(--color-text-3)]">
-                      Já pago
-                    </p>
-                    <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[var(--color-text)]">
-                      {formatCurrency(alreadyPaid)}
-                    </p>
-                  </div>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+            <div className="rounded-2xl bg-[var(--color-ink)] px-4 py-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-mist)]">
+                Restante a pagar
+              </p>
+              <p className="mt-1 font-mono text-[28px] font-extrabold leading-none tracking-tight text-white sm:text-[32px]">
+                {formatCurrency(remaining)}
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-[var(--color-silver)]">Total</p>
+                  <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-white">
+                    {formatCurrency(invoiceTotal)}
+                  </p>
+                </div>
+                <div className="min-w-0 text-right">
+                  <p className="text-[11px] text-[var(--color-silver)]">Já pago</p>
+                  <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-white">
+                    {formatCurrency(alreadyPaid)}
+                  </p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAmount(fullTarget)}
-                  className={cn(
-                    "rounded-[12px] border px-3 py-3 text-left transition-colors",
-                    preset === "full"
-                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[#F2F2F7] dark:bg-[#F2F2F7] dark:text-[#111111]"
-                      : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)] hover:bg-[var(--color-chip)]"
-                  )}
-                >
-                  <span className="block text-[11px] opacity-70">
-                    Total restante
-                  </span>
-                  <span className="mt-0.5 block font-mono text-[13px] font-semibold">
-                    {formatCurrency(fullTarget)}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAmount(halfTarget)}
-                  className={cn(
-                    "rounded-[12px] border px-3 py-3 text-left transition-colors",
-                    preset === "half"
-                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[#F2F2F7] dark:bg-[#F2F2F7] dark:text-[#111111]"
-                      : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)] hover:bg-[var(--color-chip)]"
-                  )}
-                >
-                  <span className="block text-[11px] opacity-70">Metade</span>
-                  <span className="mt-0.5 block font-mono text-[13px] font-semibold">
-                    {formatCurrency(halfTarget)}
-                  </span>
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
-                  Valor do pagamento
-                </Label>
-                <MoneyInput
-                  value={amount}
-                  onValueChange={setAmount}
-                  className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-base"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
-                  Conta de saída
-                </Label>
-                <Select value={accountId} onValueChange={setAccountId}>
-                  <SelectTrigger className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]">
-                    <SelectValue placeholder="Selecionar conta" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[40vh]">
-                    {activeAccounts.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-[var(--color-text-2)]">
-                        Nenhuma conta ativa
-                      </div>
-                    ) : (
-                      activeAccounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                          {a.bank ? ` · ${a.bank}` : ""}
-                          {a.is_shared === false ? " · pessoal" : ""}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
-                  Data
-                </Label>
-                <Input
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)] text-base"
-                />
-              </div>
-
-              <div className="space-y-1.5 pb-1">
-                <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
-                  Observação
-                  <span className="font-normal text-[var(--color-text-3)]">
-                    {" "}
-                    (opcional)
-                  </span>
-                </Label>
-                <Input
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ex.: pago parcial via PIX"
-                  className="h-12 rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
-                />
-              </div>
-
-              {error && (
-                <p className="rounded-[12px] bg-[var(--color-chip)] px-3 py-2 text-sm text-[var(--color-expense)]">
-                  {error}
-                </p>
-              )}
             </div>
 
-            <div className="shrink-0 border-t border-[var(--color-line)] bg-[var(--color-modal)] px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-5">
-              <Btn
-                variant="primary"
-                fullWidth
-                size="lg"
-                disabled={busy || activeAccounts.length === 0 || !(amount > 0)}
-                onClick={() => void onSubmit()}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAmount(fullTarget)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left transition-colors",
+                  preset === "full"
+                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                    : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)]"
+                )}
               >
-                {busy
-                  ? "Registrando…"
-                  : `Pagar ${formatCurrency(amount > 0 ? amount : 0)}`}
-              </Btn>
+                <span className="block text-[11px] opacity-70">
+                  Total restante
+                </span>
+                <span className="mt-0.5 block font-mono text-[13px] font-semibold">
+                  {formatCurrency(fullTarget)}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmount(halfTarget)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left transition-colors",
+                  preset === "half"
+                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                    : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)]"
+                )}
+              >
+                <span className="block text-[11px] opacity-70">Metade</span>
+                <span className="mt-0.5 block font-mono text-[13px] font-semibold">
+                  {formatCurrency(halfTarget)}
+                </span>
+              </button>
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+                Valor do pagamento
+              </Label>
+              <MoneyInput
+                value={amount}
+                onValueChange={setAmount}
+                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+                Conta de saída
+              </Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]">
+                  <SelectValue placeholder="Selecionar conta" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-[40vh]">
+                  {activeAccounts.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-[var(--color-silver)]">
+                      Nenhuma conta ativa
+                    </div>
+                  ) : (
+                    activeAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                        {a.bank ? ` · ${a.bank}` : ""}
+                        {a.is_shared === false ? " · pessoal" : ""}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+                Data
+              </Label>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+              />
+            </div>
+
+            <div className="space-y-1.5 pb-1">
+              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+                Observação
+                <span className="font-normal text-[var(--color-mist)]">
+                  {" "}
+                  (opcional)
+                </span>
+              </Label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ex.: pago parcial via PIX"
+                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]"
+              />
+            </div>
+
+            {error && (
+              <p className="rounded-xl bg-[var(--color-pearl)] px-3 py-2 text-sm text-[var(--color-expense)]">
+                {error}
+              </p>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <DrawerFooter>
+            <Btn
+              variant="primary"
+              fullWidth
+              size="lg"
+              disabled={busy || activeAccounts.length === 0 || !(amount > 0)}
+              onClick={() => void onSubmit()}
+            >
+              {busy
+                ? "Registrando…"
+                : `Pagar ${formatCurrency(amount > 0 ? amount : 0)}`}
+            </Btn>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       {cardOwnerMemberId ? (
         <InvoiceSettlementSuggestDialog

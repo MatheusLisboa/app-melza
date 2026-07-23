@@ -19,7 +19,7 @@ import {
   toISODate,
 } from "@/lib/utils/format";
 import { downloadCsv, toCsv } from "@/lib/utils/csv";
-import { Btn } from "@/components/design-system";
+import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -236,13 +236,13 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
   }
 
   return (
-    <div className="page-pad space-y-6 md:px-6">
+    <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-bold tracking-tight text-[var(--color-text)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
             Relatórios
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
+          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
             Extrato, comparativo e exportação
           </p>
         </div>
@@ -398,15 +398,25 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
+        <div className="space-y-3">
+          <DsSkeleton h="h-14" className="rounded-xl" />
+          <DsSkeleton h="h-14" className="rounded-xl" />
+          <DsSkeleton h="h-14" className="rounded-xl" />
+          <DsSkeleton h="h-14" className="rounded-xl" />
+        </div>
       ) : isError ? (
         <p className="text-sm text-[#EF4444]">
           {error instanceof Error ? error.message : "Erro ao carregar"}
         </p>
       ) : transactions.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-2)]">
-          Nenhum lançamento no período filtrado.
-        </p>
+        <EmptyState
+          title="Nenhum lançamento"
+          description="Não há lançamentos no período filtrado. Ajuste as datas ou cadastre movimentos."
+          actionLabel="Ir ao histórico"
+          onAction={() => {
+            window.location.assign("/transactions");
+          }}
+        />
       ) : (
         <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
           {transactions.map((tx, i) => {

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Btn } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -112,9 +113,11 @@ export function SettingsClient({
     setSaving(false);
     if (updateError) {
       setError(updateError.message);
+      toast.error(updateError.message);
       return;
     }
     setMessage("Perfil atualizado");
+    toast.success("Perfil atualizado");
     router.refresh();
   }
 
@@ -128,40 +131,57 @@ export function SettingsClient({
     );
     if (rpcError) {
       setError(rpcError.message);
+      toast.error(rpcError.message);
       return;
     }
     const created = data as WorkspaceInvite;
     setInvite(created);
     setInviteUrl(`${window.location.origin}/invite/${created.token}`);
     setMessage("Link de convite gerado");
+    toast.success("Link de convite gerado");
   }
 
   async function revokeInvite() {
     if (!invite) return;
     const supabase = createClient();
-    await supabase
+    const { error: revokeError } = await supabase
       .from("workspace_invites")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", invite.id);
+    if (revokeError) {
+      setError(revokeError.message);
+      toast.error(revokeError.message);
+      return;
+    }
     setInvite(null);
     setInviteUrl("");
     setMessage("Convite revogado");
+    toast.success("Convite revogado");
   }
 
   async function copyInvite() {
     if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setMessage("Link copiado");
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setMessage("Link copiado");
+      toast.success("Link copiado");
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
   }
 
   async function onPhotoSelected(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Selecione uma imagem (JPG, PNG ou WebP)");
+      const msg = "Selecione uma imagem (JPG, PNG ou WebP)";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError("A foto deve ter no máximo 2 MB");
+      const msg = "A foto deve ter no máximo 2 MB";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -178,11 +198,11 @@ export function SettingsClient({
 
     if (uploadError) {
       setPhotoBusy(false);
-      setError(
-        uploadError.message.includes("Bucket not found")
-          ? "Bucket de avatares ainda não existe. Rode a migration 008 no Supabase."
-          : uploadError.message
-      );
+      const msg = uploadError.message.includes("Bucket not found")
+        ? "Bucket de avatares ainda não existe. Rode a migration 008 no Supabase."
+        : uploadError.message;
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -197,10 +217,12 @@ export function SettingsClient({
     setPhotoBusy(false);
     if (updateError) {
       setError(updateError.message);
+      toast.error(updateError.message);
       return;
     }
     setAvatarUrl(url);
     setMessage("Foto atualizada");
+    toast.success("Foto atualizada");
     router.refresh();
   }
 
@@ -216,10 +238,12 @@ export function SettingsClient({
     setPhotoBusy(false);
     if (updateError) {
       setError(updateError.message);
+      toast.error(updateError.message);
       return;
     }
     setAvatarUrl(null);
     setMessage("Foto removida");
+    toast.success("Foto removida");
     router.refresh();
   }
 
@@ -240,8 +264,11 @@ export function SettingsClient({
       a.click();
       URL.revokeObjectURL(url);
       setMessage("Exportação baixada");
+      toast.success("Exportação baixada");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha na exportação");
+      const msg = e instanceof Error ? e.message : "Falha na exportação";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setExporting(false);
     }
@@ -264,7 +291,9 @@ export function SettingsClient({
       await signOutAction();
       window.location.assign("/login");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha ao apagar");
+      const msg = e instanceof Error ? e.message : "Falha ao apagar";
+      setError(msg);
+      toast.error(msg);
       setDeleting(false);
     }
   }
@@ -284,6 +313,7 @@ export function SettingsClient({
     const res = await deleteWorkspaceAction(member.workspace_id);
     if (res.error) {
       setError(res.error);
+      toast.error(res.error);
       setDeletingWs(false);
       return;
     }
@@ -294,21 +324,28 @@ export function SettingsClient({
   async function signOut() {
     try {
       await signOutAction();
+      window.location.assign("/login");
     } catch {
-      const supabase = createClient();
-      await supabase.auth.signOut({ scope: "global" });
+      try {
+        const supabase = createClient();
+        await supabase.auth.signOut({ scope: "global" });
+        window.location.assign("/login");
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Não foi possível sair. Tente de novo."
+        );
+      }
     }
-    window.location.assign("/login");
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 page-pad md:px-6">
+    <div className="mx-auto max-w-2xl space-y-5 page-pad md:px-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
             Perfil
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
             {member.workspace?.name ?? "Workspace"} ·{" "}
             {workspaceTypeLabel(member.workspace?.type)}
           </p>
@@ -447,9 +484,9 @@ export function SettingsClient({
               ))}
             </div>
           </div>
-          <Button onClick={saveProfile} disabled={saving || photoBusy}>
+          <Btn onClick={saveProfile} disabled={saving || photoBusy}>
             {saving ? "Salvando…" : "Salvar perfil"}
-          </Button>
+          </Btn>
         </CardContent>
       </Card>
 
@@ -495,27 +532,31 @@ export function SettingsClient({
               <>
                 <Input readOnly value={inviteUrl} />
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" onClick={copyInvite}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar
-                  </Button>
-                  <Button
+                  <Btn
                     type="button"
-                    variant="outline"
-                    onClick={generateInvite}
+                    variant="secondary"
+                    onClick={copyInvite}
+                    icon={<Copy className="h-4 w-4" />}
                   >
-                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Copiar
+                  </Btn>
+                  <Btn
+                    type="button"
+                    variant="secondary"
+                    onClick={generateInvite}
+                    icon={<RefreshCw className="h-4 w-4" />}
+                  >
                     Novo link
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={revokeInvite}>
+                  </Btn>
+                  <Btn type="button" variant="ghost" onClick={revokeInvite}>
                     Revogar
-                  </Button>
+                  </Btn>
                 </div>
               </>
             ) : (
-              <Button onClick={generateInvite} disabled={!isOwner}>
+              <Btn onClick={generateInvite} disabled={!isOwner}>
                 Gerar link de convite
-              </Button>
+              </Btn>
             )}
           </CardContent>
         </Card>
@@ -544,19 +585,19 @@ export function SettingsClient({
           </CardHeader>
           <CardContent>
             {canDeleteWorkspace ? (
-              <Button
+              <Btn
                 type="button"
                 variant="destructive"
                 disabled={deletingWs}
                 onClick={deleteWorkspace}
+                icon={<Trash2 className="h-4 w-4" />}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
                 {deletingWs
                   ? "Apagando…"
                   : `Apagar "${member.workspace?.name ?? "workspace"}"`}
-              </Button>
+              </Btn>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[var(--color-silver)]">
                 Para apagar o workspace pessoal, crie ou entre em outro
                 workspace antes.
               </p>
@@ -580,41 +621,40 @@ export function SettingsClient({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button
+          <Btn
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={exporting}
             onClick={exportData}
+            icon={<Download className="h-4 w-4" />}
           >
-            <Download className="mr-2 h-4 w-4" />
             {exporting ? "Exportando…" : "Exportar JSON"}
-          </Button>
-          <Button
+          </Btn>
+          <Btn
             type="button"
             variant="destructive"
             disabled={deleting}
             onClick={deleteAccount}
+            icon={<Trash2 className="h-4 w-4" />}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
             {deleting ? "Apagando…" : "Apagar conta"}
-          </Button>
+          </Btn>
         </CardContent>
       </Card>
 
       {(message || error) && (
         <p
           className={
-            error ? "text-sm text-destructive" : "text-sm text-[#22C55E]"
+            error ? "text-sm text-[#EF4444]" : "text-sm text-[#22C55E]"
           }
         >
           {error ?? message}
         </p>
       )}
 
-      <Button variant="outline" onClick={signOut}>
-        <LogOut className="mr-2 h-4 w-4" />
+      <Btn variant="secondary" onClick={signOut} icon={<LogOut className="h-4 w-4" />}>
         Sair
-      </Button>
+      </Btn>
     </div>
   );
 }

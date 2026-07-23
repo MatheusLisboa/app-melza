@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   useAccounts,
@@ -9,12 +9,12 @@ import {
 } from "@/lib/hooks/use-finance";
 import { getBankName } from "@/lib/utils/banks";
 import type { WorkspaceMember } from "@/types";
-import { EmptyState } from "@/components/shared/empty-state";
-import { TopBar } from "@/components/design-system";
+import { EmptyState, DsSkeleton, TopBar } from "@/components/design-system";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { formatCurrency } from "@/lib/utils/format";
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { CreditCard, Pencil, Plus, Wallet } from "lucide-react";
+import { toast } from "sonner";
 
 const TYPE_LABEL: Record<string, string> = {
   checking: "Corrente",
@@ -28,6 +28,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
   const { data: members = [] } = useWorkspaceMembers(member.workspace_id);
   const accountMutations = useAccountMutations(member.workspace_id);
   const accent = workspaceAccent(member.workspace?.type);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const active = useMemo(
     () => accounts.filter((a) => a.is_active),
@@ -50,13 +51,15 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/cards"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-foreground/50 transition-colors hover:bg-[var(--color-chip)] hover:text-foreground/80"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-silver)] transition-colors hover:bg-[var(--color-pearl)] hover:text-[var(--color-ink)]"
             >
               <CreditCard size={14} />
               Cartões
             </Link>
             <AccountFormDialog
               members={members}
+              open={createOpen}
+              onOpenChange={setCreateOpen}
               trigger={
                 <button
                   type="button"
@@ -72,51 +75,48 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                 </button>
               }
               onSubmit={async (values) => {
-                await accountMutations.create.mutateAsync(values);
+                try {
+                  await accountMutations.create.mutateAsync(values);
+                  toast.success("Conta criada");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : "Falha ao criar conta"
+                  );
+                  throw e;
+                }
               }}
             />
           </div>
         }
       />
 
-      <div className="page-pad space-y-5 md:px-6">
+      <div className="page-pad mt-6 space-y-5 md:px-6">
         {active.length > 0 && (
-          <div className="rounded-2xl border border-[#E5E5EA] bg-card p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-foreground/35">
+          <div className="rounded-2xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
               Total nas contas
             </p>
-            <p className="mt-1 font-mono text-[22px] font-semibold text-foreground/90">
+            <p className="mt-1 font-mono text-[22px] font-semibold text-[var(--color-ink)]">
               {formatCurrency(totalBalance)}
             </p>
           </div>
         )}
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Carregando…</p>
+          <div className="space-y-3">
+            <DsSkeleton h="h-20" className="rounded-xl" />
+            <DsSkeleton h="h-20" className="rounded-xl" />
+            <DsSkeleton h="h-20" className="rounded-xl" />
+          </div>
         ) : active.length === 0 ? (
-          <div className="space-y-4">
+          <>
             <EmptyState
               title="Nenhuma conta"
               description="Cadastre corrente, poupança ou dinheiro para lançar PIX."
+              actionLabel="Adicionar conta"
+              onAction={() => setCreateOpen(true)}
             />
-            <AccountFormDialog
-              members={members}
-              trigger={
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.12] p-4"
-                >
-                  <Plus size={16} className="text-foreground/30" />
-                  <span className="text-sm font-medium text-foreground/35">
-                    Adicionar conta
-                  </span>
-                </button>
-              }
-              onSubmit={async (values) => {
-                await accountMutations.create.mutateAsync(values);
-              }}
-            />
-          </div>
+          </>
         ) : (
           <div className="flex flex-col gap-2">
             {active.map((account) => {
@@ -126,7 +126,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               return (
                 <div
                   key={account.id}
-                  className="flex items-center gap-3 rounded-2xl border border-[#E5E5EA] bg-card p-4"
+                  className="flex items-center gap-3 rounded-2xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
                 >
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -140,10 +140,10 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold text-foreground/90">
+                    <p className="truncate text-[14px] font-semibold text-[var(--color-ink)]">
                       {account.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-foreground/35">
+                    <p className="mt-0.5 text-xs text-[var(--color-silver)]">
                       {TYPE_LABEL[account.account_type] ?? account.account_type}
                       {account.bank ? ` · ${getBankName(account.bank)}` : ""}
                       {owner ? ` · ${owner.display_name}` : ""}
@@ -151,10 +151,10 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-[14px] font-semibold text-foreground/85">
+                    <p className="font-mono text-[14px] font-semibold text-[var(--color-ink)]">
                       {formatCurrency(Number(account.current_balance ?? 0))}
                     </p>
-                    <p className="text-[10px] text-foreground/30">saldo</p>
+                    <p className="text-[10px] text-[var(--color-silver)]">saldo</p>
                   </div>
                   <AccountFormDialog
                     members={members}
@@ -162,25 +162,39 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     trigger={
                       <button
                         type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-chip)] text-foreground/40 transition-colors hover:bg-[var(--color-chip)] hover:text-foreground/70"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-pearl)] text-[var(--color-silver)] transition-colors hover:text-[var(--color-ink)]"
                         aria-label={`Editar ${account.name}`}
                       >
                         <Pencil size={14} />
                       </button>
                     }
                     onSubmit={async (values) => {
-                      await accountMutations.update.mutateAsync({
-                        id: account.id,
-                        ...values,
-                      });
+                      try {
+                        await accountMutations.update.mutateAsync({
+                          id: account.id,
+                          ...values,
+                        });
+                        toast.success("Conta atualizada");
+                      } catch (e) {
+                        toast.error(
+                          e instanceof Error ? e.message : "Falha ao atualizar"
+                        );
+                        throw e;
+                      }
                     }}
                   />
                   <button
                     type="button"
-                    className="shrink-0 text-[11px] text-destructive/80"
-                    onClick={() =>
-                      accountMutations.deactivate.mutate(account.id)
-                    }
+                    className="shrink-0 text-[11px] text-[#EF4444]/80"
+                    onClick={() => {
+                      accountMutations.deactivate.mutate(account.id, {
+                        onSuccess: () => toast.success("Conta desativada"),
+                        onError: (e) =>
+                          toast.error(
+                            e instanceof Error ? e.message : "Falha ao desativar"
+                          ),
+                      });
+                    }}
                   >
                     Desativar
                   </button>
@@ -193,16 +207,24 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               trigger={
                 <button
                   type="button"
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.12] p-4 transition-colors hover:border-white/25"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-fog)] p-4 transition-colors hover:border-[var(--color-mist)]"
                 >
-                  <Plus size={16} className="text-foreground/30" />
-                  <span className="text-sm font-medium text-foreground/35">
+                  <Plus size={16} className="text-[var(--color-silver)]" />
+                  <span className="text-sm font-medium text-[var(--color-silver)]">
                     Adicionar conta
                   </span>
                 </button>
               }
               onSubmit={async (values) => {
-                await accountMutations.create.mutateAsync(values);
+                try {
+                  await accountMutations.create.mutateAsync(values);
+                  toast.success("Conta criada");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : "Falha ao criar conta"
+                  );
+                  throw e;
+                }
               }}
             />
           </div>

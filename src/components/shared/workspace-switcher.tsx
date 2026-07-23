@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { workspaceTypeLabel } from "@/lib/utils/workspace";
 import type { Workspace, WorkspaceMember } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Btn } from "@/components/design-system";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,9 +61,9 @@ export function WorkspaceSwitcher({
     <div className={cn(compact ? "min-w-0" : "w-full")}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <Btn
             variant="ghost"
-            size={compact ? "sm" : "default"}
+            size={compact ? "sm" : "md"}
             disabled={pending}
             className={cn(
               "h-auto justify-between gap-2 px-2 py-1.5 font-normal",
@@ -74,12 +74,12 @@ export function WorkspaceSwitcher({
               <span className="block truncate text-sm font-semibold">
                 {compact ? title : "Melza"}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">
+              <span className="block truncate text-xs text-[var(--color-silver)]">
                 {compact ? subtitle : `${title} · ${subtitle}`}
               </span>
             </span>
             <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-          </Button>
+          </Btn>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
@@ -95,11 +95,13 @@ export function WorkspaceSwitcher({
                   <span className="block truncate text-sm">
                     {m.workspace?.name ?? "Workspace"}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-xs text-[var(--color-silver)]">
                     {workspaceTypeLabel(m.workspace?.type)}
                   </span>
                 </span>
-                {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                {selected && (
+                  <Check className="h-4 w-4 shrink-0 text-[var(--color-ink)]" />
+                )}
               </DropdownMenuItem>
             );
           })}
@@ -112,7 +114,9 @@ export function WorkspaceSwitcher({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {error && <p className="mt-1 px-2 text-[11px] text-destructive">{error}</p>}
+      {error && (
+        <p className="mt-1 px-2 text-[11px] text-[#EF4444]">{error}</p>
+      )}
     </div>
   );
 }

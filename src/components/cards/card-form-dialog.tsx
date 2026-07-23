@@ -69,13 +69,23 @@ export function CardFormDialog({
   onSubmit,
   trigger,
   initial,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   members: WorkspaceMember[];
   onSubmit: (values: CardInput) => Promise<void>;
   trigger?: React.ReactNode;
   initial?: Card | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    onOpenChange?.(v);
+    if (!isControlled) setUncontrolledOpen(v);
+  };
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = Boolean(initial);

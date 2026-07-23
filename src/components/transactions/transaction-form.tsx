@@ -20,7 +20,6 @@ import type { AccountType, Category, WorkspaceMember } from "@/types";
 import { toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
 import { Btn } from "@/components/design-system";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,12 +33,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeftRight,
@@ -159,11 +159,21 @@ function MemberChip({
 export function TransactionFormDialog({
   member,
   trigger,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   member: WorkspaceMember;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    onOpenChange?.(v);
+    if (!isControlled) setUncontrolledOpen(v);
+  };
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [aiHint, setAiHint] = useState<string | null>(null);
@@ -345,7 +355,7 @@ export function TransactionFormDialog({
   const showInstallment = txType === "expense" && channel === "card";
 
   return (
-    <Dialog
+    <Drawer
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
@@ -355,40 +365,20 @@ export function TransactionFormDialog({
         }
       }}
     >
-      <DialogTrigger asChild>
+      <DrawerTrigger asChild>
         {trigger ?? (
-          <Button size="sm" className="sm:h-10 sm:px-4">
-            <Plus className="mr-1.5 h-4 w-4" />
+          <Btn size="sm" icon={<Plus className="h-4 w-4" />}>
             Novo
-          </Button>
+          </Btn>
         )}
-      </DialogTrigger>
-      <DialogContent
-        hideClose
-        className="flex max-h-[min(94dvh,100%)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
-      >
-        {/* Handle + header */}
-        <div className="shrink-0 border-b border-[var(--color-line)]">
-          <div className="flex justify-center pb-1 pt-2.5 sm:hidden">
-            <div className="h-1 w-10 rounded-full bg-[var(--color-line)]" />
-          </div>
-          <div className="flex items-start justify-between gap-3 px-5 pb-3.5 pt-1 sm:pt-5">
-            <DialogHeader className="space-y-1 pr-8">
-              <DialogTitle>Novo lançamento</DialogTitle>
-              <p className="text-sm text-[var(--color-text-2)]">
-                Gasto, receita ou transferência
-              </p>
-            </DialogHeader>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)] sm:right-4 sm:top-4"
-              aria-label="Fechar"
-            >
-              <span className="text-lg leading-none">×</span>
-            </button>
-          </div>
-        </div>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="border-b border-[var(--color-fog)]">
+          <DrawerTitle>Novo lançamento</DrawerTitle>
+          <p className="text-sm text-[var(--color-silver)]">
+            Gasto, receita ou transferência
+          </p>
+        </DrawerHeader>
 
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -747,13 +737,13 @@ export function TransactionFormDialog({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-[var(--color-line)] bg-[var(--color-modal)] px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-5">
+          <DrawerFooter>
             <Btn type="submit" fullWidth size="lg" disabled={submitting}>
               {submitting ? "Salvando…" : "Salvar lançamento"}
             </Btn>
-          </div>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

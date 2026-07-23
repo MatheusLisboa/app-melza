@@ -7,7 +7,8 @@ import { parseBankCsv, type NubankParsedRow } from "@/lib/utils/csv";
 import { formatCurrency } from "@/lib/utils/format";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Btn } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card as UiCard, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,12 +49,16 @@ export function CsvImportCard({
         const text = String(reader.result ?? "");
         const parsed = parseBankCsv(text);
         if (parsed.length === 0) {
-          setParseError("Nenhuma linha válida encontrada no CSV.");
+          const msg = "Nenhuma linha válida encontrada no CSV.";
+          setParseError(msg);
+          toast.error(msg);
           return;
         }
         setRows(parsed);
       } catch (e) {
-        setParseError(e instanceof Error ? e.message : "Erro ao ler CSV");
+        const msg = e instanceof Error ? e.message : "Erro ao ler CSV";
+        setParseError(msg);
+        toast.error(msg);
       }
     };
     reader.readAsText(file, "UTF-8");
@@ -61,7 +66,9 @@ export function CsvImportCard({
 
   async function importRows() {
     if (!paymentMethod || rows.length === 0) {
-      setParseError("Selecione a conta/cartão de destino.");
+      const msg = "Selecione a conta/cartão de destino.";
+      setParseError(msg);
+      toast.error(msg);
       return;
     }
     setImporting(true);
@@ -84,16 +91,22 @@ export function CsvImportCard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setParseError(data.error ?? "Falha na importação");
+        const msg = data.error ?? "Falha na importação";
+        setParseError(msg);
+        toast.error(msg);
         return;
       }
-      setResultMsg(
+      const msg =
         `Importadas ${data.imported} transações` +
-          (data.skipped ? ` (${data.skipped} ignoradas)` : "")
-      );
+        (data.skipped ? ` (${data.skipped} ignoradas)` : "");
+      setResultMsg(msg);
+      toast.success(msg);
       setRows([]);
-      invalidateFinanceQueries(qc);    } catch {
-      setParseError("Erro de rede na importação");
+      invalidateFinanceQueries(qc);
+    } catch {
+      const msg = "Erro de rede na importação";
+      setParseError(msg);
+      toast.error(msg);
     } finally {
       setImporting(false);
     }
@@ -191,14 +204,14 @@ export function CsvImportCard({
               )}
             </ul>
 
-            <Button
+            <Btn
               onClick={() => void importRows()}
               disabled={importing || !paymentMethod}
               className="w-full sm:w-auto"
+              icon={<Upload className="h-4 w-4" />}
             >
-              <Upload className="mr-1.5 h-4 w-4" />
               {importing ? "Importando…" : `Importar ${rows.length} linhas`}
-            </Button>
+            </Btn>
           </>
         )}
 

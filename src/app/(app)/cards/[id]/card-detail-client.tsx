@@ -16,6 +16,7 @@ import type {
 } from "@/types";
 import {
   Divider,
+  DsSkeleton,
   TopBar,
   TxRow,
   toDsMember,
@@ -28,22 +29,8 @@ import {
   getCurrentInvoiceCycle,
   sumCardCommittedLimit,
 } from "@/lib/finance/card-cycle";
-import { getBankColor, getBankName } from "@/lib/utils/banks";
+import { getBankName } from "@/lib/utils/banks";
 import { cn } from "@/lib/utils";
-
-function cardBrandColor(card: Card): string {
-  if (card.bank) return getBankColor(card.bank);
-  return card.color || "#111111";
-}
-
-function isLightBrand(color: string): boolean {
-  const hex = color.replace("#", "");
-  if (hex.length !== 6) return false;
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65;
-}
 
 export function CardDetailClient({
   member,
@@ -145,7 +132,11 @@ export function CardDetailClient({
     return (
       <div className="page-pad">
         <TopBar title="Cartão" onBack={() => router.back()} />
-        <p className="mt-8 text-sm text-[var(--color-text-2)]">Carregando…</p>
+        <div className="mt-6 space-y-3">
+          <DsSkeleton h="h-36" className="rounded-2xl" />
+          <DsSkeleton h="h-20" className="rounded-xl" />
+          <DsSkeleton h="h-40" className="rounded-xl" />
+        </div>
       </div>
     );
   }
@@ -158,11 +149,6 @@ export function CardDetailClient({
       ? Math.min(100, Math.round((committed / limit) * 100))
       : null;
 
-  const brand = cardBrandColor(card);
-  const light = isLightBrand(brand);
-  const fg = light ? "#111111" : "#FFFFFF";
-  const fgMuted = light ? "rgba(17,17,17,0.65)" : "rgba(255,255,255,0.72)";
-  const chipBg = light ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.18)";
   const typeLabel = card.card_type === "debit" ? "Débito" : "Crédito";
 
   return (
@@ -178,7 +164,7 @@ export function CardDetailClient({
             trigger={
               <button
                 type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
+                className="touch-target flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-pearl)] text-[var(--color-silver)] transition-colors hover:text-[var(--color-ink)]"
                 aria-label="Editar cartão"
               >
                 <Pencil size={16} />
@@ -195,84 +181,44 @@ export function CardDetailClient({
       />
 
       <div className="px-5 md:px-6">
-        {/* Plastic card — compact */}
-        <div
-          className="relative mx-auto mt-2 w-full max-w-[300px] overflow-hidden rounded-[16px] p-4 shadow-none"
-          style={{ backgroundColor: brand, aspectRatio: "1.7 / 1" }}
-        >
-          <div
-            className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full opacity-25"
-            style={{ background: light ? "#000" : "#fff" }}
-          />
-          <div
-            className="pointer-events-none absolute -bottom-10 -left-4 h-32 w-32 rounded-full opacity-15"
-            style={{ background: light ? "#000" : "#fff" }}
-          />
+        <div className="relative mx-auto mt-2 w-full max-w-[340px] overflow-hidden rounded-2xl bg-[var(--color-ink)] p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-mist)]">
+                {getBankName(card.bank)} · {typeLabel}
+              </p>
+              <p className="mt-1 truncate text-[17px] font-semibold text-white">
+                {card.name}
+              </p>
+            </div>
+            {owner && (
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-semibold text-white"
+                title={owner.display_name}
+              >
+                {owner.display_name[0]}
+              </div>
+            )}
+          </div>
 
-          <div className="relative flex h-full flex-col justify-between">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p
-                  className="truncate text-[10px] font-medium uppercase tracking-[0.14em]"
-                  style={{ color: fgMuted }}
-                >
-                  {getBankName(card.bank)} · {typeLabel}
+          <div className="mt-8 flex items-end justify-between gap-2">
+            <div>
+              <p className="font-mono text-[15px] font-medium tracking-[0.16em] text-white">
+                {showNumber
+                  ? `•••• ${card.last_four ?? "····"}`
+                  : "•••• ••••"}
+              </p>
+            </div>
+            {limit != null && (
+              <div className="text-right">
+                <p className="text-[9px] uppercase tracking-wider text-[var(--color-mist)]">
+                  Limite
                 </p>
-                <p
-                  className="mt-0.5 truncate text-[15px] font-semibold"
-                  style={{ color: fg }}
-                >
-                  {card.name}
+                <p className="font-mono text-[13px] font-medium text-white">
+                  {formatCurrency(limit)}
                 </p>
               </div>
-              {owner && (
-                <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-                  style={{ background: chipBg, color: fg }}
-                  title={owner.display_name}
-                >
-                  {owner.display_name[0]}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <div
-                  className="mb-2 flex h-6 w-9 items-center justify-center rounded-[4px]"
-                  style={{ background: chipBg }}
-                >
-                  <div
-                    className="h-3 w-5 rounded-[1px] border"
-                    style={{ borderColor: fgMuted }}
-                  />
-                </div>
-                <p
-                  className="font-mono text-[13px] font-medium tracking-[0.16em]"
-                  style={{ color: fg }}
-                >
-                  {showNumber
-                    ? `•••• ${card.last_four ?? "····"}`
-                    : "•••• ••••"}
-                </p>
-              </div>
-              {limit != null && (
-                <div className="text-right">
-                  <p
-                    className="text-[9px] uppercase tracking-wider"
-                    style={{ color: fgMuted }}
-                  >
-                    Limite
-                  </p>
-                  <p
-                    className="font-mono text-[12px] font-medium"
-                    style={{ color: fg }}
-                  >
-                    {formatCurrency(limit)}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
@@ -337,16 +283,15 @@ export function CardDetailClient({
                 </span>
               </p>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-chip)]">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-pearl)]">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  usedPct >= 90 ? "bg-[#EF4444]" : ""
+                  usedPct >= 90
+                    ? "bg-[var(--color-expense)]"
+                    : "bg-[var(--color-ink)]"
                 )}
-                style={{
-                  width: `${usedPct}%`,
-                  backgroundColor: usedPct >= 90 ? undefined : brand,
-                }}
+                style={{ width: `${usedPct}%` }}
               />
             </div>
             <p className="mt-2 text-[11px] text-[var(--color-text-3)]">

@@ -20,7 +20,7 @@ import type { WorkspaceMember, Loan, ThirdParty } from "@/types";
 import { formatCurrency, formatDate, toISODate } from "@/lib/utils/format";
 import { MoneyInput } from "@/components/transactions/money-input";
 import { CardSelector } from "@/components/transactions/card-selector";
-import { Button } from "@/components/ui/button";
+import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 type LoanRow = Loan & { third_party?: ThirdParty | null };
 
@@ -54,6 +55,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
   const qc = useQueryClient();
   const { data: cards = [] } = useCards(member.workspace_id);
   const { data: accounts = [] } = useAccounts(member.workspace_id);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: loans = [], isLoading } = useQuery({
     queryKey: ["loans", member.workspace_id],
@@ -92,17 +94,19 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
   );
 
   return (
-    <div className="page-pad space-y-5 md:px-6">
+    <div className="page-pad mt-0 space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
             Empréstimos
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
             Controle com terceiros
           </p>
         </div>
         <LoanFormDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
           cards={cards}
           accounts={accounts}
           onCreated={async () => {
@@ -113,9 +117,9 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-border/60 bg-card/50">
+        <Card className="border-[var(--color-fog)] bg-[var(--color-card)]">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardTitle className="text-xs font-medium text-[var(--color-silver)]">
               Nos devem
             </CardTitle>
           </CardHeader>
@@ -125,9 +129,9 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-border/60 bg-card/50">
+        <Card className="border-[var(--color-fog)] bg-[var(--color-card)]">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardTitle className="text-xs font-medium text-[var(--color-silver)]">
               Devemos
             </CardTitle>
           </CardHeader>
@@ -140,9 +144,18 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <div className="space-y-3">
+          <DsSkeleton h="h-24" className="rounded-xl" />
+          <DsSkeleton h="h-24" className="rounded-xl" />
+          <DsSkeleton h="h-24" className="rounded-xl" />
+        </div>
       ) : loans.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum empréstimo.</p>
+        <EmptyState
+          title="Nenhum empréstimo"
+          description="Registre valores emprestados ou recebidos de terceiros."
+          actionLabel="Novo empréstimo"
+          onAction={() => setCreateOpen(true)}
+        />
       ) : (
         <ul className="space-y-3">
           {loans.map((loan) => {
@@ -151,20 +164,20 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={loan.id}
-                className="rounded-xl border border-border/60 bg-card/50 p-4"
+                className="rounded-xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">
+                      <p className="font-medium text-[var(--color-ink)]">
                         {loan.third_party?.name ?? "Terceiro"}
                       </p>
                       <Badge
                         variant="secondary"
                         className={
                           loan.direction === "given"
-                            ? "bg-[var(--color-chip)] text-[#22C55E]"
-                            : "bg-[var(--color-chip)] text-[#EF4444]"
+                            ? "bg-[var(--color-pearl)] text-[#22C55E]"
+                            : "bg-[var(--color-pearl)] text-[#EF4444]"
                         }
                       >
                         {loan.direction === "given" ? "Dado" : "Recebido"}
@@ -173,20 +186,20 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
                         {STATUS_LABEL[loan.status] ?? loan.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-[var(--color-silver)]">
                       {loan.description || "Sem descrição"}
                       {loan.due_date ? ` · vence ${formatDate(loan.due_date)}` : ""}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-[var(--color-silver)]">
                       Original {formatCurrency(Number(loan.original_amount))} ·
                       pago {formatCurrency(Number(loan.paid_amount))}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-medium">
+                    <p className="font-money text-base font-medium text-[var(--color-ink)]">
                       {formatCurrency(remaining)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">saldo</p>
+                    <p className="text-[10px] text-[var(--color-silver)]">saldo</p>
                     {(loan.status === "open" || loan.status === "partial") && (
                       <RepayDialog
                         loan={loan}
@@ -216,6 +229,8 @@ function LoanFormDialog({
   cards,
   accounts,
   onCreated,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   cards: { id: string; name: string; is_active: boolean; color: string }[];
   accounts: {
@@ -225,8 +240,16 @@ function LoanFormDialog({
     color: string | null;
   }[];
   onCreated: () => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    onOpenChange?.(v);
+    if (!isControlled) setUncontrolledOpen(v);
+  };
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<LoanInput>({
@@ -248,10 +271,9 @@ function LoanFormDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="mr-1.5 h-4 w-4" />
+        <Btn size="sm" icon={<Plus className="h-4 w-4" />}>
           Novo
-        </Button>
+        </Btn>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
@@ -266,8 +288,10 @@ function LoanFormDialog({
             setSubmitting(false);
             if (result.error) {
               setError(result.error);
+              toast.error(result.error);
               return;
             }
+            toast.success("Empréstimo criado");
             await onCreated();
             setOpen(false);
             form.reset();
@@ -327,10 +351,10 @@ function LoanFormDialog({
               onChange={(v) => form.setValue("payment_method", v)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          {error && <p className="text-sm text-[#EF4444]">{error}</p>}
+          <Btn type="submit" fullWidth disabled={submitting}>
             {submitting ? "Salvando…" : "Salvar"}
-          </Button>
+          </Btn>
         </form>
       </DialogContent>
     </Dialog>
@@ -375,9 +399,9 @@ function RepayDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="mt-2 h-8">
+        <Btn variant="secondary" size="sm" className="mt-2 h-8 min-h-0">
           Registrar pagamento
-        </Button>
+        </Btn>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -392,8 +416,10 @@ function RepayDialog({
             setSubmitting(false);
             if (result.error) {
               setError(result.error);
+              toast.error(result.error);
               return;
             }
+            toast.success("Pagamento registrado");
             await onDone();
             setOpen(false);
           })}
@@ -418,10 +444,10 @@ function RepayDialog({
             <Label>Data</Label>
             <Input type="date" {...form.register("transaction_date")} />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          {error && <p className="text-sm text-[#EF4444]">{error}</p>}
+          <Btn type="submit" fullWidth disabled={submitting}>
             {submitting ? "Salvando…" : "Confirmar"}
-          </Button>
+          </Btn>
         </form>
       </DialogContent>
     </Dialog>

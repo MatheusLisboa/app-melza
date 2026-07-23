@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Btn } from "@/components/design-system";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Send } from "lucide-react";
@@ -98,18 +98,18 @@ export function ChatClient() {
   return (
     <div className="page-pad flex h-[calc(100dvh-8rem)] flex-col gap-3 md:h-[calc(100vh-2rem)] md:px-6">
       <div>
-        <h1 className="text-[17px] font-medium tracking-tight text-foreground/95">
+        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
           Chat financeiro
         </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
+        <p className="mt-0.5 text-sm text-[var(--color-silver)]">
           Criar lançamentos, pagar fatura, saldos, Entre Nós e mais
         </p>
       </div>
 
-      <Card className="flex min-h-0 flex-1 flex-col border-border/60">
+      <Card className="flex min-h-0 flex-1 flex-col border-[var(--color-fog)]">
         <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           {messages.length === 0 && (
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="space-y-2 text-sm text-[var(--color-silver)]">
               <p>Exemplos:</p>
               <ul className="list-inside list-disc space-y-1">
                 <li>Lança R$ 45 no iFood no Nubank</li>
@@ -127,7 +127,7 @@ export function ChatClient() {
               className={
                 m.role === "user"
                   ? "ml-8 rounded-[10px] bg-[var(--color-chip)] px-3 py-2 text-sm"
-                  : "mr-8 whitespace-pre-wrap rounded-2xl bg-muted px-3 py-2 text-sm"
+                  : "mr-8 whitespace-pre-wrap rounded-2xl bg-[var(--color-pearl)] px-3 py-2 text-sm"
               }
             >
               {m.content || (loading ? "…" : "")}
@@ -155,15 +155,16 @@ export function ChatClient() {
             }
           }}
         />
-        <Button
+        <Btn
           type="button"
-          size="icon"
-          className="h-11 w-11 shrink-0"
+          size="md"
+          className="h-11 w-11 shrink-0 px-0"
           disabled={loading || !input.trim()}
           onClick={() => void send()}
+          aria-label="Enviar"
         >
           <Send className="h-4 w-4" />
-        </Button>
+        </Btn>
       </div>
     </div>
   );

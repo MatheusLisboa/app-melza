@@ -20,7 +20,7 @@ import type { Category, WorkspaceMember, Subscription } from "@/types";
 import { formatCurrency, formatDate, toISODate } from "@/lib/utils/format";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { MoneyInput } from "@/components/transactions/money-input";
-import { Button } from "@/components/ui/button";
+import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle, Check, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 function monthlyEquivalent(sub: Subscription): number {
   const amount = Number(sub.amount);
@@ -54,6 +55,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
   const alertDays = useUiStore((s) => s.subscriptionAlertDays);
   const { data: cards = [] } = useCards(member.workspace_id);
   const { data: accounts = [] } = useAccounts(member.workspace_id);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", member.workspace_id],
@@ -101,17 +103,19 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-medium tracking-tight text-[var(--color-text)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
             Assinaturas
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
+          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
             Total mensal estimado:{" "}
-            <span className="font-money text-[var(--color-text)]">
+            <span className="font-money text-[var(--color-ink)]">
               {formatCurrency(monthlyTotal)}
             </span>
           </p>
         </div>
         <SubscriptionFormDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
           cards={cards}
           accounts={accounts}
           categories={categories}
@@ -122,9 +126,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {dueSoon.length > 0 && (
-        <Card className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-card)]">
+        <Card className="rounded-[10px] border border-[var(--color-fog)] bg-[var(--color-card)]">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-[var(--color-text-2)]">
+            <CardTitle className="flex items-center gap-2 text-sm text-[var(--color-silver)]">
               <AlertTriangle className="h-4 w-4" />
               Vencem em até {alertDays} dias ({dueSoon.length})
             </CardTitle>
@@ -136,7 +140,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                 className="flex items-center justify-between text-sm"
               >
                 <span>{s.name}</span>
-                <span className="font-money text-[var(--color-text)]">
+                <span className="font-money text-[var(--color-ink)]">
                   {s.next_billing_date
                     ? formatDate(s.next_billing_date)
                     : "—"}{" "}
@@ -149,11 +153,18 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
+        <div className="space-y-3">
+          <DsSkeleton h="h-24" className="rounded-xl" />
+          <DsSkeleton h="h-24" className="rounded-xl" />
+          <DsSkeleton h="h-24" className="rounded-xl" />
+        </div>
       ) : subscriptions.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-2)]">
-          Nenhuma assinatura cadastrada.
-        </p>
+        <EmptyState
+          title="Nenhuma assinatura"
+          description="Cadastre Netflix, Spotify e outras cobranças recorrentes."
+          actionLabel="Nova assinatura"
+          onAction={() => setCreateOpen(true)}
+        />
       ) : (
         <ul className="space-y-3">
           {subscriptions.map((sub) => {
@@ -169,24 +180,24 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={sub.id}
-                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
+                className="rounded-xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-[var(--color-text)]">
+                      <p className="font-medium text-[var(--color-ink)]">
                         {sub.name}
                       </p>
                       {!sub.is_active && (
                         <Badge variant="outline">Inativa</Badge>
                       )}
                       {daysLeft != null && daysLeft >= 0 && daysLeft <= alertDays && (
-                        <Badge className="bg-[var(--color-chip)] text-[var(--color-text-2)] hover:bg-[var(--color-chip)]">
+                        <Badge className="bg-[var(--color-pearl)] text-[var(--color-silver)] hover:bg-[var(--color-pearl)]">
                           em {daysLeft}d
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-[var(--color-text-2)] capitalize">
+                    <p className="text-xs text-[var(--color-silver)] capitalize">
                       {sub.billing_cycle === "monthly"
                         ? "Mensal"
                         : sub.billing_cycle === "yearly"
@@ -200,20 +211,22 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-medium text-[var(--color-text)]">
+                    <p className="font-money text-base font-medium text-[var(--color-ink)]">
                       {formatCurrency(Number(sub.amount))}
                     </p>
                     <div className="mt-1 flex flex-col items-end gap-1">
                       {sub.is_active && (
-                        <Button
+                        <Btn
                           size="sm"
-                          className="h-8 px-2.5 text-xs"
+                          className="h-8 min-h-0 px-2.5 text-xs"
+                          icon={<Check className="h-3.5 w-3.5" />}
                           onClick={async () => {
                             const res = await paySubscriptionAction(sub.id);
                             if (res.error) {
-                              alert(res.error);
+                              toast.error(res.error);
                               return;
                             }
+                            toast.success(`${sub.name} marcado como pago`);
                             await qc.invalidateQueries({
                               queryKey: ["subscriptions"],
                             });
@@ -225,18 +238,24 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                             });
                           }}
                         >
-                          <Check className="mr-1 h-3.5 w-3.5" />
                           Marcar como pago
-                        </Button>
+                        </Btn>
                       )}
-                      <Button
+                      <Btn
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 min-h-0 px-2 text-xs"
                         onClick={async () => {
-                          await toggleSubscriptionAction(
+                          const res = await toggleSubscriptionAction(
                             sub.id,
                             !sub.is_active
+                          );
+                          if (res?.error) {
+                            toast.error(res.error);
+                            return;
+                          }
+                          toast.success(
+                            sub.is_active ? "Assinatura desativada" : "Assinatura reativada"
                           );
                           await qc.invalidateQueries({
                             queryKey: ["subscriptions"],
@@ -244,7 +263,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                         }}
                       >
                         {sub.is_active ? "Desativar" : "Reativar"}
-                      </Button>
+                      </Btn>
                     </div>
                   </div>
                 </div>
@@ -262,13 +281,23 @@ function SubscriptionFormDialog({
   accounts,
   categories,
   onCreated,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   cards: { id: string; name: string; is_active: boolean }[];
   accounts: { id: string; name: string; is_active: boolean }[];
   categories: Category[];
   onCreated: () => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    onOpenChange?.(v);
+    if (!isControlled) setUncontrolledOpen(v);
+  };
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -292,10 +321,9 @@ function SubscriptionFormDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="sm:size-default">
-          <Plus className="mr-1.5 h-4 w-4" />
+        <Btn size="sm" icon={<Plus className="h-4 w-4" />}>
           Nova
-        </Button>
+        </Btn>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
@@ -310,8 +338,10 @@ function SubscriptionFormDialog({
             setSubmitting(false);
             if (result.error) {
               setError(result.error);
+              toast.error(result.error);
               return;
             }
+            toast.success("Assinatura criada");
             await onCreated();
             setOpen(false);
             form.reset();
@@ -428,10 +458,10 @@ function SubscriptionFormDialog({
             <Label>Notas</Label>
             <Textarea rows={2} {...form.register("notes")} />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          {error && <p className="text-sm text-[#EF4444]">{error}</p>}
+          <Btn type="submit" fullWidth disabled={submitting}>
             {submitting ? "Salvando…" : "Salvar"}
-          </Button>
+          </Btn>
         </form>
       </DialogContent>
     </Dialog>

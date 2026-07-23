@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { deleteTransactionAction } from "@/lib/actions/transactions";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
@@ -9,6 +10,7 @@ import {
   Avatar,
   Btn,
   Divider,
+  DsSkeleton,
   toDsMember,
 } from "@/components/design-system";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
@@ -19,11 +21,12 @@ import {
 } from "@/lib/utils/payment-channel";
 import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { useState } from "react";
 
 export function TransactionDetailSheet({
@@ -74,9 +77,10 @@ export function TransactionDetailSheet({
     const res = await deleteTransactionAction(transactionId);
     setBusy(false);
     if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
       return;
     }
+    toast.success("Lançamento excluído");
     invalidateFinanceQueries(qc);
     onOpenChange(false);
   }
@@ -114,23 +118,26 @@ export function TransactionDetailSheet({
           : (tx?.status ?? "—");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-[20px] border border-[var(--color-line)] bg-[var(--color-modal)] p-0 shadow-modal sm:rounded-[20px]">
-        <DialogHeader className="border-b border-[var(--color-line)] px-5 py-4 text-left">
-          <DialogTitle className="text-[17px] font-bold text-[var(--color-text)]">
-            Detalhe
-          </DialogTitle>
-        </DialogHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader className="border-b border-[var(--color-fog)]">
+          <DrawerTitle>Detalhe</DrawerTitle>
+        </DrawerHeader>
 
-        <div className="px-5 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
           {isLoading ? (
-            <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
+            <div className="space-y-3">
+              <DsSkeleton h="h-14" w="w-14" className="mx-auto rounded-full" />
+              <DsSkeleton h="h-4" w="w-40" className="mx-auto" />
+              <DsSkeleton h="h-8" w="w-28" className="mx-auto" />
+              <DsSkeleton h="h-32" className="rounded-xl" />
+            </div>
           ) : isError || !tx ? (
             <div>
-              <p className="text-sm font-semibold text-[var(--color-text)]">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">
                 Lançamento não encontrado
               </p>
-              <p className="mt-1 text-xs text-[var(--color-text-2)]">
+              <p className="mt-1 text-xs text-[var(--color-silver)]">
                 {isError
                   ? error instanceof Error
                     ? error.message
@@ -141,7 +148,7 @@ export function TransactionDetailSheet({
           ) : (
             <>
               <div className="flex flex-col items-center gap-3 pb-5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-icon)] text-lg font-bold text-white">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-ink)] text-lg font-bold text-white">
                   {(
                     tx.description.trim().charAt(0) ||
                     tx.category?.name?.charAt(0) ||
@@ -149,10 +156,10 @@ export function TransactionDetailSheet({
                   ).toUpperCase()}
                 </div>
                 <div className="text-center">
-                  <p className="text-base font-semibold text-[var(--color-text)]">
+                  <p className="text-base font-semibold text-[var(--color-ink)]">
                     {tx.description}
                   </p>
-                  <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
+                  <p className="mt-0.5 text-xs text-[var(--color-silver)]">
                     {[tx.category?.name, formatDate(tx.transaction_date)]
                       .filter(Boolean)
                       .join(" · ")}
@@ -161,10 +168,10 @@ export function TransactionDetailSheet({
                 <p
                   className={
                     isIncome
-                      ? "font-mono text-[28px] font-extrabold text-[#22C55E]"
+                      ? "font-mono text-[28px] font-extrabold text-[var(--color-income)]"
                       : isExpense
-                        ? "font-mono text-[28px] font-extrabold text-[#EF4444]"
-                        : "font-mono text-[28px] font-extrabold text-[var(--color-text)]"
+                        ? "font-mono text-[28px] font-extrabold text-[var(--color-expense)]"
+                        : "font-mono text-[28px] font-extrabold text-[var(--color-ink)]"
                   }
                 >
                   {isIncome ? "+" : isExpense ? "−" : ""}
@@ -173,8 +180,8 @@ export function TransactionDetailSheet({
               </div>
 
               {(consumer || payer || cardOwner) && (
-                <div className="mb-4 overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
-                  <p className="px-4 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
+                <div className="mb-4 overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+                  <p className="px-4 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
                     Atribuição
                   </p>
                   <Divider />
@@ -199,14 +206,14 @@ export function TransactionDetailSheet({
                         <div className="flex items-center gap-3 px-4 py-3">
                           <Avatar member={row.m!} size={36} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-[var(--color-text)]">
+                            <p className="text-sm font-semibold text-[var(--color-ink)]">
                               {row.m!.name}
                             </p>
-                            <p className="text-xs text-[var(--color-text-2)]">
+                            <p className="text-xs text-[var(--color-silver)]">
                               {row.desc}
                             </p>
                           </div>
-                          <span className="rounded-full bg-[var(--color-chip)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-2)]">
+                          <span className="rounded-full bg-[var(--color-pearl)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-silver)]">
                             {row.label}
                           </span>
                         </div>
@@ -216,7 +223,7 @@ export function TransactionDetailSheet({
                 </div>
               )}
 
-              <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
                 {[
                   { label: "Data", value: formatDate(tx.transaction_date) },
                   { label: "Categoria", value: tx.category?.name ?? "—" },
@@ -234,10 +241,10 @@ export function TransactionDetailSheet({
                 ].map((row, i, arr) => (
                   <div key={row.label}>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <p className="text-sm text-[var(--color-text-2)]">
+                      <p className="text-sm text-[var(--color-silver)]">
                         {row.label}
                       </p>
-                      <p className="text-sm font-semibold text-[var(--color-text)]">
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">
                         {row.value}
                       </p>
                     </div>
@@ -245,22 +252,24 @@ export function TransactionDetailSheet({
                   </div>
                 ))}
               </div>
-
-              <div className="mt-4">
-                <Btn
-                  variant="destructive"
-                  size="md"
-                  fullWidth
-                  disabled={busy || tx.status === "cancelled"}
-                  onClick={onDelete}
-                >
-                  Excluir lançamento
-                </Btn>
-              </div>
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {tx && !isLoading ? (
+          <DrawerFooter>
+            <Btn
+              variant="destructive"
+              size="md"
+              fullWidth
+              disabled={busy || tx.status === "cancelled"}
+              onClick={onDelete}
+            >
+              Excluir lançamento
+            </Btn>
+          </DrawerFooter>
+        ) : null}
+      </DrawerContent>
+    </Drawer>
   );
 }

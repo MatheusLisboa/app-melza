@@ -7,12 +7,13 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { Category, WorkspaceMember, TransactionWithRelations } from "@/types";
-import { EmptyState } from "@/components/shared/empty-state";
 import {
   Fab,
   TopBar,
   TxRow,
   InputField,
+  DsSkeleton,
+  EmptyState,
   toDsMember,
 } from "@/components/design-system";
 import {
@@ -68,6 +69,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: cards = [] } = useCards(member.workspace_id);
   const activeCards = useMemo(
@@ -309,18 +311,23 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
         )}
 
         {isLoading ? (
-          <p className="text-sm text-[var(--color-text-2)]">Carregando…</p>
+          <div className="space-y-3">
+            <DsSkeleton h="h-14" className="rounded-xl" />
+            <DsSkeleton h="h-14" className="rounded-xl" />
+            <DsSkeleton h="h-14" className="rounded-xl" />
+            <DsSkeleton h="h-14" className="rounded-xl" />
+          </div>
         ) : isError ? (
-          <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+          <div className="rounded-[14px] border border-[var(--color-fog)] bg-[var(--color-card)] p-4">
             <p className="text-sm text-[#EF4444]">
               Não foi possível carregar o histórico.
             </p>
-            <p className="mt-1 text-xs text-[var(--color-text-2)]">
+            <p className="mt-1 text-xs text-[var(--color-silver)]">
               {error instanceof Error ? error.message : "Erro desconhecido"}
             </p>
             <button
               type="button"
-              className="mt-3 text-sm text-[var(--color-text)] underline"
+              className="mt-3 text-sm text-[var(--color-ink)] underline"
               onClick={() => void refetch()}
             >
               Tentar de novo
@@ -329,9 +336,9 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
         ) : filtered.length === 0 ? (
           <EmptyState
             title="Nenhum lançamento neste período"
-            description={`Período: ${formatDate(from)} a ${formatDate(to)}. Ajuste os filtros (ícone no topo) ou amplie as datas.`}
-            actionLabel="Ver filtros"
-            onAction={() => setShowFilters(true)}
+            description={`Período: ${formatDate(from)} a ${formatDate(to)}. Ajuste os filtros ou registre um novo lançamento.`}
+            actionLabel="Novo lançamento"
+            onAction={() => setCreateOpen(true)}
           />
         ) : (
           <div className="space-y-6">
@@ -423,6 +430,8 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
 
       <TransactionFormDialog
         member={member}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
         trigger={<Fab color={accent.color} />}
       />
 

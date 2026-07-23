@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { createSettlementAction } from "@/lib/actions/settlement";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { useAccounts, useWorkspaceMembers } from "@/lib/hooks/use-finance";
@@ -13,12 +14,13 @@ import {
 import { formatCurrency, toISODate } from "@/lib/utils/format";
 import { Btn } from "@/components/design-system";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Select,
   SelectContent,
@@ -111,7 +113,9 @@ export function InvoiceSettlementSuggestDialog({
 
   async function registerSettlement() {
     if (!creditor || !(owedAmount > 0) || !accountId) {
-      setError("Selecione a conta de saída");
+      const msg = "Selecione a conta de saída";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setBusy(true);
@@ -128,8 +132,10 @@ export function InvoiceSettlementSuggestDialog({
     setBusy(false);
     if (res.error) {
       setError(res.error);
+      toast.error(res.error);
       return;
     }
+    toast.success("Acerto registrado no Entre Nós");
     invalidateFinanceQueries(qc);
     onOpenChange(false);
   }
@@ -137,25 +143,27 @@ export function InvoiceSettlementSuggestDialog({
   if (!creditor || owedAmount < 1) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Registrar acerto no Entre Nós?</DialogTitle>
-          <DialogDescription>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader className="border-b border-[var(--color-fog)]">
+          <DrawerTitle>Registrar acerto no Entre Nós?</DrawerTitle>
+          <DrawerDescription>
             Nesta fatura há cerca de{" "}
-            <span className="font-medium text-[#111111]">
+            <span className="font-medium text-[var(--color-ink)]">
               {formatCurrency(owedAmount)}
             </span>{" "}
             de gastos seus no cartão de {creditor.display_name}. Quer registrar
             o reembolso agora?
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
-        <div className="space-y-3 py-2">
+        <div className="space-y-3 px-4 py-4 sm:px-5">
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-[#8E8E93]">Conta de saída</Label>
+            <Label className="text-[12px] text-[var(--color-silver)]">
+              Conta de saída
+            </Label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-12 rounded-[12px]">
+              <SelectTrigger className="h-12 rounded-xl border-[var(--color-fog)]">
                 <SelectValue placeholder="Conta" />
               </SelectTrigger>
               <SelectContent>
@@ -168,10 +176,12 @@ export function InvoiceSettlementSuggestDialog({
               </SelectContent>
             </Select>
           </div>
-          {error ? <p className="text-sm text-[#EF4444]">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-[var(--color-expense)]">{error}</p>
+          ) : null}
         </div>
 
-        <div className="flex flex-col gap-2">
+        <DrawerFooter>
           <Btn
             variant="primary"
             fullWidth
@@ -190,8 +200,8 @@ export function InvoiceSettlementSuggestDialog({
           >
             Agora não
           </Btn>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

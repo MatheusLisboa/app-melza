@@ -15,7 +15,7 @@ import {
   type CardCycleTx,
 } from "@/lib/finance/card-cycle";
 import { cn } from "@/lib/utils";
-import { getBankColor } from "@/lib/utils/banks";
+import { getBankName } from "@/lib/utils/banks";
 
 export function DashboardCardsSection({
   member,
@@ -206,33 +206,31 @@ export function DashboardCardsSection({
             return (
               <div
                 key={card.id}
-                className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]"
+                className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]"
               >
-                <div
-                  className="h-1.5"
-                  style={{
-                    backgroundColor: card.bank
-                      ? getBankColor(card.bank)
-                      : card.color || "var(--color-text)",
-                  }}
-                />
                 <div className="p-3.5">
                   <Link
                     href={`/cards/${card.id}`}
                     className="mb-3 flex items-start justify-between gap-3"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-[15px] font-medium text-[var(--color-text)]">
-                        {card.name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-[var(--color-text-2)]">
-                        {cycle?.label ?? "Ciclo da fatura"}
-                        {card.last_four ? ` · ••${card.last_four}` : ""}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-pearl)]">
+                        <CreditCard className="h-4 w-4 text-[var(--color-ink)]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-semibold text-[var(--color-ink)]">
+                          {card.name}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-[var(--color-silver)]">
+                          {getBankName(card.bank)}
+                          {cycle?.label ? ` · ${cycle.label}` : ""}
+                          {card.last_four ? ` · ••${card.last_four}` : ""}
+                        </p>
+                      </div>
                     </div>
                     <ChevronRight
                       size={16}
-                      className="mt-1 shrink-0 text-[var(--color-text-3)]"
+                      className="mt-1 shrink-0 text-[var(--color-mist)]"
                     />
                   </Link>
 
@@ -268,39 +266,33 @@ export function DashboardCardsSection({
 
                   {usedPct != null && (
                     <div className="mb-1">
-                      <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--color-text-2)]">
+                      <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--color-silver)]">
                         <span>Comprometido</span>
                         <span className="font-mono">{usedPct}%</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chip)]">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-pearl)]">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-300",
-                            usedPct >= 90 ? "bg-[#EF4444]" : ""
+                            usedPct >= 90
+                              ? "bg-[var(--color-expense)]"
+                              : "bg-[var(--color-ink)]"
                           )}
-                          style={{
-                            width: `${usedPct}%`,
-                            backgroundColor:
-                              usedPct >= 90
-                                ? undefined
-                                : card.bank
-                                  ? getBankColor(card.bank)
-                                  : undefined,
-                          }}
+                          style={{ width: `${usedPct}%` }}
                         />
                       </div>
                     </div>
                   )}
 
                   {recent.length > 0 ? (
-                    <ul className="mt-3 space-y-1.5 border-t border-[var(--color-line)] pt-3">
+                    <ul className="mt-3 space-y-1.5 border-t border-[var(--color-fog)] pt-3">
                       {recent.map((tx) => (
                         <li key={tx.id}>
                           <Link
                             href={`/transactions/${tx.id}`}
-                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-[var(--color-text)]"
+                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-[var(--color-ink)]"
                           >
-                            <span className="min-w-0 truncate text-[var(--color-text-2)]">
+                            <span className="min-w-0 truncate text-[var(--color-silver)]">
                               {formatDate(tx.transaction_date)} ·{" "}
                               {tx.description}
                               {tx.is_installment &&
@@ -309,7 +301,7 @@ export function DashboardCardsSection({
                                 ? ` (${tx.installment_number}/${tx.total_installments})`
                                 : ""}
                             </span>
-                            <span className="shrink-0 font-mono text-[#EF4444]">
+                            <span className="shrink-0 font-mono text-[var(--color-expense)]">
                               {formatCurrency(Number(tx.amount))}
                             </span>
                           </Link>
@@ -318,7 +310,7 @@ export function DashboardCardsSection({
                     </ul>
                   ) : (
                     !txLoading && (
-                      <p className="mt-2 text-[11px] text-[var(--color-text-3)]">
+                      <p className="mt-2 text-[11px] text-[var(--color-mist)]">
                         Nenhuma compra neste ciclo
                       </p>
                     )

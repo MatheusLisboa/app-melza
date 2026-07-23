@@ -15,6 +15,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import { Btn } from "@/components/design-system";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -165,9 +166,10 @@ export function NubankInvoiceImportDialog({
         const rows = parseNubankInvoiceFile(text, file.name);
         setLines(rows);
         if (rows.length === 0) {
-          setError(
-            "Nenhuma compra encontrada. Confira se é a fatura CSV/OFX do cartão."
-          );
+          const msg =
+            "Nenhuma compra encontrada. Confira se é a fatura CSV/OFX do cartão.";
+          setError(msg);
+          toast.error(msg);
           return;
         }
         if (!effectiveCardId) {
@@ -184,13 +186,17 @@ export function NubankInvoiceImportDialog({
         }
         setSelected(map);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro ao ler o arquivo");
+        const msg = e instanceof Error ? e.message : "Erro ao ler o arquivo";
+        setError(msg);
+        toast.error(msg);
       } finally {
         setParsing(false);
       }
     };
     reader.onerror = () => {
-      setError("Não foi possível ler o arquivo.");
+      const msg = "Não foi possível ler o arquivo.";
+      setError(msg);
+      toast.error(msg);
       setParsing(false);
     };
     reader.readAsText(file, "UTF-8");
@@ -221,16 +227,19 @@ export function NubankInvoiceImportDialog({
 
   async function onImport() {
     if (!effectiveCardId) {
-      setError("Selecione o cartão da fatura.");
+      const msg = "Selecione o cartão da fatura.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const payload = selectable.filter((l) => selected[l.id] !== false);
     if (payload.length === 0) {
-      setError(
+      const msg =
         existsCount === lines.length
           ? "Todas essas compras já estão cadastradas."
-          : "Marque ao menos uma linha nova ou a atualizar."
-      );
+          : "Marque ao menos uma linha nova ou a atualizar.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setImporting(true);
@@ -255,10 +264,14 @@ export function NubankInvoiceImportDialog({
         message?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? "Falha na importação");
+        const msg = data.error ?? "Falha na importação";
+        setError(msg);
+        toast.error(msg);
         return;
       }
-      setResultMsg(data.message ?? "Importação concluída.");
+      const msg = data.message ?? "Importação concluída.";
+      setResultMsg(msg);
+      toast.success(msg);
       setLines([]);
       setFileName(null);
       invalidateFinanceQueries(qc);
@@ -266,7 +279,9 @@ export function NubankInvoiceImportDialog({
         setTimeout(() => onOpenChange(false), 900);
       }
     } catch {
-      setError("Erro de rede na importação");
+      const msg = "Erro de rede na importação";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setImporting(false);
     }
