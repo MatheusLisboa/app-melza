@@ -25,7 +25,7 @@ import {
 } from "@/lib/finance/entre-nos";
 import { listInvoiceCycles } from "@/lib/utils/invoice-cycle";
 import { encodePaymentMethod } from "@/lib/utils/payment-method";
-import { toISODate, startOfMonth, endOfMonth } from "@/lib/utils/format";
+import { toISODate, startOfMonth } from "@/lib/utils/format";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
