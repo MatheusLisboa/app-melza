@@ -2,8 +2,10 @@
  * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
  * Rateio: consumer_share_percent (ex. 50 = metade do valor).
  *
- * Mês do acerto (cartão): mês de *pagamento* da fatura = mês seguinte ao
- * fechamento. Ex.: fecha dia 24 → compras 24/jun…23/jul entram em agosto.
+ * Mês do cartão = mês do *vencimento* da fatura:
+ * - due_day > closing_day → vence no mês do fechamento
+ * - due_day ≤ closing_day → vence no mês seguinte
+ * - sem due_day → usa o mês do fechamento (não adianta tudo)
  * Conta / acerto: mês civil da data.
  */
 
@@ -45,9 +47,25 @@ function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function clampClosingDay(year: number, month: number, day: number): Date {
+function clampDay(year: number, month: number, day: number): Date {
   const last = endOfMonth(new Date(year, month, 1)).getDate();
   return new Date(year, month, Math.min(day, last));
+}
+
+function normalizeDueDay(
+  dueDay: number | null | undefined
+): number | null {
+  if (typeof dueDay !== "number" || dueDay < 1 || dueDay > 31) return null;
+  return dueDay;
+}
+
+function normalizeClosingDay(
+  closingDay: number | null | undefined
+): number | null {
+  if (typeof closingDay !== "number" || closingDay < 1 || closingDay > 31) {
+    return null;
+  }
+  return closingDay;
 }
 
 /**
@@ -61,30 +79,53 @@ export function closingDateForPurchase(
   const [y, m, d] = purchaseISO.split("-").map(Number);
   const purchaseMonth = m - 1;
   if (d < closingDay) {
-    return clampClosingDay(y, purchaseMonth, closingDay);
+    return clampDay(y, purchaseMonth, closingDay);
   }
   const next = addMonths(new Date(y, purchaseMonth, 1), 1);
-  return clampClosingDay(next.getFullYear(), next.getMonth(), closingDay);
+  return clampDay(next.getFullYear(), next.getMonth(), closingDay);
 }
 
 /**
- * Mês de pagamento no Entre Nós = mês seguinte ao fechamento da fatura.
- * (ex.: fecha 24/07 → pagamento em agosto)
+ * Vencimento vence no mês seguinte ao fechamento?
+ * (ex.: fecha 24, vence 10 → sim; fecha 5, vence 12 → não)
  */
-export function paymentMonthForClosing(closingDate: Date): Date {
-  return startOfMonth(addMonths(closingDate, 1));
+export function dueFallsNextMonth(
+  closingDay: number,
+  dueDay: number | null | undefined
+): boolean {
+  const due = normalizeDueDay(dueDay);
+  if (due == null) return false;
+  return due <= closingDay;
+}
+
+/**
+ * Mês do Entre Nós para a fatura que fecha em `closingDate`.
+ * Sem due_day → mês do fechamento (não desloca o calendário inteiro).
+ */
+export function paymentMonthForClosing(
+  closingDate: Date,
+  closingDay: number,
+  dueDay?: number | null
+): Date {
+  if (dueFallsNextMonth(closingDay, dueDay)) {
+    return startOfMonth(addMonths(closingDate, 1));
+  }
+  return startOfMonth(closingDate);
 }
 
 export function paymentMonthForPurchase(
   purchaseISO: string,
-  closingDay: number
+  closingDay: number,
+  dueDay?: number | null
 ): Date {
   return paymentMonthForClosing(
-    closingDateForPurchase(purchaseISO, closingDay)
+    closingDateForPurchase(purchaseISO, closingDay),
+    closingDay,
+    dueDay
   );
 }
 
-/** Janela de fetch: cobre o ciclo que fecha no mês anterior ao pagamento. */
+/** Janela de fetch: cobre ciclo que pode ter fechado no mês anterior. */
 export function entreNosMonthQueryRange(month: Date): {
   from: string;
   to: string;
@@ -96,32 +137,39 @@ export function entreNosMonthQueryRange(month: Date): {
 }
 
 /**
- * Ciclo de compras cuja fatura vence/paga no mês selecionado.
- * Fecha no mês anterior; compras = do fechamento ant. até D−1.
+ * Ciclo de compras da fatura cujo vencimento cai no mês selecionado.
  */
 export function entreNosCardCycle(
   paymentMonth: Date,
-  closingDay: number | null | undefined
-): { from: string; to: string; key: string; closingDay: number } | null {
-  if (
-    typeof closingDay !== "number" ||
-    closingDay < 1 ||
-    closingDay > 31
-  ) {
-    return null;
-  }
-  const closingMonth = addMonths(paymentMonth, -1);
+  closingDay: number | null | undefined,
+  dueDay?: number | null
+): {
+  from: string;
+  to: string;
+  key: string;
+  closingDay: number;
+  dueDay: number | null;
+} | null {
+  const close = normalizeClosingDay(closingDay);
+  if (close == null) return null;
+
+  const closingMonthDate = dueFallsNextMonth(close, dueDay)
+    ? addMonths(paymentMonth, -1)
+    : paymentMonth;
+
+  const due = normalizeDueDay(dueDay);
   const cycle = buildInvoiceCycle(
-    closingMonth.getFullYear(),
-    closingMonth.getMonth(),
-    closingDay,
-    null
+    closingMonthDate.getFullYear(),
+    closingMonthDate.getMonth(),
+    close,
+    due
   );
   return {
     from: cycle.from,
     to: cycle.to,
     key: monthKey(paymentMonth),
-    closingDay,
+    closingDay: close,
+    dueDay: due,
   };
 }
 
@@ -133,7 +181,7 @@ export function formatEntreNosCycleRange(
 }
 
 /**
- * Cartão com closing_day → mês de pagamento (após o fechamento).
+ * Cartão com closing_day → mês do vencimento (ou do fechamento se sem due).
  * Sem cartão / sem fechamento / acerto → mês civil.
  */
 export function txBelongsToEntreNosMonth(
@@ -149,15 +197,16 @@ export function txBelongsToEntreNosMonth(
   }
 
   const card = getTxCard(tx);
-  const closingDay = card?.closing_day;
-  if (
-    typeof closingDay === "number" &&
-    closingDay >= 1 &&
-    closingDay <= 31
-  ) {
+  const closingDay = normalizeClosingDay(card?.closing_day);
+  if (closingDay != null) {
     return (
-      monthKey(paymentMonthForPurchase(tx.transaction_date, closingDay)) ===
-      selectedKey
+      monthKey(
+        paymentMonthForPurchase(
+          tx.transaction_date,
+          closingDay,
+          card?.due_day
+        )
+      ) === selectedKey
     );
   }
 
@@ -230,6 +279,7 @@ export type EntreNosRecentItem = {
   cardId: string | null;
   cardName: string | null;
   closingDay: number | null;
+  dueDay: number | null;
   accountName: string | null;
   categoryIcon: string | null;
   isSettlement: boolean;
@@ -366,6 +416,7 @@ function buildCardBreakdowns(
     {
       cardName: string;
       closingDay: number | null;
+      dueDay: number | null;
       balances: Map<string, number>;
       count: number;
     }
@@ -378,6 +429,7 @@ function buildCardBreakdowns(
       g = {
         cardName: item.cardName ?? "Cartão",
         closingDay: item.closingDay,
+        dueDay: item.dueDay,
         balances: new Map(members.map((m) => [m.id, 0])),
         count: 0,
       };
@@ -399,7 +451,7 @@ function buildCardBreakdowns(
       const balances = rankedBalances(g.balances, byId);
       const { debtor, creditor, netAmount } = pickDebtorCreditor(balances);
       const cycle = month
-        ? entreNosCardCycle(month, g.closingDay)
+        ? entreNosCardCycle(month, g.closingDay, g.dueDay)
         : null;
       return {
         cardId,
@@ -483,6 +535,7 @@ export function computeEntreNosSettlement(
       cardName: card?.name ?? null,
       closingDay:
         typeof card?.closing_day === "number" ? card.closing_day : null,
+      dueDay: typeof card?.due_day === "number" ? card.due_day : null,
       accountName: account?.name ?? null,
       categoryIcon: isSettlement ? "🤝" : (tx.category?.icon ?? null),
       isSettlement,

@@ -72,9 +72,9 @@ describe("resolveEntreNosPair", () => {
   });
 });
 
-describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
-  it("compra após o fechamento entra no mês de pagamento seguinte", () => {
-    // Fecha dia 20: compra 21/06 → fecha 20/07 → pagamento agosto
+describe("filterEntreNosTxsForMonth — ciclo do cartão / vencimento", () => {
+  it("sem due_day: compra após fechamento fica no mês do fechamento seguinte", () => {
+    // Fecha 20, sem vencimento: 21/06 → fecha 20/07 → mês julho
     const purchase = {
       id: "1",
       amount: 100,
@@ -89,15 +89,14 @@ describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
       },
     };
 
+    const june = startOfMonth(new Date(2026, 5, 1));
     const july = startOfMonth(new Date(2026, 6, 1));
-    const august = startOfMonth(new Date(2026, 7, 1));
 
-    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
-    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
   });
 
-  it("compra antes do fechamento: fecha neste mês → paga no mês seguinte", () => {
-    // Fecha dia 20: compra 19/06 → fecha 20/06 → pagamento julho
+  it("sem due_day: compra antes do fechamento fica no mês do fechamento", () => {
     const purchase = {
       id: "2",
       amount: 50,
@@ -115,15 +114,42 @@ describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
     const june = startOfMonth(new Date(2026, 5, 1));
     const july = startOfMonth(new Date(2026, 6, 1));
 
-    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(false);
-    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
   });
 
-  it("compra 22/07 com fecha dia 24 entra em agosto (pagamento)", () => {
+  it("fecha 24 e vence 10: compra 22/07 entra em agosto", () => {
     const purchase = {
       id: "22jul",
       amount: 200,
       description: "Compra antes do fechamento",
+      transaction_date: "2026-07-22",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card: {
+        owner_member_id: "b",
+        name: "Cartão",
+        closing_day: 24,
+        due_day: 10,
+      },
+    };
+
+    const july = startOfMonth(new Date(2026, 6, 1));
+    const august = startOfMonth(new Date(2026, 7, 1));
+
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(true);
+
+    const cycle = entreNosCardCycle(august, 24, 10);
+    expect(cycle?.from).toBe("2026-06-24");
+    expect(cycle?.to).toBe("2026-07-23");
+  });
+
+  it("fecha 24 sem due_day: compra 22/07 fica em julho (não adianta tudo)", () => {
+    const purchase = {
+      id: "22jul-nodue",
+      amount: 200,
+      description: "Sem vencimento",
       transaction_date: "2026-07-22",
       paid_by_member_id: "b",
       consumer_member_id: "a",
@@ -137,12 +163,8 @@ describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
     const july = startOfMonth(new Date(2026, 6, 1));
     const august = startOfMonth(new Date(2026, 7, 1));
 
-    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
-    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(true);
-
-    const cycle = entreNosCardCycle(august, 24);
-    expect(cycle?.from).toBe("2026-06-24");
-    expect(cycle?.to).toBe("2026-07-23");
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(false);
   });
 
   it("sem closing_day usa mês civil", () => {
@@ -211,13 +233,13 @@ describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
     expect(filterEntreNosTxsByCard(txs, "other")).toHaveLength(1);
   });
 
-  it("ciclo de pagamento agosto com fecha 20 = compras 20/jun … 19/jul", () => {
-    const august = startOfMonth(new Date(2026, 7, 1));
-    const cycle = entreNosCardCycle(august, 20);
+  it("ciclo julho sem due = compras do fechamento do próprio julho", () => {
+    const july = startOfMonth(new Date(2026, 6, 1));
+    const cycle = entreNosCardCycle(july, 20, null);
     expect(cycle).toMatchObject({
       from: "2026-06-20",
       to: "2026-07-19",
-      key: "2026-08",
+      key: "2026-07",
     });
   });
 });

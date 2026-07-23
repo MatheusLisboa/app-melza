@@ -87,16 +87,24 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
   const cycleHint = useMemo(() => {
     if (selectedCard) {
-      const cycle = entreNosCardCycle(month, selectedCard.closing_day);
+      const cycle = entreNosCardCycle(
+        month,
+        selectedCard.closing_day,
+        selectedCard.due_day
+      );
       if (cycle) {
-        return `Pagamento · compras ${formatEntreNosCycleRange(cycle.from, cycle.to)} · fecha dia ${selectedCard.closing_day}`;
+        const due =
+          selectedCard.due_day != null
+            ? ` · vence dia ${selectedCard.due_day}`
+            : " · sem vencimento (usa mês do fechamento)";
+        return `Compras ${formatEntreNosCycleRange(cycle.from, cycle.to)} · fecha ${selectedCard.closing_day}${due}`;
       }
       return "Sem dia de fechamento — usando mês civil";
     }
     if (cardFilter === "other") {
       return `Conta e acertos · ${monthLabel}`;
     }
-    return "Cartão: mês de pagamento (após o fechamento)";
+    return "Cartão: ciclo pelo fechamento · vencimento define o mês";
   }, [selectedCard, cardFilter, month, monthLabel]);
 
   const {
@@ -295,8 +303,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               settlement.settledAmount > 0
                 ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
                 : selectedCard
-                  ? `Nenhuma divisão no ${selectedCard.name} neste ciclo de pagamento.`
-                  : `Não há saldo em ${monthLabel}. No cartão, o mês é o de pagamento (após o fechamento).`
+                  ? `Nenhuma divisão no ${selectedCard.name} neste ciclo.`
+                  : `Não há saldo em ${monthLabel}. Cadastre o vencimento do cartão se a fatura cai no mês seguinte.`
             }
           />
         ) : (
@@ -441,7 +449,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             {cardFilter === "all" && settlement.byCard.length > 0 && (
               <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
                 <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
-                  Por cartão · mês de pagamento
+                  Por cartão neste mês
                 </p>
                 <Divider />
                 <div className="divide-y divide-[#E5E5EA]">
