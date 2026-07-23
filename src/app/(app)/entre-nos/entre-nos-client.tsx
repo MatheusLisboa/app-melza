@@ -89,14 +89,14 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
     if (selectedCard) {
       const cycle = entreNosCardCycle(month, selectedCard.closing_day);
       if (cycle) {
-        return `${formatEntreNosCycleRange(cycle.from, cycle.to)} · fecha dia ${selectedCard.closing_day}`;
+        return `Pagamento · compras ${formatEntreNosCycleRange(cycle.from, cycle.to)} · fecha dia ${selectedCard.closing_day}`;
       }
       return "Sem dia de fechamento — usando mês civil";
     }
     if (cardFilter === "other") {
       return `Conta e acertos · ${monthLabel}`;
     }
-    return "Cada cartão soma na sua janela de fechamento";
+    return "Cartão: mês de pagamento (após o fechamento)";
   }, [selectedCard, cardFilter, month, monthLabel]);
 
   const {
@@ -295,8 +295,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
               settlement.settledAmount > 0
                 ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
                 : selectedCard
-                  ? `Nenhuma divisão no ${selectedCard.name} neste ciclo.`
-                  : `Não há saldo em ${monthLabel}. Compras no cartão entram na janela de fechamento.`
+                  ? `Nenhuma divisão no ${selectedCard.name} neste ciclo de pagamento.`
+                  : `Não há saldo em ${monthLabel}. No cartão, o mês é o de pagamento (após o fechamento).`
             }
           />
         ) : (
@@ -441,7 +441,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             {cardFilter === "all" && settlement.byCard.length > 0 && (
               <div className="overflow-hidden rounded-xl border border-[#E5E5EA] bg-white">
                 <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[#8E8E93]">
-                  Por cartão neste mês
+                  Por cartão · mês de pagamento
                 </p>
                 <Divider />
                 <div className="divide-y divide-[#E5E5EA]">
@@ -549,29 +549,43 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                               ? "Acerto registrado"
                               : item.title}
                           </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <div className="mt-0.5 flex flex-col gap-0.5">
                             {item.isSettlement ? (
                               <span className="text-[11px] text-[#3A3A3C]">
                                 {item.payerName} pagou {item.consumerName}
                               </span>
+                            ) : item.isSplit ? (
+                              <>
+                                <span className="text-[11px] font-medium text-[#111111]">
+                                  Rateio {item.sharePercent}/
+                                  {item.otherSharePercent} · total{" "}
+                                  {formatCurrency(item.grossAmount)}
+                                </span>
+                                <span className="text-[11px] text-[#3A3A3C]">
+                                  {item.consumerName} deve{" "}
+                                  {formatCurrency(item.consumerShareAmount)} ·{" "}
+                                  {item.payerName} fica com{" "}
+                                  {formatCurrency(item.otherShareAmount)}
+                                </span>
+                              </>
                             ) : (
                               <span className="text-[11px] text-[#3A3A3C]">
                                 {item.consumerName} consumiu · {item.payerName}{" "}
                                 pagou
-                                {item.sharePercent < 100
-                                  ? ` · rateio ${item.sharePercent}%`
-                                  : ""}
                               </span>
                             )}
-                            {item.cardName ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] text-[#8E8E93]">
-                                <CreditCard size={10} strokeWidth={2} />
-                                {item.cardName}
+                            <div className="flex flex-wrap items-center gap-x-1.5">
+                              {item.cardName ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-[#8E8E93]">
+                                  <CreditCard size={10} strokeWidth={2} />
+                                  {item.cardName}
+                                </span>
+                              ) : null}
+                              <span className="text-[11px] text-[#C7C7CC]">
+                                {item.cardName ? "· " : ""}
+                                {formatDate(item.date)}
                               </span>
-                            ) : null}
-                            <span className="text-[11px] text-[#C7C7CC]">
-                              · {formatDate(item.date)}
-                            </span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-0.5">
@@ -585,7 +599,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                             {item.isSettlement || !towardCreditor ? "−" : "+"}
                             {formatCurrency(item.amount)}
                           </span>
-                          <ChevronRight size={14} className="text-[#C7C7CC]" />
+                          {item.isSplit ? (
+                            <span className="text-[10px] text-[#8E8E93]">
+                              dívida
+                            </span>
+                          ) : (
+                            <ChevronRight size={14} className="text-[#C7C7CC]" />
+                          )}
                         </div>
                       </Link>
                     );

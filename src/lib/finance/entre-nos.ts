@@ -2,8 +2,9 @@
  * Acerto "Entre Nós": quem consumiu vs quem pagou / dono do cartão.
  * Rateio: consumer_share_percent (ex. 50 = metade do valor).
  *
- * Mês do acerto: cada cartão soma só na janela do fechamento da fatura
- * (compra após o fechamento entra no mês seguinte). Conta/acerto = mês civil.
+ * Mês do acerto (cartão): mês de *pagamento* da fatura = mês seguinte ao
+ * fechamento. Ex.: fecha dia 24 → compras 24/jun…23/jul entram em agosto.
+ * Conta / acerto: mês civil da data.
  */
 
 import { buildInvoiceCycle } from "@/lib/utils/invoice-cycle";
@@ -25,6 +26,7 @@ type Instrument = {
   name?: string | null;
   owner_member_id?: string | null;
   closing_day?: number | null;
+  due_day?: number | null;
 } | null;
 
 /** "all" | "other" (sem cartão) | id do cartão */
@@ -35,26 +37,72 @@ export const ENTRE_NOS_TX_SELECT = `
   id, amount, description, transaction_type, paid_by_member_id,
   consumer_member_id, consumer_share_percent, transaction_date, card_id,
   category:categories(icon, name),
-  card:cards!card_id(id, name, owner_member_id, closing_day),
+  card:cards!card_id(id, name, owner_member_id, closing_day, due_day),
   account:accounts!account_id(id, name, owner_member_id)
 `;
 
-/** Janela de fetch: 2 meses atrás até o fim do mês visto (cobre ciclos). */
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function clampClosingDay(year: number, month: number, day: number): Date {
+  const last = endOfMonth(new Date(year, month, 1)).getDate();
+  return new Date(year, month, Math.min(day, last));
+}
+
+/**
+ * Data de fechamento do ciclo que contém a compra.
+ * No dia D (00:01) a compra já cai no ciclo seguinte.
+ */
+export function closingDateForPurchase(
+  purchaseISO: string,
+  closingDay: number
+): Date {
+  const [y, m, d] = purchaseISO.split("-").map(Number);
+  const purchaseMonth = m - 1;
+  if (d < closingDay) {
+    return clampClosingDay(y, purchaseMonth, closingDay);
+  }
+  const next = addMonths(new Date(y, purchaseMonth, 1), 1);
+  return clampClosingDay(next.getFullYear(), next.getMonth(), closingDay);
+}
+
+/**
+ * Mês de pagamento no Entre Nós = mês seguinte ao fechamento da fatura.
+ * (ex.: fecha 24/07 → pagamento em agosto)
+ */
+export function paymentMonthForClosing(closingDate: Date): Date {
+  return startOfMonth(addMonths(closingDate, 1));
+}
+
+export function paymentMonthForPurchase(
+  purchaseISO: string,
+  closingDay: number
+): Date {
+  return paymentMonthForClosing(
+    closingDateForPurchase(purchaseISO, closingDay)
+  );
+}
+
+/** Janela de fetch: cobre o ciclo que fecha no mês anterior ao pagamento. */
 export function entreNosMonthQueryRange(month: Date): {
   from: string;
   to: string;
 } {
   return {
-    from: toISODate(startOfMonth(addMonths(month, -1))),
+    from: toISODate(startOfMonth(addMonths(month, -2))),
     to: toISODate(endOfMonth(month)),
   };
 }
 
-/** Ciclo de fatura do cartão para o mês selecionado (YYYY-MM do fechamento). */
+/**
+ * Ciclo de compras cuja fatura vence/paga no mês selecionado.
+ * Fecha no mês anterior; compras = do fechamento ant. até D−1.
+ */
 export function entreNosCardCycle(
-  month: Date,
+  paymentMonth: Date,
   closingDay: number | null | undefined
-): { from: string; to: string; key: string } | null {
+): { from: string; to: string; key: string; closingDay: number } | null {
   if (
     typeof closingDay !== "number" ||
     closingDay < 1 ||
@@ -62,13 +110,19 @@ export function entreNosCardCycle(
   ) {
     return null;
   }
+  const closingMonth = addMonths(paymentMonth, -1);
   const cycle = buildInvoiceCycle(
-    month.getFullYear(),
-    month.getMonth(),
+    closingMonth.getFullYear(),
+    closingMonth.getMonth(),
     closingDay,
     null
   );
-  return { from: cycle.from, to: cycle.to, key: cycle.key };
+  return {
+    from: cycle.from,
+    to: cycle.to,
+    key: monthKey(paymentMonth),
+    closingDay,
+  };
 }
 
 export function formatEntreNosCycleRange(
@@ -79,7 +133,7 @@ export function formatEntreNosCycleRange(
 }
 
 /**
- * Cartão com closing_day → ciclo da fatura do mês.
+ * Cartão com closing_day → mês de pagamento (após o fechamento).
  * Sem cartão / sem fechamento / acerto → mês civil.
  */
 export function txBelongsToEntreNosMonth(
@@ -88,6 +142,7 @@ export function txBelongsToEntreNosMonth(
 ): boolean {
   const calFrom = toISODate(startOfMonth(month));
   const calTo = toISODate(endOfMonth(month));
+  const selectedKey = monthKey(month);
 
   if (tx.transaction_type === "settlement") {
     return tx.transaction_date >= calFrom && tx.transaction_date <= calTo;
@@ -95,10 +150,14 @@ export function txBelongsToEntreNosMonth(
 
   const card = getTxCard(tx);
   const closingDay = card?.closing_day;
-  const cycle = entreNosCardCycle(month, closingDay);
-  if (cycle) {
+  if (
+    typeof closingDay === "number" &&
+    closingDay >= 1 &&
+    closingDay <= 31
+  ) {
     return (
-      tx.transaction_date >= cycle.from && tx.transaction_date <= cycle.to
+      monthKey(paymentMonthForPurchase(tx.transaction_date, closingDay)) ===
+      selectedKey
     );
   }
 
@@ -157,7 +216,13 @@ export type EntreNosRecentItem = {
   amount: number;
   /** Valor bruto do lançamento (antes do rateio) */
   grossAmount: number;
+  /** Parte de quem consumiu (dívida Entre Nós) */
+  consumerShareAmount: number;
+  /** Parte de quem fica com o cartão / o outro no rateio */
+  otherShareAmount: number;
   sharePercent: number;
+  otherSharePercent: number;
+  isSplit: boolean;
   consumerId: string;
   consumerName: string;
   payerId: string;
@@ -380,6 +445,11 @@ export function computeEntreNosSettlement(
     const sharePercent = isSettlement
       ? 100
       : Math.min(100, Math.max(1, Number(tx.consumer_share_percent ?? 100)));
+    const grossAmount = Number(tx.amount);
+    const otherSharePercent = isSettlement ? 0 : 100 - sharePercent;
+    const otherShareAmount = isSettlement
+      ? 0
+      : Math.round((grossAmount - amount) * 100) / 100;
 
     balances.set(consumerId, (balances.get(consumerId) ?? 0) - amount);
     balances.set(payerId, (balances.get(payerId) ?? 0) + amount);
@@ -399,8 +469,12 @@ export function computeEntreNosSettlement(
       title: tx.description,
       date: tx.transaction_date,
       amount,
-      grossAmount: Number(tx.amount),
+      grossAmount,
+      consumerShareAmount: amount,
+      otherShareAmount,
       sharePercent,
+      otherSharePercent,
+      isSplit: !isSettlement && sharePercent < 100,
       consumerId,
       consumerName: byId.get(consumerId)?.display_name ?? "?",
       payerId,

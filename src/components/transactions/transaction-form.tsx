@@ -637,7 +637,9 @@ export function TransactionFormDialog({
                 <div className="space-y-2 border-t border-[var(--color-line)] pt-3">
                   <FieldLabel>Rateio</FieldLabel>
                   <p className="text-[11px] leading-snug text-[var(--color-text-3)]">
-                    Quanto do valor quem consumiu deve no Entre Nós.
+                    Quanto cada um fica deste gasto. Ex.: 50/50 — metade vira
+                    dívida no Entre Nós; a outra metade fica com quem tem o
+                    cartão.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(

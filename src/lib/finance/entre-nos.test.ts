@@ -72,9 +72,9 @@ describe("resolveEntreNosPair", () => {
   });
 });
 
-describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
-  it("compra após o fechamento entra no mês seguinte", () => {
-    // Fecha dia 20: ciclo de julho = 20/jun … 19/jul
+describe("filterEntreNosTxsForMonth — mês de pagamento do cartão", () => {
+  it("compra após o fechamento entra no mês de pagamento seguinte", () => {
+    // Fecha dia 20: compra 21/06 → fecha 20/07 → pagamento agosto
     const purchase = {
       id: "1",
       amount: 100,
@@ -89,16 +89,15 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
       },
     };
 
-    const june = startOfMonth(new Date(2026, 5, 1));
     const july = startOfMonth(new Date(2026, 6, 1));
+    const august = startOfMonth(new Date(2026, 7, 1));
 
-    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(false);
-    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
-    expect(filterEntreNosTxsForMonth([purchase], june)).toHaveLength(0);
-    expect(filterEntreNosTxsForMonth([purchase], july)).toHaveLength(1);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(true);
   });
 
-  it("compra antes do fechamento fica no mês do fechamento", () => {
+  it("compra antes do fechamento: fecha neste mês → paga no mês seguinte", () => {
+    // Fecha dia 20: compra 19/06 → fecha 20/06 → pagamento julho
     const purchase = {
       id: "2",
       amount: 50,
@@ -116,8 +115,34 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
     const june = startOfMonth(new Date(2026, 5, 1));
     const july = startOfMonth(new Date(2026, 6, 1));
 
-    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(true);
+    expect(txBelongsToEntreNosMonth(purchase, june)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, july)).toBe(true);
+  });
+
+  it("compra 22/07 com fecha dia 24 entra em agosto (pagamento)", () => {
+    const purchase = {
+      id: "22jul",
+      amount: 200,
+      description: "Compra antes do fechamento",
+      transaction_date: "2026-07-22",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card: {
+        owner_member_id: "b",
+        name: "Cartão",
+        closing_day: 24,
+      },
+    };
+
+    const july = startOfMonth(new Date(2026, 6, 1));
+    const august = startOfMonth(new Date(2026, 7, 1));
+
     expect(txBelongsToEntreNosMonth(purchase, july)).toBe(false);
+    expect(txBelongsToEntreNosMonth(purchase, august)).toBe(true);
+
+    const cycle = entreNosCardCycle(august, 24);
+    expect(cycle?.from).toBe("2026-06-24");
+    expect(cycle?.to).toBe("2026-07-23");
   });
 
   it("sem closing_day usa mês civil", () => {
@@ -186,13 +211,13 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão", () => {
     expect(filterEntreNosTxsByCard(txs, "other")).toHaveLength(1);
   });
 
-  it("ciclo do cartão fecha 20 em julho = 20/jun … 19/jul", () => {
-    const july = startOfMonth(new Date(2026, 6, 1));
-    const cycle = entreNosCardCycle(july, 20);
-    expect(cycle).toEqual({
+  it("ciclo de pagamento agosto com fecha 20 = compras 20/jun … 19/jul", () => {
+    const august = startOfMonth(new Date(2026, 7, 1));
+    const cycle = entreNosCardCycle(august, 20);
+    expect(cycle).toMatchObject({
       from: "2026-06-20",
       to: "2026-07-19",
-      key: "2026-07",
+      key: "2026-08",
     });
   });
 });
@@ -311,7 +336,7 @@ describe("computeEntreNosSettlement", () => {
     expect(full.settledAmount).toBe(1000);
   });
 
-  it("rateio 50/50 reduz a dívida pela metade", () => {
+  it("rateio 50/50 reduz a dívida pela metade e expõe as duas partes", () => {
     const settlement = computeEntreNosSettlement(members, [
       {
         id: "tx1",
@@ -321,9 +346,19 @@ describe("computeEntreNosSettlement", () => {
         paid_by_member_id: "b",
         consumer_member_id: "a",
         consumer_share_percent: 50,
+        card: {
+          id: "c1",
+          name: "Nubank",
+          owner_member_id: "b",
+          closing_day: 5,
+        },
       },
     ]);
     expect(settlement.netAmount).toBe(100);
     expect(settlement.recent[0]?.sharePercent).toBe(50);
+    expect(settlement.recent[0]?.isSplit).toBe(true);
+    expect(settlement.recent[0]?.consumerShareAmount).toBe(100);
+    expect(settlement.recent[0]?.otherShareAmount).toBe(100);
+    expect(settlement.recent[0]?.otherSharePercent).toBe(50);
   });
 });
