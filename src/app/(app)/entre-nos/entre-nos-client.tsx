@@ -79,7 +79,6 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
   );
 
   const monthLabel = formatMonthYear(month);
-  const isCurrentMonth = monthKey(month) === monthKey(new Date());
 
   const selectedCard =
     cardFilter !== "all" && cardFilter !== "other"
@@ -238,9 +237,8 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
           </div>
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7] disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#3A3A3C] active:bg-[#F2F2F7]"
             aria-label="Próximo mês"
-            disabled={isCurrentMonth}
             onClick={() => setMonth((m) => startOfMonth(addMonths(m, 1)))}
           >
             <ChevronRight size={18} strokeWidth={2} />
