@@ -6,6 +6,8 @@ import {
   filterEntreNosTxsByCard,
   txBelongsToEntreNosMonth,
   entreNosCardCycle,
+  entreNosMonthQueryRange,
+  enrichEntreNosTxsWithCards,
 } from "@/lib/finance/entre-nos";
 import { startOfMonth } from "@/lib/utils/format";
 
@@ -240,6 +242,80 @@ describe("filterEntreNosTxsForMonth — ciclo do cartão / vencimento", () => {
       from: "2026-06-20",
       to: "2026-07-19",
       key: "2026-07",
+    });
+  });
+
+  it("parcela 2 (mês seguinte) entra no mês de pagamento correspondente", () => {
+    const card = {
+      owner_member_id: "b",
+      name: "Cartão",
+      closing_day: 24,
+      due_day: 10,
+    };
+    const p1 = {
+      id: "p1",
+      amount: 100,
+      description: "TV (1/3)",
+      transaction_date: "2026-07-22",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card,
+    };
+    const p2 = {
+      id: "p2",
+      amount: 100,
+      description: "TV (2/3)",
+      transaction_date: "2026-08-22",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card,
+    };
+
+    const august = startOfMonth(new Date(2026, 7, 1));
+    const september = startOfMonth(new Date(2026, 8, 1));
+
+    expect(txBelongsToEntreNosMonth(p1, august)).toBe(true);
+    expect(txBelongsToEntreNosMonth(p1, september)).toBe(false);
+    expect(txBelongsToEntreNosMonth(p2, august)).toBe(false);
+    expect(txBelongsToEntreNosMonth(p2, september)).toBe(true);
+  });
+
+  it("enrich preenche closing_day quando o embed veio incompleto", () => {
+    const july = startOfMonth(new Date(2026, 6, 1));
+    const august = startOfMonth(new Date(2026, 7, 1));
+    const bare = {
+      id: "1",
+      amount: 50,
+      description: "Sem meta",
+      transaction_date: "2026-07-22",
+      paid_by_member_id: "b",
+      consumer_member_id: "a",
+      card_id: "c1",
+      card: { id: "c1", name: "Nubank", owner_member_id: "b" },
+    };
+
+    // Sem closing_day → mês civil (julho)
+    expect(txBelongsToEntreNosMonth(bare, july)).toBe(true);
+
+    const enriched = enrichEntreNosTxsWithCards([bare], [
+      {
+        id: "c1",
+        name: "Nubank",
+        owner_member_id: "b",
+        closing_day: 24,
+        due_day: 10,
+      },
+    ]);
+
+    expect(txBelongsToEntreNosMonth(enriched[0]!, july)).toBe(false);
+    expect(txBelongsToEntreNosMonth(enriched[0]!, august)).toBe(true);
+  });
+
+  it("query range cobre 4 meses atrás", () => {
+    const august = startOfMonth(new Date(2026, 7, 1));
+    expect(entreNosMonthQueryRange(august)).toEqual({
+      from: "2026-04-01",
+      to: "2026-08-31",
     });
   });
 });

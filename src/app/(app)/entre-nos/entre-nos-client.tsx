@@ -42,8 +42,10 @@ import {
   toISODate,
 } from "@/lib/utils/format";
 import {
+  ENTRE_NOS_TX_LIMIT,
   ENTRE_NOS_TX_SELECT,
   computeEntreNosSettlement,
+  enrichEntreNosTxsWithCards,
   entreNosCardCycle,
   entreNosMonthQueryRange,
   filterEntreNosTxsByCard,
@@ -135,7 +137,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
     if (cardFilter === "other") {
       return `Conta e acertos · ${monthLabel}`;
     }
-    return "Cartão: ciclo pelo fechamento · vencimento define o mês";
+    return "Mês = vencimento da fatura · cada parcela entra no seu ciclo · contagem só com consumidor ≠ quem pagou/dono";
   }, [selectedCard, cardFilter, month, monthLabel]);
 
   const {
@@ -160,16 +162,17 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         .gte("transaction_date", range.from)
         .lte("transaction_date", range.to)
         .order("transaction_date", { ascending: false })
-        .limit(400);
+        .limit(ENTRE_NOS_TX_LIMIT);
       if (qError) throw new Error(qError.message);
       return (data ?? []) as EntreNosTx[];
     },
   });
 
   const txs = useMemo(() => {
-    const inMonth = filterEntreNosTxsForMonth(rawTxs, month);
+    const enriched = enrichEntreNosTxsWithCards(rawTxs, activeCards);
+    const inMonth = filterEntreNosTxsForMonth(enriched, month);
     return filterEntreNosTxsByCard(inMonth, cardFilterValue);
-  }, [rawTxs, month, cardFilterValue]);
+  }, [rawTxs, activeCards, month, cardFilterValue]);
 
   const settlement = useMemo(() => {
     const raw = computeEntreNosSettlement(
@@ -339,7 +342,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
                 : selectedCard
                   ? `Nenhuma divisão no ${selectedCard.name} neste ciclo.`
-                  : `Não há saldo em ${monthLabel}. Cadastre o vencimento do cartão se a fatura cai no mês seguinte.`
+                  : `Não há saldo em ${monthLabel}. Com cartão, o mês é o do vencimento (não o da compra). Parcelas (2/n, 3/n…) aparecem nos meses seguintes — use as setas do mês.`
             }
           />
         ) : (

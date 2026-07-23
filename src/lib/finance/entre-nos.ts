@@ -125,16 +125,21 @@ export function paymentMonthForPurchase(
   );
 }
 
-/** Janela de fetch: cobre ciclo que pode ter fechado no mês anterior. */
+/** Janela de fetch: cobre ciclos longos (compra antiga → vence no mês). */
 export function entreNosMonthQueryRange(month: Date): {
   from: string;
   to: string;
 } {
   return {
-    from: toISODate(startOfMonth(addMonths(month, -2))),
+    // Até 4 meses atrás: compra em M-2 pode fechar em M-1 e vencer em M
+    from: toISODate(startOfMonth(addMonths(month, -4))),
+    // Fim do mês selecionado (parcelas futuras entram noutros meses)
     to: toISODate(endOfMonth(month)),
   };
 }
+
+/** Limite seguro: evita cortar compras antigas do ciclo do mês. */
+export const ENTRE_NOS_TX_LIMIT = 2000;
 
 /**
  * Ciclo de compras da fatura cujo vencimento cai no mês selecionado.
@@ -334,6 +339,47 @@ export function getTxCard(tx: EntreNosTx): Instrument {
 
 export function getTxAccount(tx: EntreNosTx): Instrument {
   return asInstrument(tx.account) ?? asInstrument(tx.accounts);
+}
+
+/**
+ * Completa closing_day / due_day / owner a partir da lista de cartões.
+ * Evita atribuir mês civil quando o embed do Supabase veio sem metadados.
+ */
+export function enrichEntreNosTxsWithCards(
+  txs: EntreNosTx[],
+  cards: Array<{
+    id: string;
+    name?: string | null;
+    owner_member_id?: string | null;
+    closing_day?: number | null;
+    due_day?: number | null;
+  }>
+): EntreNosTx[] {
+  if (cards.length === 0) return txs;
+  const byId = new Map(cards.map((c) => [c.id, c]));
+
+  return txs.map((tx) => {
+    const cardId = getTxCard(tx)?.id ?? tx.card_id ?? null;
+    if (!cardId) return tx;
+    const meta = byId.get(cardId);
+    if (!meta) return tx;
+    const existing = getTxCard(tx);
+    return {
+      ...tx,
+      card_id: cardId,
+      card: {
+        id: cardId,
+        name: meta.name ?? existing?.name ?? null,
+        owner_member_id:
+          meta.owner_member_id ?? existing?.owner_member_id ?? null,
+        closing_day:
+          normalizeClosingDay(meta.closing_day) ??
+          normalizeClosingDay(existing?.closing_day),
+        due_day:
+          normalizeDueDay(meta.due_day) ?? normalizeDueDay(existing?.due_day),
+      },
+    };
+  });
 }
 
 export function debtAmountForTx(tx: EntreNosTx): number {

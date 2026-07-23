@@ -3,10 +3,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { useWorkspaceMembers } from "@/lib/hooks/use-finance";
+import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import {
+  ENTRE_NOS_TX_LIMIT,
   ENTRE_NOS_TX_SELECT,
   computeEntreNosSettlement,
+  enrichEntreNosTxsWithCards,
   entreNosMonthQueryRange,
   filterEntreNosTxsForMonth,
   type EntreNosTx,
@@ -22,6 +24,7 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
   const workspaceId = member?.workspace_id;
   const shared = isSharedWorkspace(member?.workspace?.type);
   const { data: members = [] } = useWorkspaceMembers(workspaceId ?? "");
+  const { data: cards = [] } = useCards(workspaceId ?? "");
 
   const monthKey = (() => {
     const now = new Date();
@@ -45,7 +48,7 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
         .gte("transaction_date", range.from)
         .lte("transaction_date", range.to)
         .order("transaction_date", { ascending: false })
-        .limit(400);
+        .limit(ENTRE_NOS_TX_LIMIT);
       if (error) throw new Error(error.message);
       return (data ?? []) as EntreNosTx[];
     },
@@ -53,16 +56,15 @@ export function useEntreNosDebt(member: WorkspaceMember | null | undefined) {
 
   const settlement = useMemo(() => {
     if (!shared || members.length < 2 || !query.data) return null;
-    const txs = filterEntreNosTxsForMonth(
-      query.data,
-      startOfMonth(new Date())
-    );
+    const month = startOfMonth(new Date());
+    const enriched = enrichEntreNosTxsWithCards(query.data, cards);
+    const txs = filterEntreNosTxsForMonth(enriched, month);
     return computeEntreNosSettlement(
       members.map((m) => ({ id: m.id, display_name: m.display_name })),
       txs,
-      { month: startOfMonth(new Date()) }
+      { month }
     );
-  }, [shared, members, query.data]);
+  }, [shared, members, query.data, cards]);
 
   const hasDebt = Boolean(
     settlement && !settlement.balanced && settlement.netAmount >= 1

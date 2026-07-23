@@ -4,6 +4,7 @@ import { isPushConfigured } from "@/lib/push/web-push";
 import { notifyUserOnce } from "@/lib/push/notify";
 import {
   computeEntreNosSettlement,
+  ENTRE_NOS_TX_LIMIT,
   ENTRE_NOS_TX_SELECT,
   entreNosMonthQueryRange,
   filterEntreNosTxsForMonth,
@@ -68,7 +69,7 @@ async function runEntreNosReminders(todayISO: string) {
       .gte("transaction_date", range.from)
       .lte("transaction_date", range.to)
       .order("transaction_date", { ascending: false })
-      .limit(400);
+      .limit(ENTRE_NOS_TX_LIMIT);
 
     const txs = filterEntreNosTxsForMonth(
       (txsRaw ?? []) as EntreNosTx[],

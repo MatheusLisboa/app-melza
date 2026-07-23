@@ -19,6 +19,7 @@ import {
 } from "@/lib/finance/card-cycle";
 import {
   computeEntreNosSettlement,
+  ENTRE_NOS_TX_LIMIT,
   ENTRE_NOS_TX_SELECT,
   entreNosMonthQueryRange,
   filterEntreNosTxsForMonth,
@@ -506,7 +507,7 @@ export function buildChatTools(opts: {
           .gte("transaction_date", range.from)
           .lte("transaction_date", range.to)
           .order("transaction_date", { ascending: false })
-          .limit(400);
+          .limit(ENTRE_NOS_TX_LIMIT);
         if (error) return { error: error.message };
 
         const txs = filterEntreNosTxsForMonth(
