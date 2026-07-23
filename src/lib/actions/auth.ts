@@ -9,7 +9,7 @@ export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
 
   // Limpa cookies sb-* legados se existirem

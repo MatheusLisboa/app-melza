@@ -1,13 +1,10 @@
-"use client";
+import { CardDetailPageClient } from "./page-client";
 
-import { useAppShell } from "@/components/shared/app-shell";
-import { CardDetailClient } from "./card-detail-client";
-
-export default function CardDetailPage({
+export default async function CardDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { member } = useAppShell();
-  return <CardDetailClient member={member} cardId={params.id} />;
+  const { id } = await params;
+  return <CardDetailPageClient cardId={id} />;
 }

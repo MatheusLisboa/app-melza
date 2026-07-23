@@ -1,15 +1,10 @@
-"use client";
+import { TransactionDetailPageClient } from "./page-client";
 
-import { useAppShell } from "@/components/shared/app-shell";
-import { TransactionDetailClient } from "./transaction-detail-client";
-
-export default function TransactionDetailPage({
+export default async function TransactionDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { member } = useAppShell();
-  return (
-    <TransactionDetailClient member={member} transactionId={params.id} />
-  );
+  const { id } = await params;
+  return <TransactionDetailPageClient transactionId={id} />;
 }

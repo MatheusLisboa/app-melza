@@ -17,7 +17,7 @@ function clean(value: string | undefined): string {
  * Cliente Supabase para Server Components, Server Actions e Route Handlers.
  */
 export async function createClient() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 

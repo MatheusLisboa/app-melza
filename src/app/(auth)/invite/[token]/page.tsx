@@ -1,13 +1,14 @@
 import { InviteAcceptForm } from "@/components/shared/invite-accept-form";
 
-export default function InviteTokenPage({
+export default async function InviteTokenPage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }) {
+  const { token } = await params;
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <InviteAcceptForm token={params.token} />
+      <InviteAcceptForm token={token} />
     </main>
   );
 }
