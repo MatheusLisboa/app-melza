@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/shared/providers";
+import { getBrandAssetVersion } from "@/lib/app-version";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,6 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const brandV = getBrandAssetVersion();
+const asset = (path: string) => `${path}?v=${encodeURIComponent(brandV)}`;
+
 export const metadata: Metadata = {
   title: "Melza",
   description: "Finanças pessoais e compartilhadas por workspace",
@@ -28,15 +32,19 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: asset("/favicon.svg"), type: "image/svg+xml" },
+      { url: asset("/favicon.ico"), sizes: "any" },
+      { url: asset("/favicon-32x32.png"), sizes: "32x32", type: "image/png" },
+      { url: asset("/favicon-16x16.png"), sizes: "16x16", type: "image/png" },
+      { url: asset("/icons/icon-192.png"), sizes: "192x192", type: "image/png" },
+      { url: asset("/icons/icon-512.png"), sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+      {
+        url: asset("/icons/icon-180.png"),
+        sizes: "180x180",
+        type: "image/png",
+      },
     ],
   },
 };
@@ -57,7 +65,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={cn(inter.variable, jetbrainsMono.variable)} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={cn(inter.variable, jetbrainsMono.variable)}
+      suppressHydrationWarning
+    >
       <body
         className={cn(
           "min-h-screen bg-[var(--color-page)] font-sans text-[var(--color-text)] antialiased",

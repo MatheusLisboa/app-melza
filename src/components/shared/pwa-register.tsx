@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 
 const STORAGE_KEY = "melza-app-version";
-const CHECK_MS = 3 * 60_000;
+const BRAND_KEY = "melza-brand-assets";
+const CHECK_MS = 60_000;
 
 async function clearAppCaches() {
   if (!("caches" in window)) return;
@@ -12,10 +13,14 @@ async function clearAppCaches() {
 }
 
 /**
- * Mantém o PWA (Add to Home Screen) na versão mais recente:
+ * Mantém o PWA na versão mais recente e força refresh de ícones/manifest:
  * - SW embute o commit do deploy (byte-diff a cada release)
  * - poll de /api/version → limpa cache + reload se mudou
- * - checa no foco, ao voltar online e a cada 30s
+ * - limpa cache de brand assets ao abrir a sessão
+ * - checa no foco, ao voltar online e a cada 1 min
+ *
+ * Nota: ícone na home screen do iOS NÃO atualiza via web — só removendo
+ * e adicionando de novo. Android/Chrome costuma atualizar após visitar o app.
  */
 export function PwaRegister() {
   useEffect(() => {
@@ -36,6 +41,37 @@ export function PwaRegister() {
       "controllerchange",
       onControllerChange
     );
+
+    async function clearBrandCaches(reg: ServiceWorkerRegistration) {
+      const worker = reg.active || reg.waiting || reg.installing;
+      worker?.postMessage("CLEAR_BRAND_CACHE");
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys.map(async (name) => {
+            const cache = await caches.open(name);
+            const reqs = await cache.keys();
+            await Promise.all(
+              reqs
+                .filter((req) => {
+                  try {
+                    const p = new URL(req.url).pathname;
+                    return (
+                      p.startsWith("/icons/") ||
+                      p.startsWith("/brand/") ||
+                      p.startsWith("/favicon") ||
+                      p.endsWith(".webmanifest")
+                    );
+                  } catch {
+                    return false;
+                  }
+                })
+                .map((req) => cache.delete(req))
+            );
+          })
+        );
+      }
+    }
 
     async function applyIfNewVersion(remoteVersion: string) {
       const local = localStorage.getItem(STORAGE_KEY);
@@ -91,6 +127,18 @@ export function PwaRegister() {
           });
         });
 
+        if (!sessionStorage.getItem(BRAND_KEY)) {
+          sessionStorage.setItem(BRAND_KEY, "1");
+          await clearBrandCaches(reg);
+          try {
+            await fetch(`/manifest.webmanifest?t=${Date.now()}`, {
+              cache: "no-store",
+            });
+          } catch {
+            /* ignore */
+          }
+        }
+
         const refresh = async () => {
           if (disposed) return;
           const versionChanged = await checkVersion();
@@ -101,7 +149,7 @@ export function PwaRegister() {
           }
           if (reg.waiting) promote(reg.waiting);
           if (versionChanged) {
-            // Garante reload mesmo se controllerchange não vier (iOS)
+            await clearBrandCaches(reg);
             window.setTimeout(reloadOnce, 350);
           }
         };
@@ -114,7 +162,6 @@ export function PwaRegister() {
         };
         const onOnline = () => void refresh();
         const onPageShow = (e: PageTransitionEvent) => {
-          // iOS restaura do bfcache sem "focus"
           if (e.persisted) void refresh();
         };
 
