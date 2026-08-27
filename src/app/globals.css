@@ -318,4 +318,26 @@
     text-transform: uppercase;
     color: var(--color-text-2);
   }
+
+  /* Semânticas de valor monetário — substituem #EF4444, #22C55E */
+  .text-expense {
+    @apply font-mono font-bold;
+    color: var(--color-expense);
+  }
+
+  .text-income {
+    @apply font-mono font-bold;
+    color: var(--color-income);
+  }
+
+  /* Alias para legibilidade: --color-{ink,silver,fog,white,pearl} → semânticos */
+  :root {
+    /* Esses aliases ajudam na transição de código legado. No futuro: remover e usar direto os semânticos. */
+    --alias-text-primary: var(--color-text);
+    --alias-text-secondary: var(--color-text-2);
+    --alias-border: var(--color-line);
+    --alias-surface: var(--color-card);
+    --alias-bg-subtle: var(--color-chip);
+    --alias-bg-page: var(--color-page);
+  }
 }

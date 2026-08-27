@@ -183,18 +183,18 @@ function ShellChrome({
         {debt.showReminder ? (
           <Link
             href="/entre-nos"
-            className="flex items-center justify-between gap-3 border-b border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-2.5"
+            className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-card)] px-4 py-2.5"
           >
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[var(--color-ink)]">
+              <p className="text-[13px] font-medium text-[var(--color-text)]">
                 Lembrete Entre Nós
               </p>
-              <p className="truncate text-[12px] text-[var(--color-silver)]">
+              <p className="truncate text-[12px] text-[var(--color-text-2)]">
                 Saldo de {formatCurrency(debt.netAmount)} há {debt.daysOpen}{" "}
                 dias
               </p>
             </div>
-            <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink)]">
+            <span className="shrink-0 text-[12px] font-medium text-[var(--color-text)]">
               Ver →
             </span>
           </Link>

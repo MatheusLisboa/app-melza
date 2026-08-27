@@ -117,6 +117,7 @@ export function TxRow({
       ? "rounded-none border-0 bg-transparent"
       : "mb-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]",
     !embedded && "hover:bg-[var(--color-chip)]",
+    onClick && !embedded && "pressable",
     className
   );
 

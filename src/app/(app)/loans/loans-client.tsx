@@ -97,10 +97,10 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad mt-0 space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Empréstimos
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
+          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             Controle com terceiros
           </p>
         </div>
@@ -117,26 +117,26 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-[var(--color-fog)] bg-[var(--color-card)]">
+        <Card className="border-[var(--color-line)] bg-[var(--color-card)]">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-[var(--color-silver)]">
+            <CardTitle className="text-xs font-medium text-[var(--color-text-2)]">
               Nos devem
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-money text-lg font-medium text-[#22C55E] sm:text-xl">
+            <p className="font-money text-lg font-medium text-income sm:text-xl">
               {formatCurrency(theyOwe)}
             </p>
           </CardContent>
         </Card>
-        <Card className="border-[var(--color-fog)] bg-[var(--color-card)]">
+        <Card className="border-[var(--color-line)] bg-[var(--color-card)]">
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-[var(--color-silver)]">
+            <CardTitle className="text-xs font-medium text-[var(--color-text-2)]">
               Devemos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-money text-lg font-medium text-[#EF4444] sm:text-xl">
+            <p className="font-money text-lg font-medium text-expense sm:text-xl">
               {formatCurrency(weOwe)}
             </p>
           </CardContent>
@@ -164,20 +164,20 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={loan.id}
-                className="rounded-xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
+                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-[var(--color-ink)]">
+                      <p className="font-medium text-[var(--color-text)]">
                         {loan.third_party?.name ?? "Terceiro"}
                       </p>
                       <Badge
                         variant="secondary"
                         className={
                           loan.direction === "given"
-                            ? "bg-[var(--color-pearl)] text-[#22C55E]"
-                            : "bg-[var(--color-pearl)] text-[#EF4444]"
+                            ? "bg-[var(--color-chip)] text-income"
+                            : "bg-[var(--color-chip)] text-expense"
                         }
                       >
                         {loan.direction === "given" ? "Dado" : "Recebido"}
@@ -186,20 +186,20 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
                         {STATUS_LABEL[loan.status] ?? loan.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-[var(--color-silver)]">
+                    <p className="text-xs text-[var(--color-text-2)]">
                       {loan.description || "Sem descrição"}
                       {loan.due_date ? ` · vence ${formatDate(loan.due_date)}` : ""}
                     </p>
-                    <p className="text-xs text-[var(--color-silver)]">
+                    <p className="text-xs text-[var(--color-text-2)]">
                       Original {formatCurrency(Number(loan.original_amount))} ·
                       pago {formatCurrency(Number(loan.paid_amount))}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-medium text-[var(--color-ink)]">
+                    <p className="font-money text-base font-medium text-[var(--color-text)]">
                       {formatCurrency(remaining)}
                     </p>
-                    <p className="text-[10px] text-[var(--color-silver)]">saldo</p>
+                    <p className="text-[10px] text-[var(--color-text-2)]">saldo</p>
                     {(loan.status === "open" || loan.status === "partial") && (
                       <RepayDialog
                         loan={loan}

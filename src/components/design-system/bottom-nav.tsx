@@ -183,11 +183,6 @@ export function BottomNav({
                       </span>
                     )}
                   </span>
-                  {!isActive && (
-                    <span className="mt-0.5 max-w-full truncate text-[9px] font-medium text-[var(--color-text-3)]">
-                      {label}
-                    </span>
-                  )}
                 </Link>
               </li>
             );

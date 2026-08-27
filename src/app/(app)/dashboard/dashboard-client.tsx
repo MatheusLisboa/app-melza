@@ -163,7 +163,10 @@ export function DashboardClient({
   memberships?: MembershipOption[];
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [showMore, setShowMore] = useState(false);
+  const [expandCards, setExpandCards] = useState(false);
+  const [expandSpend, setExpandSpend] = useState(false);
+  const [expandCategories, setExpandCategories] = useState(false);
+  const [expandUpcoming, setExpandUpcoming] = useState(false);
   const monthAnchor = useMemo(() => new Date(), []);
   const from = toISODate(startOfMonth(monthAnchor));
   const to = toISODate(endOfMonth(monthAnchor));
@@ -480,33 +483,22 @@ export function DashboardClient({
 
   return (
     <div className="relative pb-2 md:pb-8">
-      {/* Saudação */}
+      {/* Saudação compacta */}
       <div className="px-5 pt-3 md:px-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] capitalize text-[var(--color-text-2)]">
-              {todayLabel}
-            </p>
-            <h1 className="mt-0.5 truncate text-[26px] font-semibold leading-tight tracking-tight text-[var(--color-text)]">
-              {greet}, {name}
-            </h1>
-            {member.workspace?.name ? (
-              <p className="mt-1 truncate text-[13px] text-[var(--color-text-2)]">
-                {member.workspace.name}
-                {isShared ? " · compartilhado" : ""}
-              </p>
-            ) : null}
-          </div>
-          <Avatar
-            member={toDsMember({
-              id: member.id,
-              name: member.display_name,
-              color: member.avatar_color,
-              avatar_url: member.avatar_url,
-            })}
-            size={40}
-          />
+        <div className="flex items-baseline justify-between gap-2">
+          <h1 className="truncate text-[20px] font-semibold leading-tight tracking-tight text-[var(--color-text)]">
+            {greet}, {name}
+          </h1>
+          <p className="shrink-0 text-[12px] capitalize text-[var(--color-text-2)]">
+            {todayLabel}
+          </p>
         </div>
+        {member.workspace?.name ? (
+          <p className="mt-2 truncate text-[12px] text-[var(--color-text-2)]">
+            {member.workspace.name}
+            {isShared ? " · compartilhado" : ""}
+          </p>
+        ) : null}
       </div>
 
       {/* Saldo */}
@@ -521,62 +513,7 @@ export function DashboardClient({
         />
       </div>
 
-      {/* Atalhos */}
-      <div className="mt-4 px-5 md:px-6">
-        <div className="grid grid-cols-4 gap-2">
-          {quickLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center gap-1.5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-1 py-3 transition-colors active:bg-[var(--color-chip)] hover:bg-[var(--color-chip)]"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-chip)]">
-                <Icon
-                  size={16}
-                  strokeWidth={1.75}
-                  className="text-[var(--color-text)]"
-                />
-              </div>
-              <span className="text-[11px] font-medium text-[var(--color-text-2)]">
-                {label}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {sharedCta?.workspace && (
-        <div className="mt-4 px-5 md:px-6">
-          <button
-            type="button"
-            onClick={async () => {
-              await setActiveWorkspaceAction(sharedCta.workspace_id);
-              window.location.assign("/dashboard");
-            }}
-            className="flex w-full items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-3.5 text-left transition-colors hover:bg-[var(--color-chip)]"
-          >
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-base"
-              style={{
-                background: `${workspaceAccent(sharedCta.workspace.type).color}18`,
-              }}
-            >
-              {workspaceAccent(sharedCta.workspace.type).emoji}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
-                {sharedCta.workspace.name}
-              </p>
-              <p className="text-xs text-[var(--color-text-2)]">
-                Abrir workspace compartilhado
-              </p>
-            </div>
-            <ChevronRight size={16} className="text-[var(--color-text-3)]" />
-          </button>
-        </div>
-      )}
-
-      {/* Recentes / Timeline */}
+      {/* Recentes — MOVIDO PARA CIMA (mais importante) */}
       <div className="mt-6 px-5 md:px-6">
         <SectionHeader
           title={isShared ? "Timeline" : "Últimas transações"}
@@ -674,24 +611,60 @@ export function DashboardClient({
         )}
       </div>
 
-
-      <div className="mt-5 px-5 md:px-6">
-        <button
-          type="button"
-          onClick={() => setShowMore((v) => !v)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-3.5 text-[13px] font-medium text-[var(--color-ink)] active:bg-[var(--color-pearl)]"
-        >
-          {showMore ? "Ocultar detalhes do mês" : "Ver cartões, gastos e assinaturas"}
-          <ChevronRight
-            size={16}
-            className={`text-[var(--color-silver)] transition-transform ${showMore ? "rotate-90" : ""}`}
-          />
-        </button>
+      {/* Atalhos — grid 2x2 ao invés de 4 colunas */}
+      <div className="mt-6 px-5 md:px-6">
+        <div className="grid grid-cols-2 gap-3">
+          {quickLinks.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="pressable flex flex-col items-center gap-2 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-3 py-4 transition-colors hover:bg-[var(--color-chip)]"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-chip)]">
+                <Icon
+                  size={18}
+                  strokeWidth={1.75}
+                  className="text-[var(--color-text)]"
+                />
+              </div>
+              <span className="text-center text-[12px] font-semibold text-[var(--color-text)]">
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
 
-      {showMore ? (
-        <>
-      <DashboardCardsSection member={member} />
+      {sharedCta?.workspace && (
+        <div className="mt-4 px-5 md:px-6">
+          <button
+            type="button"
+            onClick={async () => {
+              await setActiveWorkspaceAction(sharedCta.workspace_id);
+              window.location.assign("/dashboard");
+            }}
+            className="pressable flex w-full items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-3.5 text-left transition-colors hover:bg-[var(--color-chip)]"
+          >
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-base"
+              style={{
+                background: `${workspaceAccent(sharedCta.workspace.type).color}18`,
+              }}
+            >
+              {workspaceAccent(sharedCta.workspace.type).emoji}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
+                {sharedCta.workspace.name}
+              </p>
+              <p className="text-xs text-[var(--color-text-2)]">
+                Abrir workspace compartilhado
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-[var(--color-text-3)]" />
+          </button>
+        </div>
+      )}
 
       {/* Como pagou este mês */}
       {(spendByChannel.cashOut > 0 ||

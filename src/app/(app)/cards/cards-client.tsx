@@ -34,7 +34,7 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/accounts"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-silver)] transition-colors hover:bg-[var(--color-pearl)] hover:text-[var(--color-ink)]"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
             >
               <Wallet size={14} />
               Contas
@@ -133,10 +133,10 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
               trigger={
                 <button
                   type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-fog)] p-3.5 transition-colors hover:border-[var(--color-silver)]"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-line)] p-3.5 transition-colors hover:border-[var(--color-text-2)]"
                 >
-                  <Plus size={16} className="text-[var(--color-silver)]" />
-                  <span className="text-sm font-medium text-[var(--color-silver)]">
+                  <Plus size={16} className="text-[var(--color-text-2)]" />
+                  <span className="text-sm font-medium text-[var(--color-text-2)]">
                     Adicionar cartão
                   </span>
                 </button>
@@ -176,41 +176,41 @@ function CompactCardRow({
   const typeLabel = card.card_type === "debit" ? "Débito" : "Crédito";
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+    <div className="flex items-stretch overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
       <Link
         href={`/cards/${card.id}`}
-        className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3.5 transition-colors active:bg-[var(--color-pearl)]"
+        className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3.5 transition-colors active:bg-[var(--color-chip)]"
         aria-label={`Ver detalhes de ${card.name}`}
       >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-pearl)] text-[var(--color-ink)]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-chip)] text-[var(--color-text)]">
           <CreditCard size={18} strokeWidth={1.75} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-semibold text-[var(--color-ink)]">
+          <p className="truncate text-[14px] font-semibold text-[var(--color-text)]">
             {card.name}
           </p>
-          <p className="mt-0.5 truncate text-[12px] text-[var(--color-silver)]">
+          <p className="mt-0.5 truncate text-[12px] text-[var(--color-text-2)]">
             {getBankName(card.bank)} · {typeLabel}
             {owner ? ` · ${owner.display_name}` : ""}
             {` · fecha ${card.closing_day ?? "—"}`}
             {card.last_four ? ` · ••${card.last_four}` : ""}
           </p>
           {card.credit_limit != null && (
-            <p className="mt-1 font-mono text-[12px] font-medium text-[var(--color-ink)]">
+            <p className="mt-1 font-mono text-[12px] font-medium text-[var(--color-text)]">
               Limite {formatCurrency(Number(card.credit_limit))}
             </p>
           )}
         </div>
       </Link>
 
-      <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-[var(--color-fog)] px-2 py-2">
+      <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-[var(--color-line)] px-2 py-2">
         <CardFormDialog
           members={members}
           initial={card}
           trigger={
             <button
               type="button"
-              className="touch-target flex h-10 w-10 items-center justify-center rounded-lg text-[var(--color-silver)] transition-colors hover:bg-[var(--color-pearl)] hover:text-[var(--color-ink)]"
+              className="touch-target flex h-10 w-10 items-center justify-center rounded-lg text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
               aria-label={`Editar ${card.name}`}
             >
               <Pencil size={14} />
