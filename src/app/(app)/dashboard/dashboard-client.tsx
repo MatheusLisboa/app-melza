@@ -908,9 +908,6 @@ export function DashboardClient({
         )}
       </div>
 
-        </>
-      ) : null}
-
       <TransactionFormDialog
         member={member}
         trigger={<Fab color={accent.color} />}
