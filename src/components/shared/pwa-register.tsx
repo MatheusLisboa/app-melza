@@ -4,7 +4,11 @@ import { useEffect } from "react";
 
 const STORAGE_KEY = "melza-app-version";
 const BRAND_KEY = "melza-brand-assets";
-const CHECK_MS = 60_000;
+const CHECK_MS = 30_000;
+/** Bursts após cold start / resume — cobre iOS que descongela o PWA devagar. */
+const BURST_DELAYS_MS = [0, 3_000, 8_000];
+/** Só refaz burst no resume se ficou escondido por mais que isto. */
+const RESUME_THRESHOLD_MS = 10_000;
 
 async function clearAppCaches() {
   if (!("caches" in window)) return;
@@ -154,15 +158,37 @@ export function PwaRegister() {
           }
         };
 
-        void refresh();
-
-        const onFocus = () => void refresh();
-        const onVisible = () => {
-          if (document.visibilityState === "visible") void refresh();
+        // Burst de verificações — cold start e resume do iOS descongelam
+        // devagar; um único check pode rodar antes do PWA "acordar" a rede.
+        const burstTimers: number[] = [];
+        const burstCheck = () => {
+          if (disposed) return;
+          for (const t of burstTimers.splice(0)) window.clearTimeout(t);
+          for (const delay of BURST_DELAYS_MS) {
+            burstTimers.push(window.setTimeout(() => void refresh(), delay));
+          }
         };
+
+        burstCheck();
+
+        // Resume-handler por timestamp (mesmo padrão do app-shell): se o app
+        // ficou escondido por um tempo, dispara um novo burst ao voltar.
+        let hiddenAt = 0;
+        const onVisible = () => {
+          if (document.visibilityState === "hidden") {
+            hiddenAt = Date.now();
+            return;
+          }
+          if (!hiddenAt || Date.now() - hiddenAt >= RESUME_THRESHOLD_MS) {
+            burstCheck();
+          } else {
+            void refresh();
+          }
+        };
+        const onFocus = () => void refresh();
         const onOnline = () => void refresh();
         const onPageShow = (e: PageTransitionEvent) => {
-          if (e.persisted) void refresh();
+          if (e.persisted) burstCheck();
         };
 
         window.addEventListener("focus", onFocus);
@@ -172,6 +198,7 @@ export function PwaRegister() {
         const interval = window.setInterval(() => void refresh(), CHECK_MS);
 
         return () => {
+          for (const t of burstTimers.splice(0)) window.clearTimeout(t);
           window.removeEventListener("focus", onFocus);
           document.removeEventListener("visibilitychange", onVisible);
           window.removeEventListener("online", onOnline);
