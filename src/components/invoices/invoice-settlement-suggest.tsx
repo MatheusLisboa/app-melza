@@ -145,11 +145,11 @@ export function InvoiceSettlementSuggestDialog({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader className="border-b border-[var(--color-fog)]">
+        <DrawerHeader className="border-b border-[var(--color-line)]">
           <DrawerTitle>Registrar acerto no Entre Nós?</DrawerTitle>
           <DrawerDescription>
             Nesta fatura há cerca de{" "}
-            <span className="font-medium text-[var(--color-ink)]">
+            <span className="font-medium text-[var(--color-text)]">
               {formatCurrency(owedAmount)}
             </span>{" "}
             de gastos seus no cartão de {creditor.display_name}. Quer registrar
@@ -159,11 +159,11 @@ export function InvoiceSettlementSuggestDialog({
 
         <div className="space-y-3 px-4 py-4 sm:px-5">
           <div className="space-y-1.5">
-            <Label className="text-[12px] text-[var(--color-silver)]">
+            <Label className="text-[12px] text-[var(--color-text-2)]">
               Conta de saída
             </Label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-12 rounded-xl border-[var(--color-fog)]">
+              <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)]">
                 <SelectValue placeholder="Conta" />
               </SelectTrigger>
               <SelectContent>

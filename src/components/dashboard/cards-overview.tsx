@@ -206,7 +206,7 @@ export function DashboardCardsSection({
             return (
               <div
                 key={card.id}
-                className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]"
+                className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]"
               >
                 <div className="p-3.5">
                   <Link
@@ -214,14 +214,14 @@ export function DashboardCardsSection({
                     className="mb-3 flex items-start justify-between gap-3"
                   >
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-pearl)]">
-                        <CreditCard className="h-4 w-4 text-[var(--color-ink)]" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-chip)]">
+                        <CreditCard className="h-4 w-4 text-[var(--color-text)]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-[15px] font-semibold text-[var(--color-ink)]">
+                        <p className="truncate text-[15px] font-semibold text-[var(--color-text)]">
                           {card.name}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[var(--color-silver)]">
+                        <p className="mt-0.5 text-[11px] text-[var(--color-text-2)]">
                           {getBankName(card.bank)}
                           {cycle?.label ? ` · ${cycle.label}` : ""}
                           {card.last_four ? ` · ••${card.last_four}` : ""}
@@ -230,7 +230,7 @@ export function DashboardCardsSection({
                     </div>
                     <ChevronRight
                       size={16}
-                      className="mt-1 shrink-0 text-[var(--color-mist)]"
+                      className="mt-1 shrink-0 text-[var(--color-text-3)]"
                     />
                   </Link>
 
@@ -266,11 +266,11 @@ export function DashboardCardsSection({
 
                   {usedPct != null && (
                     <div className="mb-1">
-                      <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--color-silver)]">
+                      <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--color-text-2)]">
                         <span>Comprometido</span>
                         <span className="font-mono">{usedPct}%</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-pearl)]">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-chip)]">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-300",
@@ -285,14 +285,14 @@ export function DashboardCardsSection({
                   )}
 
                   {recent.length > 0 ? (
-                    <ul className="mt-3 space-y-1.5 border-t border-[var(--color-fog)] pt-3">
+                    <ul className="mt-3 space-y-1.5 border-t border-[var(--color-line)] pt-3">
                       {recent.map((tx) => (
                         <li key={tx.id}>
                           <Link
                             href={`/transactions/${tx.id}`}
-                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-[var(--color-ink)]"
+                            className="flex items-center justify-between gap-2 text-[12px] transition-colors hover:text-[var(--color-text)]"
                           >
-                            <span className="min-w-0 truncate text-[var(--color-silver)]">
+                            <span className="min-w-0 truncate text-[var(--color-text-2)]">
                               {formatDate(tx.transaction_date)} ·{" "}
                               {tx.description}
                               {tx.is_installment &&
@@ -310,7 +310,7 @@ export function DashboardCardsSection({
                     </ul>
                   ) : (
                     !txLoading && (
-                      <p className="mt-2 text-[11px] text-[var(--color-mist)]">
+                      <p className="mt-2 text-[11px] text-[var(--color-text-3)]">
                         Nenhuma compra neste ciclo
                       </p>
                     )

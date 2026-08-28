@@ -239,10 +239,10 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Relatórios
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
+          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             Extrato, comparativo e exportação
           </p>
         </div>

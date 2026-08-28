@@ -103,12 +103,12 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Assinaturas
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
+          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             Total mensal estimado:{" "}
-            <span className="font-money text-[var(--color-ink)]">
+            <span className="font-money text-[var(--color-text)]">
               {formatCurrency(monthlyTotal)}
             </span>
           </p>
@@ -126,9 +126,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {dueSoon.length > 0 && (
-        <Card className="rounded-[10px] border border-[var(--color-fog)] bg-[var(--color-card)]">
+        <Card className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-card)]">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-[var(--color-silver)]">
+            <CardTitle className="flex items-center gap-2 text-sm text-[var(--color-text-2)]">
               <AlertTriangle className="h-4 w-4" />
               Vencem em até {alertDays} dias ({dueSoon.length})
             </CardTitle>
@@ -140,7 +140,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                 className="flex items-center justify-between text-sm"
               >
                 <span>{s.name}</span>
-                <span className="font-money text-[var(--color-ink)]">
+                <span className="font-money text-[var(--color-text)]">
                   {s.next_billing_date
                     ? formatDate(s.next_billing_date)
                     : "—"}{" "}
@@ -180,24 +180,24 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={sub.id}
-                className="rounded-xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
+                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-[var(--color-ink)]">
+                      <p className="font-medium text-[var(--color-text)]">
                         {sub.name}
                       </p>
                       {!sub.is_active && (
                         <Badge variant="outline">Inativa</Badge>
                       )}
                       {daysLeft != null && daysLeft >= 0 && daysLeft <= alertDays && (
-                        <Badge className="bg-[var(--color-pearl)] text-[var(--color-silver)] hover:bg-[var(--color-pearl)]">
+                        <Badge className="bg-[var(--color-chip)] text-[var(--color-text-2)] hover:bg-[var(--color-chip)]">
                           em {daysLeft}d
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-[var(--color-silver)] capitalize">
+                    <p className="text-xs text-[var(--color-text-2)] capitalize">
                       {sub.billing_cycle === "monthly"
                         ? "Mensal"
                         : sub.billing_cycle === "yearly"
@@ -211,7 +211,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-money text-base font-medium text-[var(--color-ink)]">
+                    <p className="font-money text-base font-medium text-[var(--color-text)]">
                       {formatCurrency(Number(sub.amount))}
                     </p>
                     <div className="mt-1 flex flex-col items-end gap-1">
@@ -458,7 +458,7 @@ function SubscriptionFormDialog({
             <Label>Notas</Label>
             <Textarea rows={2} {...form.register("notes")} />
           </div>
-          {error && <p className="text-sm text-[#EF4444]">{error}</p>}
+          {error && <p className="text-sm text-expense">{error}</p>}
           <Btn type="submit" fullWidth disabled={submitting}>
             {submitting ? "Salvando…" : "Salvar"}
           </Btn>

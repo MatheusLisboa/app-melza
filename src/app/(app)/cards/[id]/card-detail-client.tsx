@@ -164,7 +164,7 @@ export function CardDetailClient({
             trigger={
               <button
                 type="button"
-                className="touch-target flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-pearl)] text-[var(--color-silver)] transition-colors hover:text-[var(--color-ink)]"
+                className="touch-target flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
                 aria-label="Editar cartão"
               >
                 <Pencil size={16} />
@@ -283,7 +283,7 @@ export function CardDetailClient({
                 </span>
               </p>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-pearl)]">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--color-chip)]">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",

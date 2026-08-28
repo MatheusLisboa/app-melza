@@ -51,7 +51,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
           <div className="flex items-center gap-1.5">
             <Link
               href="/cards"
-              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-silver)] transition-colors hover:bg-[var(--color-pearl)] hover:text-[var(--color-ink)]"
+              className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--color-text-2)] transition-colors hover:bg-[var(--color-chip)] hover:text-[var(--color-text)]"
             >
               <CreditCard size={14} />
               Cartões
@@ -92,11 +92,11 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
 
       <div className="page-pad mt-6 space-y-5 md:px-6">
         {active.length > 0 && (
-          <div className="rounded-2xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
+          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
               Total nas contas
             </p>
-            <p className="mt-1 font-mono text-[22px] font-semibold text-[var(--color-ink)]">
+            <p className="mt-1 font-mono text-[22px] font-semibold text-[var(--color-text)]">
               {formatCurrency(totalBalance)}
             </p>
           </div>
@@ -126,7 +126,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               return (
                 <div
                   key={account.id}
-                  className="flex items-center gap-3 rounded-2xl border border-[var(--color-fog)] bg-[var(--color-card)] p-4"
+                  className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
                 >
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -140,10 +140,10 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold text-[var(--color-ink)]">
+                    <p className="truncate text-[14px] font-semibold text-[var(--color-text)]">
                       {account.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--color-silver)]">
+                    <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
                       {TYPE_LABEL[account.account_type] ?? account.account_type}
                       {account.bank ? ` · ${getBankName(account.bank)}` : ""}
                       {owner ? ` · ${owner.display_name}` : ""}
@@ -151,10 +151,10 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-[14px] font-semibold text-[var(--color-ink)]">
+                    <p className="font-mono text-[14px] font-semibold text-[var(--color-text)]">
                       {formatCurrency(Number(account.current_balance ?? 0))}
                     </p>
-                    <p className="text-[10px] text-[var(--color-silver)]">saldo</p>
+                    <p className="text-[10px] text-[var(--color-text-2)]">saldo</p>
                   </div>
                   <AccountFormDialog
                     members={members}
@@ -162,7 +162,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
                     trigger={
                       <button
                         type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-pearl)] text-[var(--color-silver)] transition-colors hover:text-[var(--color-ink)]"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-chip)] text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
                         aria-label={`Editar ${account.name}`}
                       >
                         <Pencil size={14} />
@@ -207,10 +207,10 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               trigger={
                 <button
                   type="button"
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-fog)] p-4 transition-colors hover:border-[var(--color-mist)]"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-line)] p-4 transition-colors hover:border-[var(--color-mist)]"
                 >
-                  <Plus size={16} className="text-[var(--color-silver)]" />
-                  <span className="text-sm font-medium text-[var(--color-silver)]">
+                  <Plus size={16} className="text-[var(--color-text-2)]" />
+                  <span className="text-sm font-medium text-[var(--color-text-2)]">
                     Adicionar conta
                   </span>
                 </button>

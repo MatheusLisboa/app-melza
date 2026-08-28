@@ -98,18 +98,18 @@ export function ChatClient() {
   return (
     <div className="page-pad flex h-[calc(100dvh-8rem)] flex-col gap-3 md:h-[calc(100vh-2rem)] md:px-6">
       <div>
-        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
+        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
           Chat financeiro
         </h1>
-        <p className="mt-0.5 text-sm text-[var(--color-silver)]">
+        <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
           Criar lançamentos, pagar fatura, saldos, Entre Nós e mais
         </p>
       </div>
 
-      <Card className="flex min-h-0 flex-1 flex-col border-[var(--color-fog)]">
+      <Card className="flex min-h-0 flex-1 flex-col border-[var(--color-line)]">
         <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
           {messages.length === 0 && (
-            <div className="space-y-2 text-sm text-[var(--color-silver)]">
+            <div className="space-y-2 text-sm text-[var(--color-text-2)]">
               <p>Exemplos:</p>
               <ul className="list-inside list-disc space-y-1">
                 <li>Lança R$ 45 no iFood no Nubank</li>
@@ -127,7 +127,7 @@ export function ChatClient() {
               className={
                 m.role === "user"
                   ? "ml-8 rounded-[10px] bg-[var(--color-chip)] px-3 py-2 text-sm"
-                  : "mr-8 whitespace-pre-wrap rounded-2xl bg-[var(--color-pearl)] px-3 py-2 text-sm"
+                  : "mr-8 whitespace-pre-wrap rounded-2xl bg-[var(--color-chip)] px-3 py-2 text-sm"
               }
             >
               {m.content || (loading ? "…" : "")}
@@ -138,7 +138,7 @@ export function ChatClient() {
       </Card>
 
       {error && (
-        <p className="text-sm text-[#EF4444]">{error}</p>
+        <p className="text-sm text-expense">{error}</p>
       )}
 
       <div className="flex gap-2">

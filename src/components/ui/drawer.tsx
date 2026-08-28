@@ -40,12 +40,12 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(94dvh,100%)] flex-col rounded-t-[20px] border border-[var(--color-fog)] bg-[var(--color-white)] outline-none",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[min(94dvh,100%)] flex-col rounded-t-[20px] border border-[var(--color-line)] bg-[var(--color-card)] outline-none",
         className
       )}
       {...props}
     >
-      <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-[var(--color-mist)]" />
+      <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-[var(--color-line)]" />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
@@ -71,7 +71,7 @@ function DrawerFooter({
   return (
     <div
       className={cn(
-        "mt-auto flex flex-col gap-2 border-t border-[var(--color-fog)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:px-5",
+        "mt-auto flex flex-col gap-2 border-t border-[var(--color-line)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:px-5",
         className
       )}
       {...props}
@@ -86,7 +86,7 @@ const DrawerTitle = React.forwardRef<
   <DrawerPrimitive.Title
     ref={ref}
     className={cn(
-      "text-[17px] font-semibold leading-none tracking-tight text-[var(--color-ink)]",
+      "text-[17px] font-semibold leading-none tracking-tight text-[var(--color-text)]",
       className
     )}
     {...props}
@@ -100,7 +100,7 @@ const DrawerDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Description
     ref={ref}
-    className={cn("text-[13px] text-[var(--color-silver)]", className)}
+    className={cn("text-[13px] text-[var(--color-text-2)]", className)}
     {...props}
   />
 ));

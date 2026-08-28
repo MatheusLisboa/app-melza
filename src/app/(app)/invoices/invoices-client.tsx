@@ -19,7 +19,13 @@ import {
 } from "@/lib/utils/invoice-cycle";
 import type { InvoicePdfOpts } from "@/lib/invoices/download-pdf";
 import { getBankName } from "@/lib/utils/banks";
-import { Btn, DsSkeleton, TxRow, toDsMember } from "@/components/design-system";
+import {
+  Btn,
+  DsSkeleton,
+  EmptyState,
+  TxRow,
+  toDsMember,
+} from "@/components/design-system";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
@@ -262,16 +268,22 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
         </div>
       </div>
 
-      {pdfError && <p className="text-sm text-[#EF4444]">{pdfError}</p>}
+      {pdfError && <p className="text-sm text-expense">{pdfError}</p>}
 
       {!effectiveCardId ? (
-        <p className="text-sm text-[var(--color-text-2)]">
-          Cadastre um cartão para ver faturas.
-        </p>
+        <EmptyState
+          icon={<CreditCardIcon size={22} strokeWidth={1.75} />}
+          title="Nenhum cartão cadastrado"
+          description="Adicione um cartão de crédito para acompanhar suas faturas por ciclo."
+          actionLabel="Adicionar cartão"
+          onAction={() => {
+            window.location.assign("/cards");
+          }}
+        />
       ) : (
         <>
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
               Cartão
             </p>
             <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -288,8 +300,8 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                     className={cn(
                       "touch-target flex min-w-[132px] shrink-0 flex-col justify-center rounded-xl border px-3.5 py-2.5 text-left transition-colors",
                       active
-                        ? "border-[var(--color-ink)] bg-[var(--color-pearl)]"
-                        : "border-[var(--color-fog)] bg-[var(--color-white)]"
+                        ? "border-[var(--color-ink)] bg-[var(--color-chip)]"
+                        : "border-[var(--color-line)] bg-[var(--color-card)]"
                     )}
                   >
                     <span className="flex items-center gap-1.5">
@@ -297,22 +309,22 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                         className={cn(
                           "h-3.5 w-3.5 shrink-0",
                           active
-                            ? "text-[var(--color-ink)]"
-                            : "text-[var(--color-silver)]"
+                            ? "text-[var(--color-text)]"
+                            : "text-[var(--color-text-2)]"
                         )}
                       />
                       <span
                         className={cn(
                           "truncate text-[13px] font-medium",
                           active
-                            ? "text-[var(--color-ink)]"
+                            ? "text-[var(--color-text)]"
                             : "text-[var(--color-night)]"
                         )}
                       >
                         {c.name}
                       </span>
                     </span>
-                    <span className="mt-0.5 truncate text-[11px] text-[var(--color-silver)]">
+                    <span className="mt-0.5 truncate text-[11px] text-[var(--color-text-2)]">
                       {c.bank ? getBankName(c.bank) : "Cartão"}
                       {c.closing_day ? ` · fecha ${c.closing_day}` : ""}
                     </span>
@@ -323,8 +335,8 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
           </div>
 
           {cycle && (
-            <div className="overflow-hidden rounded-2xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-              <div className="border-b border-[var(--color-fog)] px-4 py-3">
+            <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)]">
+              <div className="border-b border-[var(--color-line)] px-4 py-3">
                 <div className="scroll-fade-x -mx-1 flex gap-2 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {cycles.map((c) => {
                     const active = c.key === effectiveKey;
@@ -337,7 +349,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                           "touch-target shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium capitalize transition-colors",
                           active
                             ? "bg-[var(--color-ink)] text-white"
-                            : "bg-[var(--color-pearl)] text-[var(--color-silver)]"
+                            : "bg-[var(--color-chip)] text-[var(--color-text-2)]"
                         )}
                       >
                         {invoicePaymentMonthLabel(c)}
@@ -349,18 +361,18 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
               </div>
 
               <div className="bg-[var(--color-ink)] px-5 py-5">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-mist)]">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-3)]">
                   {selectedCard?.name} · {invoicePaymentMonthLabel(cycle)}
                 </p>
                 <p className="mt-2 font-mono text-3xl font-extrabold text-white">
                   {formatCurrency(remaining)}
                 </p>
-                <p className="mt-1 text-sm text-[var(--color-mist)]">
+                <p className="mt-1 text-sm text-[var(--color-text-3)]">
                   {paidTotal > 0
                     ? `Restante · fatura ${formatCurrency(total)} · pago ${formatCurrency(paidTotal)}`
                     : `Total da fatura · ${formatCurrency(total)}`}
                 </p>
-                <p className="mt-2 text-sm text-[var(--color-silver)]">
+                <p className="mt-2 text-sm text-[var(--color-text-2)]">
                   Compras {formatDate(cycle.from)} — {formatDate(cycle.to)}
                   {cycle.dueDate
                     ? ` · vence ${formatDate(cycle.dueDate)}`
@@ -374,7 +386,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                     type="button"
                     onClick={() => setPayOpen(true)}
                     disabled={total <= 0}
-                    className="rounded-lg bg-white px-3 py-2.5 text-[12px] font-semibold text-[var(--color-ink)] disabled:opacity-40"
+                    className="rounded-lg bg-white px-3 py-2.5 text-[12px] font-semibold text-[var(--color-text)] disabled:opacity-40"
                   >
                     Pagar fatura
                   </button>
@@ -487,7 +499,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
                         {formatDate(p.transaction_date)}
                       </p>
                     </div>
-                    <p className="font-mono text-sm font-semibold text-[#22C55E]">
+                    <p className="font-mono text-sm font-semibold text-income">
                       −{formatCurrency(Number(p.amount))}
                     </p>
                   </div>

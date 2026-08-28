@@ -74,7 +74,7 @@ export function WorkspaceSwitcher({
               <span className="block truncate text-sm font-semibold">
                 {compact ? title : "Melza"}
               </span>
-              <span className="block truncate text-xs text-[var(--color-silver)]">
+              <span className="block truncate text-xs text-[var(--color-text-2)]">
                 {compact ? subtitle : `${title} · ${subtitle}`}
               </span>
             </span>
@@ -95,12 +95,12 @@ export function WorkspaceSwitcher({
                   <span className="block truncate text-sm">
                     {m.workspace?.name ?? "Workspace"}
                   </span>
-                  <span className="block text-xs text-[var(--color-silver)]">
+                  <span className="block text-xs text-[var(--color-text-2)]">
                     {workspaceTypeLabel(m.workspace?.type)}
                   </span>
                 </span>
                 {selected && (
-                  <Check className="h-4 w-4 shrink-0 text-[var(--color-ink)]" />
+                  <Check className="h-4 w-4 shrink-0 text-[var(--color-text)]" />
                 )}
               </DropdownMenuItem>
             );

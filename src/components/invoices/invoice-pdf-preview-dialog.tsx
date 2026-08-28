@@ -103,7 +103,7 @@ export function InvoicePdfPreviewDialog({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 bg-[var(--color-pearl)] p-3 sm:p-4">
+        <div className="min-h-0 flex-1 bg-[var(--color-chip)] p-3 sm:p-4">
           <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)]">
             {blobUrl ? (
               <iframe

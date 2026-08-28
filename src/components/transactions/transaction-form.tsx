@@ -373,9 +373,9 @@ export function TransactionFormDialog({
         )}
       </DrawerTrigger>
       <DrawerContent>
-        <DrawerHeader className="border-b border-[var(--color-fog)]">
+        <DrawerHeader className="border-b border-[var(--color-line)]">
           <DrawerTitle>Novo lançamento</DrawerTitle>
-          <p className="text-sm text-[var(--color-silver)]">
+          <p className="text-sm text-[var(--color-text-2)]">
             Gasto, receita ou transferência
           </p>
         </DrawerHeader>

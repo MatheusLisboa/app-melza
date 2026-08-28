@@ -47,7 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             closeButton
             toastOptions={{
               className:
-                "!rounded-xl !border-[var(--color-fog)] !bg-[var(--color-white)] !text-[var(--color-ink)] !shadow-none",
+                "!rounded-xl !border-[var(--color-line)] !bg-[var(--color-card)] !text-[var(--color-text)] !shadow-none",
             }}
           />
         </ThemeSync>

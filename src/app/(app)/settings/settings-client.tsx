@@ -342,10 +342,10 @@ export function SettingsClient({
     <div className="mx-auto max-w-2xl space-y-5 page-pad md:px-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
             Perfil
           </h1>
-          <p className="mt-0.5 text-sm text-[var(--color-silver)]">
+          <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             {member.workspace?.name ?? "Workspace"} ·{" "}
             {workspaceTypeLabel(member.workspace?.type)}
           </p>
@@ -453,7 +453,7 @@ export function SettingsClient({
                 {avatarUrl && (
                   <button
                     type="button"
-                    className="text-xs font-medium text-[#EF4444] underline-offset-2 hover:underline"
+                    className="text-xs font-medium text-expense underline-offset-2 hover:underline"
                     disabled={photoBusy}
                     onClick={() => void removePhoto()}
                   >
@@ -597,7 +597,7 @@ export function SettingsClient({
                   : `Apagar "${member.workspace?.name ?? "workspace"}"`}
               </Btn>
             ) : (
-              <p className="text-sm text-[var(--color-silver)]">
+              <p className="text-sm text-[var(--color-text-2)]">
                 Para apagar o workspace pessoal, crie ou entre em outro
                 workspace antes.
               </p>
@@ -645,7 +645,7 @@ export function SettingsClient({
       {(message || error) && (
         <p
           className={
-            error ? "text-sm text-[#EF4444]" : "text-sm text-[#22C55E]"
+            error ? "text-sm text-expense" : "text-sm text-income"
           }
         >
           {error ?? message}

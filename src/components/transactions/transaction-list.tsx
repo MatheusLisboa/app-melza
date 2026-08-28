@@ -318,16 +318,16 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
             <DsSkeleton h="h-14" className="rounded-xl" />
           </div>
         ) : isError ? (
-          <div className="rounded-[14px] border border-[var(--color-fog)] bg-[var(--color-card)] p-4">
+          <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
             <p className="text-sm text-[#EF4444]">
               Não foi possível carregar o histórico.
             </p>
-            <p className="mt-1 text-xs text-[var(--color-silver)]">
+            <p className="mt-1 text-xs text-[var(--color-text-2)]">
               {error instanceof Error ? error.message : "Erro desconhecido"}
             </p>
             <button
               type="button"
-              className="mt-3 text-sm text-[var(--color-ink)] underline"
+              className="mt-3 text-sm text-[var(--color-text)] underline"
               onClick={() => void refetch()}
             >
               Tentar de novo

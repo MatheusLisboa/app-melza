@@ -120,7 +120,7 @@ export function TransactionDetailSheet({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader className="border-b border-[var(--color-fog)]">
+        <DrawerHeader className="border-b border-[var(--color-line)]">
           <DrawerTitle>Detalhe</DrawerTitle>
         </DrawerHeader>
 
@@ -134,10 +134,10 @@ export function TransactionDetailSheet({
             </div>
           ) : isError || !tx ? (
             <div>
-              <p className="text-sm font-semibold text-[var(--color-ink)]">
+              <p className="text-sm font-semibold text-[var(--color-text)]">
                 Lançamento não encontrado
               </p>
-              <p className="mt-1 text-xs text-[var(--color-silver)]">
+              <p className="mt-1 text-xs text-[var(--color-text-2)]">
                 {isError
                   ? error instanceof Error
                     ? error.message
@@ -156,10 +156,10 @@ export function TransactionDetailSheet({
                   ).toUpperCase()}
                 </div>
                 <div className="text-center">
-                  <p className="text-base font-semibold text-[var(--color-ink)]">
+                  <p className="text-base font-semibold text-[var(--color-text)]">
                     {tx.description}
                   </p>
-                  <p className="mt-0.5 text-xs text-[var(--color-silver)]">
+                  <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
                     {[tx.category?.name, formatDate(tx.transaction_date)]
                       .filter(Boolean)
                       .join(" · ")}
@@ -171,7 +171,7 @@ export function TransactionDetailSheet({
                       ? "font-mono text-[28px] font-extrabold text-[var(--color-income)]"
                       : isExpense
                         ? "font-mono text-[28px] font-extrabold text-[var(--color-expense)]"
-                        : "font-mono text-[28px] font-extrabold text-[var(--color-ink)]"
+                        : "font-mono text-[28px] font-extrabold text-[var(--color-text)]"
                   }
                 >
                   {isIncome ? "+" : isExpense ? "−" : ""}
@@ -180,8 +180,8 @@ export function TransactionDetailSheet({
               </div>
 
               {(consumer || payer || cardOwner) && (
-                <div className="mb-4 overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-                  <p className="px-4 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
+                <div className="mb-4 overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
+                  <p className="px-4 pb-2 pt-3 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
                     Atribuição
                   </p>
                   <Divider />
@@ -206,14 +206,14 @@ export function TransactionDetailSheet({
                         <div className="flex items-center gap-3 px-4 py-3">
                           <Avatar member={row.m!} size={36} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-[var(--color-ink)]">
+                            <p className="text-sm font-semibold text-[var(--color-text)]">
                               {row.m!.name}
                             </p>
-                            <p className="text-xs text-[var(--color-silver)]">
+                            <p className="text-xs text-[var(--color-text-2)]">
                               {row.desc}
                             </p>
                           </div>
-                          <span className="rounded-full bg-[var(--color-pearl)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-silver)]">
+                          <span className="rounded-full bg-[var(--color-chip)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-2)]">
                             {row.label}
                           </span>
                         </div>
@@ -223,7 +223,7 @@ export function TransactionDetailSheet({
                 </div>
               )}
 
-              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
                 {[
                   { label: "Data", value: formatDate(tx.transaction_date) },
                   { label: "Categoria", value: tx.category?.name ?? "—" },
@@ -241,10 +241,10 @@ export function TransactionDetailSheet({
                 ].map((row, i, arr) => (
                   <div key={row.label}>
                     <div className="flex items-center justify-between px-4 py-3">
-                      <p className="text-sm text-[var(--color-silver)]">
+                      <p className="text-sm text-[var(--color-text-2)]">
                         {row.label}
                       </p>
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">
+                      <p className="text-sm font-semibold text-[var(--color-text)]">
                         {row.value}
                       </p>
                     </div>

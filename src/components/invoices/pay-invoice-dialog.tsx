@@ -161,7 +161,7 @@ export function PayInvoiceDialog({
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
-          <DrawerHeader className="border-b border-[var(--color-fog)]">
+          <DrawerHeader className="border-b border-[var(--color-line)]">
             <DrawerTitle>Pagar fatura</DrawerTitle>
             <DrawerDescription className="truncate">
               {cardName} · ciclo {cycleKey}
@@ -170,7 +170,7 @@ export function PayInvoiceDialog({
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
             <div className="rounded-2xl bg-[var(--color-ink)] px-4 py-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-mist)]">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-3)]">
                 Restante a pagar
               </p>
               <p className="mt-1 font-mono text-[28px] font-extrabold leading-none tracking-tight text-white sm:text-[32px]">
@@ -178,13 +178,13 @@ export function PayInvoiceDialog({
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-silver)]">Total</p>
+                  <p className="text-[11px] text-[var(--color-text-2)]">Total</p>
                   <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-white">
                     {formatCurrency(invoiceTotal)}
                   </p>
                 </div>
                 <div className="min-w-0 text-right">
-                  <p className="text-[11px] text-[var(--color-silver)]">Já pago</p>
+                  <p className="text-[11px] text-[var(--color-text-2)]">Já pago</p>
                   <p className="mt-0.5 truncate font-mono text-[13px] font-semibold text-white">
                     {formatCurrency(alreadyPaid)}
                   </p>
@@ -200,7 +200,7 @@ export function PayInvoiceDialog({
                   "rounded-xl border px-3 py-3 text-left transition-colors",
                   preset === "full"
                     ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                    : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)]"
+                    : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)]"
                 )}
               >
                 <span className="block text-[11px] opacity-70">
@@ -217,7 +217,7 @@ export function PayInvoiceDialog({
                   "rounded-xl border px-3 py-3 text-left transition-colors",
                   preset === "half"
                     ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                    : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)]"
+                    : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)]"
                 )}
               >
                 <span className="block text-[11px] opacity-70">Metade</span>
@@ -228,27 +228,27 @@ export function PayInvoiceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+              <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
                 Valor do pagamento
               </Label>
               <MoneyInput
                 value={amount}
                 onValueChange={setAmount}
-                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+                className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)] text-base"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+              <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
                 Conta de saída
               </Label>
               <Select value={accountId} onValueChange={setAccountId}>
-                <SelectTrigger className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]">
+                <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)]">
                   <SelectValue placeholder="Selecionar conta" />
                 </SelectTrigger>
                 <SelectContent position="popper" className="max-h-[40vh]">
                   {activeAccounts.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-[var(--color-silver)]">
+                    <div className="px-3 py-2 text-sm text-[var(--color-text-2)]">
                       Nenhuma conta ativa
                     </div>
                   ) : (
@@ -265,21 +265,21 @@ export function PayInvoiceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+              <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
                 Data
               </Label>
               <Input
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+                className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)] text-base"
               />
             </div>
 
             <div className="space-y-1.5 pb-1">
-              <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+              <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
                 Observação
-                <span className="font-normal text-[var(--color-mist)]">
+                <span className="font-normal text-[var(--color-text-3)]">
                   {" "}
                   (opcional)
                 </span>
@@ -288,12 +288,12 @@ export function PayInvoiceDialog({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ex.: pago parcial via PIX"
-                className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]"
+                className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)]"
               />
             </div>
 
             {error && (
-              <p className="rounded-xl bg-[var(--color-pearl)] px-3 py-2 text-sm text-[var(--color-expense)]">
+              <p className="rounded-xl bg-[var(--color-chip)] px-3 py-2 text-sm text-[var(--color-expense)]">
                 {error}
               </p>
             )}
