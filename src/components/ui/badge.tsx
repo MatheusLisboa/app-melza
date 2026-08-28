@@ -1,3 +1,7 @@
+/**
+ * @deprecated Prefira `Badge` de "@/components/design-system" para novas telas.
+ * Este Badge (shadcn) permanece para compatibilidade com código legado.
+ */
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
