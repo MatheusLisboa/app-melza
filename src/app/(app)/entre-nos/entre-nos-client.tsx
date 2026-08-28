@@ -14,10 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  QrCode,
   Share2,
   Wallet,
 } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import { backfillInstallmentSchedulesAction } from "@/lib/actions/installments";
@@ -141,16 +141,16 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
       if (cycle) {
         const due =
           selectedCard.due_day != null
-            ? ` · vence dia ${selectedCard.due_day}`
-            : " · sem vencimento (usa mês do fechamento)";
-        return `Compras ${formatEntreNosCycleRange(cycle.from, cycle.to)} · fecha ${selectedCard.closing_day}${due}`;
+            ? `Vence dia ${selectedCard.due_day}`
+            : "Sem dia de vencimento";
+        return `${due} · ciclo ${formatEntreNosCycleRange(cycle.from, cycle.to)}`;
       }
       return "Sem dia de fechamento — usando mês civil";
     }
     if (cardFilter === "other") {
       return `Conta e acertos · ${monthLabel}`;
     }
-    return "Mês = vencimento da fatura · cada parcela entra no seu ciclo · contagem só com consumidor ≠ quem pagou/dono";
+    return "Cada cartão tem seu ciclo · selecione acima para ver detalhes";
   }, [selectedCard, cardFilter, month, monthLabel]);
 
   const {
@@ -268,31 +268,31 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             className="touch-target flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-chip)]"
             aria-label="Compartilhar"
           >
-            <Share2 size={16} strokeWidth={2} className="text-[var(--color-silver)]" />
+            <Share2 size={16} strokeWidth={2} className="text-[var(--color-text-2)]" />
           </button>
         }
       />
 
       <div className="page-pad space-y-5 md:px-6">
         {/* Seletor de mês */}
-        <div className="flex items-center justify-between rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-2 py-2">
+        <div className="flex items-center justify-between rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] px-2 py-2 shadow-card">
           <button
             type="button"
-            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
+            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-2)] active:bg-[var(--color-chip)] transition-colors"
             aria-label="Mês anterior"
             onClick={() => setMonth((m) => startOfMonth(addMonths(m, -1)))}
           >
             <ChevronLeft size={18} strokeWidth={2} />
           </button>
           <div className="min-w-0 flex-1 px-2 text-center">
-            <p className="text-[14px] font-semibold capitalize text-[var(--color-ink)]">
+            <p className="text-[14px] font-semibold capitalize text-[var(--color-text)]">
               {monthLabel}
             </p>
-            <p className="truncate text-[11px] text-[var(--color-silver)]">{cycleHint}</p>
+            <p className="truncate text-[11px] text-[var(--color-text-2)]">{cycleHint}</p>
           </div>
           <button
             type="button"
-            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
+            className="touch-target flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-2)] active:bg-[var(--color-chip)] transition-colors"
             aria-label="Próximo mês"
             onClick={() => setMonth((m) => startOfMonth(addMonths(m, 1)))}
           >
@@ -352,21 +352,21 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             title="Tudo certo neste mês"
             description={
               settlement.settledAmount > 0
-                ? `Acertos de ${monthLabel} cobriram o saldo (${formatCurrency(settlement.settledAmount)}).`
+                ? `Vocês acertaram ${formatCurrency(settlement.settledAmount)} em ${monthLabel}. 🎉`
                 : selectedCard
-                  ? `Nenhuma divisão no ${selectedCard.name} neste ciclo.`
-                  : `Não há saldo em ${monthLabel}. Com cartão, o mês é o do vencimento (não o da compra). Parcelas (2/n, 3/n…) aparecem nos meses seguintes — use as setas do mês.`
+                  ? `Não há divisão no ${selectedCard.name} neste ciclo.`
+                  : `Não há valores a acertar em ${monthLabel}. 💚`
             }
           />
         ) : (
           <>
             {/* Quanto cada um deve */}
-            <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-              <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
-                Quanto cada um deve
+            <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] shadow-card">
+              <p className="px-4 pb-2 pt-4 text-label text-[var(--color-text-2)]">
+                Por membro
               </p>
               <Divider />
-              <div className="divide-y divide-[var(--color-fog)]">
+              <div className="divide-y divide-[var(--color-line)]">
                 {settlement.balances.map((bal) => {
                   const m = members.find((x) => x.id === bal.id);
                   if (!m) return null;
@@ -379,10 +379,10 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                     >
                       <Avatar member={toDsMember(m)} size={40} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
+                        <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
                           {m.display_name}
                         </p>
-                        <p className="text-[12px] text-[var(--color-silver)]">
+                        <p className="text-caption text-[var(--color-text-2)]">
                           {owes
                             ? "Deve neste período"
                             : receives
@@ -396,7 +396,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                             ? "text-[var(--color-expense)]"
                             : receives
                               ? "text-[var(--color-income)]"
-                              : "text-[var(--color-silver)]"
+                              : "text-[var(--color-text-2)]"
                         }`}
                       >
                         {owes
@@ -412,7 +412,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             </div>
 
             {hasDebt && (
-              <div className="relative overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] p-6">
+              <div className="relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-6 shadow-card">
                 <div className="relative z-10 mb-6 flex items-center justify-between">
                   <div className="flex flex-col items-center gap-2">
                     <div className="relative">
@@ -420,7 +420,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         member={toDsMember(settlement.debtor!.member!)}
                         size={56}
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-white)] bg-[var(--color-expense)]">
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-card)] bg-[var(--color-expense)]">
                         <ArrowUpRight
                           size={10}
                           strokeWidth={3}
@@ -428,7 +428,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         />
                       </div>
                     </div>
-                    <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                    <p className="text-[13px] font-medium text-[var(--color-text)]">
                       {settlement.debtor!.member!.display_name}
                     </p>
                     <Badge
@@ -440,18 +440,18 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
                   <div className="flex flex-1 flex-col items-center gap-2 px-4">
                     <div className="flex w-full items-center">
-                      <div className="h-px flex-1 bg-[var(--color-fog)]" />
+                      <div className="h-px flex-1 bg-[var(--color-line)]" />
                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-chip)]">
                         <ArrowRight
                           size={12}
                           strokeWidth={2.5}
-                          className="text-[var(--color-silver)]"
+                          className="text-[var(--color-text-2)]"
                         />
                       </div>
-                      <div className="h-px flex-1 bg-[var(--color-fog)]" />
+                      <div className="h-px flex-1 bg-[var(--color-line)]" />
                     </div>
-                    <span className="text-[10px] font-medium text-[var(--color-graphite)]">
-                      acerto líquido
+                    <span className="text-label text-[var(--color-text-2)]">
+                      acerto
                     </span>
                   </div>
 
@@ -461,7 +461,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         member={toDsMember(settlement.creditor!.member!)}
                         size={56}
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-white)] bg-[var(--color-income)]">
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-[0.5px] border-[var(--color-card)] bg-[var(--color-income)]">
                         <ArrowDownLeft
                           size={10}
                           strokeWidth={3}
@@ -469,7 +469,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                         />
                       </div>
                     </div>
-                    <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                    <p className="text-[13px] font-medium text-[var(--color-text)]">
                       {settlement.creditor!.member!.display_name}
                     </p>
                     <Badge
@@ -480,25 +480,19 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-1.5 border-t border-[var(--color-fog)] py-5">
-                  <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-silver)]">
+                <div className="flex flex-col items-center gap-1.5 border-t border-[var(--color-line)] py-5">
+                  <p className="text-label text-[var(--color-text-2)]">
                     {selectedCard
-                      ? `Saldo · ${selectedCard.name}`
-                      : `Saldo de ${monthLabel}`}
+                      ? `Quanto ${settlement.debtor!.member!.display_name} deve`
+                      : `${settlement.debtor!.member!.display_name} paga para ${settlement.creditor!.member!.display_name}`}
                   </p>
                   <MoneyDisplay
                     amount={settlement.netAmount}
-                    size="xl"
+                    size="2xl"
                     color="var(--color-expense)"
                   />
-                  <p className="text-center text-sm text-[var(--color-silver)]">
-                    <span className="font-medium text-[var(--color-ink)]">
-                      {settlement.debtor!.member!.display_name}
-                    </span>{" "}
-                    deve pagar para{" "}
-                    <span className="font-medium text-[var(--color-ink)]">
-                      {settlement.creditor!.member!.display_name}
-                    </span>
+                  <p className="text-center text-caption text-[var(--color-text-2)]">
+                    Saldo de {monthLabel}
                   </p>
                 </div>
               </div>
@@ -506,54 +500,48 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
 
             {/* Por cartão (só em Todos) */}
             {cardFilterValue === "all" && settlement.byCard.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
-                  Por cartão neste mês
+              <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] shadow-card">
+                <p className="px-4 pb-2 pt-4 text-label text-[var(--color-text-2)]">
+                  Por cartão
                 </p>
                 <Divider />
-                <div className="divide-y divide-[var(--color-fog)]">
+                <div className="divide-y divide-[var(--color-line)]">
                   {settlement.byCard.map((card) => (
                     <button
                       key={card.cardId}
                       type="button"
                       onClick={() => void setCardFilter(card.cardId)}
-                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-[var(--color-pearl)]"
+                      className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[var(--color-chip)] active:bg-[var(--color-chip)]"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--color-pearl)]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-chip)]">
                         <CreditCard
                           size={16}
                           strokeWidth={2}
-                          className="text-[var(--color-graphite)]"
+                          className="text-[var(--color-text-2)]"
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
+                        <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
                           {card.cardName}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-[var(--color-silver)]">
+                        <p className="mt-0.5 text-caption text-[var(--color-text-2)]">
                           {card.cycleFrom && card.cycleTo
-                            ? formatEntreNosCycleRange(
-                                card.cycleFrom,
-                                card.cycleTo
-                              )
+                            ? `${formatEntreNosCycleRange(card.cycleFrom, card.cycleTo)}`
                             : card.closingDay
                               ? `Fecha dia ${card.closingDay}`
                               : "Sem fechamento"}
-                          {card.debtor && card.creditor && card.netAmount >= 1
-                            ? ` · ${card.debtor.name} deve ${formatCurrency(card.netAmount)}`
-                            : " · quites"}
                         </p>
                       </div>
                       <span
                         className={`shrink-0 font-mono text-[14px] font-medium ${
                           card.netAmount >= 1
                             ? "text-[var(--color-expense)]"
-                            : "text-[var(--color-silver)]"
+                            : "text-[var(--color-text-2)]"
                         }`}
                       >
                         {card.netAmount >= 1
                           ? formatCurrency(card.netAmount)
-                          : formatCurrency(0)}
+                          : "✓"}
                       </span>
                     </button>
                   ))}
@@ -564,13 +552,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             <button
               type="button"
               onClick={() => setShowDebtDetail((v) => !v)}
-              className="flex w-full items-center justify-between rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)] px-4 py-3.5 text-left"
+              className="flex w-full items-center justify-between rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-3.5 text-left"
             >
               <div>
-                <p className="text-[14px] font-medium text-[var(--color-ink)]">
+                <p className="text-[14px] font-medium text-[var(--color-text)]">
                   Ver lançamentos
                 </p>
-                <p className="mt-0.5 text-[12px] text-[var(--color-silver)]">
+                <p className="mt-0.5 text-[12px] text-[var(--color-text-2)]">
                   {settlement.debtTxs.length} lançamento
                   {settlement.debtTxs.length === 1 ? "" : "s"}
                   {cardPurchases.length > 0
@@ -582,19 +570,19 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 </p>
               </div>
               {showDebtDetail ? (
-                <ChevronDown size={18} className="text-[var(--color-silver)]" />
+                <ChevronDown size={18} className="text-[var(--color-text-2)]" />
               ) : (
-                <ChevronRight size={18} className="text-[var(--color-silver)]" />
+                <ChevronRight size={18} className="text-[var(--color-text-2)]" />
               )}
             </button>
 
             {showDebtDetail && settlement.debtTxs.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
+                <p className="px-4 pb-2 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
                   Lançamentos de {monthLabel}
                 </p>
                 <Divider />
-                <div className="divide-y divide-[var(--color-fog)]">
+                <div className="divide-y divide-[var(--color-line)]">
                   {settlement.debtTxs.map((item) => {
                     const towardCreditor =
                       item.consumerId === settlement.debtor?.member?.id &&
@@ -603,52 +591,49 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                       <Link
                         key={item.id}
                         href={`/transactions/${item.id}`}
-                        className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-[var(--color-pearl)]"
+                        className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-[var(--color-chip)]"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--color-pearl)] text-base">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-chip)] text-base">
                           {item.isSettlement
                             ? "🤝"
                             : (item.categoryIcon ?? "💸")}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">
+                          <p className="truncate text-[14px] font-medium text-[var(--color-text)]">
                             {item.isSettlement
                               ? "Acerto registrado"
                               : item.title}
                           </p>
                           <div className="mt-0.5 flex flex-col gap-0.5">
                             {item.isSettlement ? (
-                              <span className="text-[11px] text-[var(--color-graphite)]">
+                              <span className="text-[11px] text-[var(--color-text-2)]">
                                 {item.payerName} pagou {item.consumerName}
                               </span>
                             ) : item.isSplit ? (
                               <>
-                                <span className="text-[11px] font-medium text-[var(--color-ink)]">
-                                  Rateio {item.sharePercent}/
-                                  {item.otherSharePercent} · total{" "}
+                                <span className="text-[11px] font-medium text-[var(--color-text)]">
+                                  Dividido · total{" "}
                                   {formatCurrency(item.grossAmount)}
                                 </span>
-                                <span className="text-[11px] text-[var(--color-graphite)]">
+                                <span className="text-[11px] text-[var(--color-text-2)]">
                                   {item.consumerName} deve{" "}
-                                  {formatCurrency(item.consumerShareAmount)} ·{" "}
-                                  {item.payerName} fica com{" "}
-                                  {formatCurrency(item.otherShareAmount)}
+                                  {formatCurrency(item.consumerShareAmount)}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-[11px] text-[var(--color-graphite)]">
+                              <span className="text-[11px] text-[var(--color-text-2)]">
                                 {item.consumerName} consumiu · {item.payerName}{" "}
                                 pagou
                               </span>
                             )}
                             <div className="flex flex-wrap items-center gap-x-1.5">
                               {item.cardName ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-silver)]">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text-2)]">
                                   <CreditCard size={10} strokeWidth={2} />
                                   {item.cardName}
                                 </span>
                               ) : null}
-                              <span className="text-[11px] text-[var(--color-mist)]">
+                              <span className="text-[11px] text-[var(--color-text-3)]">
                                 {item.cardName ? "· " : ""}
                                 {formatDate(item.date)}
                               </span>
@@ -667,11 +652,11 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                             {formatCurrency(item.amount)}
                           </span>
                           {item.isSplit ? (
-                            <span className="text-[10px] text-[var(--color-silver)]">
+                            <span className="text-[10px] text-[var(--color-text-2)]">
                               dívida
                             </span>
                           ) : (
-                            <ChevronRight size={14} className="text-[var(--color-mist)]" />
+                            <ChevronRight size={14} className="text-[var(--color-text-3)]" />
                           )}
                         </div>
                       </Link>
@@ -682,13 +667,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
             )}
 
             {hasDebt && (
-              <div className="overflow-hidden rounded-xl border border-[var(--color-fog)] bg-[var(--color-white)]">
-                <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-silver)]">
+              <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]">
+                <p className="px-4 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
                   Resumo do período
                 </p>
                 <Divider />
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-[13px] text-[var(--color-silver)]">
+                  <p className="text-[13px] text-[var(--color-text-2)]">
                     {settlement.creditor!.member!.display_name} pagou por{" "}
                     {settlement.debtor!.member!.display_name}
                   </p>
@@ -698,7 +683,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                 </div>
                 <Divider />
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-[13px] text-[var(--color-silver)]">
+                  <p className="text-[13px] text-[var(--color-text-2)]">
                     {settlement.debtor!.member!.display_name} pagou por{" "}
                     {settlement.creditor!.member!.display_name}
                   </p>
@@ -710,16 +695,16 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   <>
                     <Divider />
                     <div className="flex items-center justify-between px-4 py-3.5">
-                      <p className="text-[13px] text-[var(--color-silver)]">Já acertado</p>
+                      <p className="text-[13px] text-[var(--color-text-2)]">Já acertado</p>
                       <span className="font-mono text-[14px] font-medium text-[var(--color-income)]">
                         −{formatCurrency(settlement.settledAmount)}
                       </span>
                     </div>
                   </>
                 ) : null}
-                <div className="flex items-center justify-between border-t border-[var(--color-fog)] px-4 py-3.5">
-                  <p className="text-[13px] font-medium text-[var(--color-ink)]">
-                    Diferença
+                <div className="flex items-center justify-between border-t border-[var(--color-line)] px-4 py-3.5">
+                  <p className="text-[13px] font-medium text-[var(--color-text)]">
+                    Quanto falta acertar
                   </p>
                   <span className="font-mono text-[15px] font-medium text-[var(--color-expense)]">
                     {formatCurrency(settlement.netAmount)}
@@ -734,33 +719,33 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
                   variant="primary"
                   size="lg"
                   fullWidth
-                  wsColor="var(--color-ink)"
                   icon={<Check size={18} strokeWidth={2.5} />}
                   onClick={() => setSettleOpen(true)}
                 >
-                  Registrar acerto do mês
+                  Marcar como pago
                 </Btn>
                 <Btn
                   variant="secondary"
                   size="md"
                   fullWidth
-                  icon={<QrCode size={16} />}
+                  icon={<Share2 size={16} />}
                   onClick={() => {
-                    const text = `PIX: ${formatCurrency(settlement.netAmount)} de ${settlement.debtor!.member!.display_name} para ${settlement.creditor!.member!.display_name} (${monthLabel})`;
+                    const text = `Acerto ${monthLabel}: ${settlement.debtor!.member!.display_name} deve ${formatCurrency(settlement.netAmount)} para ${settlement.creditor!.member!.display_name}`;
                     void navigator.clipboard?.writeText(text);
+                    toast.success("Resumo copiado para compartilhar");
                   }}
                 >
-                  Copiar texto PIX
+                  Copiar resumo
                 </Btn>
               </div>
             )}
 
             {cardFilterValue !== "all" && hasDebt && (
-              <p className="text-center text-[12px] text-[var(--color-silver)]">
+              <p className="text-center text-[12px] text-[var(--color-text-2)]">
                 Para registrar acerto, volte ao filtro{" "}
                 <button
                   type="button"
-                  className="font-medium text-[var(--color-ink)] underline"
+                  className="font-medium text-[var(--color-text)] underline"
                   onClick={() => void setCardFilter("all")}
                 >
                   Todos
@@ -806,23 +791,16 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`touch-target inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-medium transition-colors ${
+      className={`touch-target inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-medium transition-all ${
         active
-          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-white)]"
-          : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-graphite)] active:bg-[var(--color-pearl)]"
+          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white shadow-card dark:border-[var(--color-pearl)] dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+          : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text-2)] hover:bg-[var(--color-chip)] active:bg-[var(--color-chip)]"
       }`}
     >
       {icon}
       <span>{label}</span>
       {hint ? (
-        <span
-          className={
-            active
-              ? "text-[var(--color-white)]/70"
-              : "text-[var(--color-silver)]"
-          }
-        >          · {hint}
-        </span>
+        <span className="opacity-70">· {hint}</span>
       ) : null}
     </button>
   );

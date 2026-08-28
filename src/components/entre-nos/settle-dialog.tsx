@@ -136,7 +136,7 @@ export function SettleEntreNosDialog({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader className="border-b border-[var(--color-fog)]">
+        <DrawerHeader className="border-b border-[var(--color-line)]">
           <div className="flex items-start justify-between gap-3 pr-8">
             <div className="min-w-0">
               <DrawerTitle>Registrar acerto</DrawerTitle>
@@ -148,7 +148,7 @@ export function SettleEntreNosDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="touch-target absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-pearl)] text-[var(--color-silver)]"
+              className="touch-target absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-chip)] text-[var(--color-text-2)]"
               aria-label="Fechar"
             >
               <span className="text-lg leading-none">×</span>
@@ -157,15 +157,15 @@ export function SettleEntreNosDialog({
         </DrawerHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-          <div className="rounded-2xl border border-[var(--color-fog)] bg-[var(--color-pearl)] px-4 py-4">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-silver)]">
+          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-chip)] px-4 py-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-2)]">
               Saldo a quitar
             </p>
-            <p className="mt-1 font-mono text-[28px] font-extrabold leading-none tracking-tight text-[var(--color-ink)] sm:text-[32px]">
+            <p className="mt-1 font-mono text-[28px] font-extrabold leading-none tracking-tight text-[var(--color-text)] sm:text-[32px]">
               {formatCurrency(remaining)}
             </p>
             {alreadySettled > 0 ? (
-              <p className="mt-3 text-[12px] text-[var(--color-silver)]">
+              <p className="mt-3 text-[12px] text-[var(--color-text-2)]">
                 Já acertado antes: {formatCurrency(alreadySettled)}
               </p>
             ) : null}
@@ -178,8 +178,8 @@ export function SettleEntreNosDialog({
               className={cn(
                 "rounded-xl border px-3 py-3 text-left transition-colors",
                 preset === "full"
-                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-white)]"
-                  : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)] active:bg-[var(--color-pearl)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[var(--color-pearl)] dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                  : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)] active:bg-[var(--color-chip)]"
               )}
             >
               <span className="block text-[11px] opacity-70">Quitar tudo</span>
@@ -193,8 +193,8 @@ export function SettleEntreNosDialog({
               className={cn(
                 "rounded-xl border px-3 py-3 text-left transition-colors",
                 preset === "half"
-                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-white)]"
-                  : "border-[var(--color-fog)] bg-[var(--color-white)] text-[var(--color-ink)] active:bg-[var(--color-pearl)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[var(--color-pearl)] dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                  : "border-[var(--color-line)] bg-[var(--color-card)] text-[var(--color-text)] active:bg-[var(--color-chip)]"
               )}
             >
               <span className="block text-[11px] opacity-70">Metade</span>
@@ -205,27 +205,27 @@ export function SettleEntreNosDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+            <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
               Valor do acerto (parcial ok)
             </Label>
             <MoneyInput
               value={amount}
               onValueChange={setAmount}
-              className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+              className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)] text-base"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+            <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
               Conta de saída (PIX / transferência)
             </Label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]">
+              <SelectTrigger className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)]">
                 <SelectValue placeholder="Selecionar conta" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[40vh]">
                 {activeAccounts.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-[var(--color-silver)]">
+                  <div className="px-3 py-2 text-sm text-[var(--color-text-2)]">
                     Nenhuma conta ativa — cadastre em Contas
                   </div>
                 ) : (
@@ -242,21 +242,21 @@ export function SettleEntreNosDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+            <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
               Data do pagamento
             </Label>
             <Input
               type="date"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
-              className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)] text-base"
+              className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)] text-base"
             />
           </div>
 
           <div className="space-y-1.5 pb-1">
-            <Label className="text-[12px] font-medium text-[var(--color-silver)]">
+            <Label className="text-[12px] font-medium text-[var(--color-text-2)]">
               Observação
-              <span className="font-normal text-[var(--color-mist)]">
+              <span className="font-normal text-[var(--color-text-3)]">
                 {" "}
                 (opcional)
               </span>
@@ -265,12 +265,12 @@ export function SettleEntreNosDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ex.: PIX parcial"
-              className="h-12 rounded-xl border-[var(--color-fog)] bg-[var(--color-white)]"
+              className="h-12 rounded-xl border-[var(--color-line)] bg-[var(--color-card)]"
             />
           </div>
 
           {error && (
-            <p className="rounded-xl bg-[var(--color-pearl)] px-3 py-2 text-sm text-[var(--color-expense)]">
+            <p className="rounded-xl bg-[var(--color-chip)] px-3 py-2 text-sm text-[var(--color-expense)]">
               {error}
             </p>
           )}
