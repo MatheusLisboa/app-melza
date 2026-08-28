@@ -38,14 +38,11 @@ export function TopBar({
         </button>
       )}
       <div className="min-w-0 flex-1">
-        <h1
-          className="truncate text-[17px] font-bold leading-tight text-[var(--color-text)]"
-          style={{ letterSpacing: "-0.015em" }}
-        >
-          {title}
-        </h1>
+        <h1 className="truncate text-title">{title}</h1>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-[var(--color-text-2)]">{subtitle}</p>
+          <p className="mt-0.5 text-caption text-[var(--color-text-2)]">
+            {subtitle}
+          </p>
         )}
       </div>
       {rightEl}

@@ -10,13 +10,13 @@ export type BadgeStatus =
 
 const STATUS: Record<
   Exclude<BadgeStatus, "custom">,
-  { bg: string; color: string }
+  { bg: string; color: string; darkBg?: string; darkColor?: string }
 > = {
-  paid: { bg: "#F0FDF4", color: "#166534" },
-  pending: { bg: "#FEF9EE", color: "#92400E" },
-  overdue: { bg: "#FEF2F2", color: "#991B1B" },
-  fixed: { bg: "#F2F2F7", color: "#3A3A3C" },
-  installment: { bg: "#111111", color: "#FFFFFF" },
+  paid: { bg: "#F0FDF4", color: "#166534", darkBg: "#052e16", darkColor: "#86efac" },
+  pending: { bg: "#FEF9EE", color: "#92400E", darkBg: "#3a2a10", darkColor: "#FBBF24" },
+  overdue: { bg: "#FEF2F2", color: "#991B1B", darkBg: "#450a0a", darkColor: "#fca5a5" },
+  fixed: { bg: "var(--color-chip)", color: "var(--color-text-2)" },
+  installment: { bg: "var(--color-ink)", color: "#FFFFFF", darkBg: "var(--color-pearl)", darkColor: "var(--color-ink)" },
 };
 
 /** Badge Melza — pills do preview */

@@ -44,16 +44,13 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
     return (
       <div className={cn("flex flex-col gap-1.5", className)}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className="text-xs font-medium uppercase tracking-wide text-[#8E8E93]"
-          >
+          <label htmlFor={inputId} className="text-label text-[var(--color-text-2)]">
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {icon && (
-            <div className="pointer-events-none absolute left-3 text-[#C7C7CC]">
+            <div className="pointer-events-none absolute left-3.5 text-[var(--color-text-3)]">
               {icon}
             </div>
           )}
@@ -62,26 +59,24 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
             id={inputId}
             type={type}
             className={cn(
-              "h-[44px] w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-input)] text-[var(--color-text)] transition-colors duration-150 placeholder:text-[var(--color-mist)] focus-visible:border-[var(--color-night)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-night)]/10 disabled:cursor-not-allowed disabled:opacity-50",
+              "h-[48px] w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-input)] px-3.5 py-2.5 text-[var(--color-text)] shadow-card transition-all duration-200 placeholder:text-[var(--color-text-3)] focus-visible:border-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text)]/10 disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-none",
+              icon && "pl-11",
+              rightEl && "pr-11",
               isMoney && "font-mono font-bold",
               inputClassName
             )}
-            style={{
-              paddingLeft: icon ? 40 : 14,
-              paddingRight: rightEl ? 40 : 14,
-              paddingTop: 10,
-              paddingBottom: 10,
-            }}
             {...props}
           />
           {rightEl && (
-            <div className="absolute right-3 text-[#8E8E93]">{rightEl}</div>
+            <div className="absolute right-3.5 text-[var(--color-text-2)]">
+              {rightEl}
+            </div>
           )}
         </div>
         {error ? (
-          <span className="px-1 text-xs text-[#EF4444]">{error}</span>
+          <span className="px-1 text-xs text-expense">{error}</span>
         ) : hint ? (
-          <span className="px-1 text-xs text-[#8E8E93]">{hint}</span>
+          <span className="px-1 text-xs text-[var(--color-text-2)]">{hint}</span>
         ) : null}
       </div>
     );

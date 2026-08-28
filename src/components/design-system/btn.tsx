@@ -7,9 +7,9 @@ type BtnVariant = "primary" | "secondary" | "ghost" | "destructive";
 type BtnSize = "sm" | "md" | "lg";
 
 const SIZES: Record<BtnSize, string> = {
-  sm: "min-h-[36px] px-3 py-1.5 text-xs",
-  md: "min-h-[44px] px-[18px] py-2 text-[13px]",
-  lg: "min-h-[44px] px-5 py-2.5 text-sm",
+  sm: "min-h-[36px] px-3.5 py-1.5 text-[13px]",
+  md: "min-h-[44px] px-4 py-2 text-[14px]",
+  lg: "min-h-[52px] px-5 py-2.5 text-[15px]",
 };
 
 const VARIANTS: Record<BtnVariant, string> = {
