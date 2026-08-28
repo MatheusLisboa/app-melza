@@ -94,12 +94,16 @@ const config: Config = {
         "3xl": "20px",
       },
       boxShadow: {
-        fab: "none",
+        fab: "0 6px 20px rgba(0,0,0,0.18)",
         modal: "0 -4px 24px rgba(0,0,0,0.08)",
-        card: "0 2px 8px rgba(0,0,0,0.08)",
-        "card-hover": "0 8px 24px rgba(0,0,0,0.12)",
-        "card-dark": "0 2px 8px rgba(0,0,0,0.3)",
-        "card-hover-dark": "0 8px 24px rgba(0,0,0,0.4)",
+        // Multi-camada — profundidade suave premium (light)
+        card: "0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06)",
+        "card-hover":
+          "0 2px 4px rgba(0,0,0,0.06), 0 12px 28px rgba(0,0,0,0.10)",
+        // Dark — sombras mais densas para contraste em fundo escuro
+        "card-dark": "0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.35)",
+        "card-hover-dark":
+          "0 2px 4px rgba(0,0,0,0.4), 0 12px 28px rgba(0,0,0,0.5)",
       },
       transitionDuration: {
         fast: "150ms",
