@@ -12,7 +12,7 @@ import {
   type CreateWorkspaceInput,
 } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
-import { BrandLockup, BrandMark, InputField } from "@/components/design-system";
+import { BrandMark, InputField } from "@/components/design-system";
 import {
   Select,
   SelectContent,
@@ -170,99 +170,109 @@ export function OnboardingForm({
     router.refresh();
   }
 
+  /* ============================= INTRO ============================= */
   if (phase === "intro") {
     const current = INTRO_STEPS[step];
+    const isLast = step === INTRO_STEPS.length - 1;
     return (
-      <div className="flex min-h-screen flex-col bg-background px-6 pb-8">
-        <div className="flex items-center justify-between py-3">
+      <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#0a0a0a] px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        {/* Glows de fundo — profundidade premium */}
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/[0.04] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-white/[0.03] blur-3xl" />
+
+        {/* Header: voltar + progress + pular */}
+        <div className="relative z-10 flex items-center justify-between py-3">
           {step > 0 ? (
             <button
               type="button"
               onClick={() => setStep((s) => s - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-chip)]"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.08] text-white/70 transition-colors active:bg-white/[0.14]"
               aria-label="Voltar"
             >
-              <ChevronLeft
-                size={18}
-                strokeWidth={2}
-                className="text-foreground/70"
-              />
+              <ChevronLeft size={18} strokeWidth={2} />
             </button>
           ) : (
-            <div className="w-8" />
+            <div className="h-9 w-9" />
           )}
+
           <div className="flex gap-1.5">
             {INTRO_STEPS.map((_, i) => (
               <div
                 key={i}
-                className="h-1 rounded-full transition-all duration-300"
+                className="h-1.5 rounded-full transition-all duration-500 ease-out"
                 style={{
-                  width: i === step ? 20 : 6,
+                  width: i === step ? 24 : 6,
                   backgroundColor:
-                    i === step ? "#c0c0c0" : "rgba(255,255,255,0.12)",
+                    i === step ? "#ffffff" : "rgba(255,255,255,0.16)",
                 }}
               />
             ))}
           </div>
-          {step < INTRO_STEPS.length - 1 ? (
+
+          {!isLast ? (
             <button
               type="button"
               onClick={() => setPhase("setup")}
-              className="text-xs text-foreground/30 transition-colors hover:text-foreground/55"
+              className="h-9 px-2 text-[13px] font-medium text-white/40 transition-colors hover:text-white/70"
             >
               Pular
             </button>
           ) : (
-            <div className="w-10" />
+            <div className="h-9 w-12" />
           )}
         </div>
 
-        <div className="flex flex-1 flex-col gap-8 pt-4">
-          <div className="flex flex-1 items-center justify-center">
+        {/* Conteúdo */}
+        <div className="relative z-10 flex flex-1 flex-col justify-between gap-8 pt-4">
+          <div
+            key={`visual-${step}`}
+            className="flex flex-1 animate-fade-scale items-center justify-center"
+          >
             {step === 0 && <IntroWorkspacesVisual />}
             {step === 1 && <IntroAttributionVisual />}
             {step === 2 && <IntroReadyVisual />}
           </div>
-          <div>
+
+          <div key={`copy-${step}`} className="animate-fade-up-lg">
             <h2
-              className="whitespace-pre-line text-[28px] font-medium leading-tight text-foreground"
-              style={{ letterSpacing: "-0.025em" }}
+              className="whitespace-pre-line text-[32px] font-bold leading-[1.1] tracking-tight text-white"
             >
               {current.title}
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-foreground/40">
+            <p className="mt-4 text-[15px] leading-relaxed text-white/55">
               {current.desc}
             </p>
           </div>
-          <Button
-            size="lg"
-            className="h-[52px] w-full text-[15px]"
-            onClick={() =>
-              step < INTRO_STEPS.length - 1
-                ? setStep((s) => s + 1)
-                : setPhase("setup")
-            }
+
+          <button
+            type="button"
+            onClick={() => (isLast ? setPhase("setup") : setStep((s) => s + 1))}
+            className="pressable flex h-[54px] w-full items-center justify-center rounded-2xl bg-white text-[15px] font-semibold text-[#111111] shadow-[0_8px_30px_rgba(255,255,255,0.15)] transition-all active:scale-[0.98]"
           >
-            {step < INTRO_STEPS.length - 1 ? "Continuar" : "Começar agora"}
-          </Button>
+            {isLast ? "Começar agora" : "Continuar"}
+          </button>
         </div>
       </div>
     );
   }
 
+  /* ============================= SETUP ============================= */
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-background px-6 pb-10 pt-6">
-      <div className="mb-8 flex flex-col items-center gap-3 text-center">
-        <BrandMark size="sm" />
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col bg-[var(--color-page)] px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="mb-8 flex animate-fade-up-lg flex-col items-center gap-4 text-center">
+        <BrandMark size="md" />
         <div>
-          <h1 className="text-xl font-medium tracking-tight">Configurar</h1>
-          <p className="mt-1 text-sm text-foreground/40">
+          <h1 className="text-[26px] font-bold tracking-tight text-[var(--color-text)]">
+            Vamos configurar
+          </h1>
+          <p className="mt-1.5 text-[14px] text-[var(--color-text-2)]">
             Crie um workspace, entre com convite ou continue no pessoal.
           </p>
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-3 gap-2">
+      {/* Tabs */}
+      <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-[var(--color-chip)] p-1.5">
         {(
           [
             ["create", "Criar"],
@@ -278,10 +288,10 @@ export function OnboardingForm({
               setError(null);
             }}
             className={cn(
-              "rounded-xl py-2.5 text-xs font-medium transition-colors",
+              "rounded-xl py-2.5 text-[13px] font-semibold transition-all duration-200",
               mode === id
-                ? "bg-[#111111] text-white"
-                : "bg-[var(--color-chip)] text-foreground/50 hover:bg-[var(--color-chip)]"
+                ? "bg-[var(--color-ink)] text-white shadow-card dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                : "text-[var(--color-text-2)] active:bg-[var(--color-card)]"
             )}
           >
             {label}
@@ -289,117 +299,113 @@ export function OnboardingForm({
         ))}
       </div>
 
-      {mode === "create" && (
-        <form
-          onSubmit={form.handleSubmit(createWorkspace)}
-          className="flex flex-col gap-3"
-        >
-          <InputField
-            label="Nome do workspace"
-            placeholder="Matheus & Ana"
-            {...form.register("workspaceName")}
-            error={form.formState.errors.workspaceName?.message}
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium tracking-wide text-foreground/50">
-              Tipo
-            </label>
-            <Select
-              value={workspaceType}
-              onValueChange={(v) =>
-                form.setValue(
-                  "workspaceType",
-                  v as CreateWorkspaceInput["workspaceType"]
-                )
-              }
+      <div key={mode} className="animate-fade-up">
+        {mode === "create" && (
+          <form
+            onSubmit={form.handleSubmit(createWorkspace)}
+            className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-5 shadow-card"
+          >
+            <InputField
+              label="Nome do workspace"
+              placeholder="Matheus & Ana"
+              {...form.register("workspaceName")}
+              error={form.formState.errors.workspaceName?.message}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label text-[var(--color-text-2)]">
+                Tipo
+              </label>
+              <Select
+                value={workspaceType}
+                onValueChange={(v) =>
+                  form.setValue(
+                    "workspaceType",
+                    v as CreateWorkspaceInput["workspaceType"]
+                  )
+                }
+              >
+                <SelectTrigger className="h-[50px] rounded-lg border border-[var(--color-line)] bg-[var(--color-input)]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="COUPLE">Casal</SelectItem>
+                  <SelectItem value="FAMILY">Família</SelectItem>
+                  <SelectItem value="SHARED">Compartilhado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <InputField
+              label="Seu nome"
+              {...form.register("displayName")}
+              error={form.formState.errors.displayName?.message}
+            />
+            <AvatarColorPicker
+              value={avatarColor}
+              onChange={(c) => form.setValue("avatarColor", c)}
+            />
+            {error && <p className="text-sm text-expense">{error}</p>}
+            <Button
+              type="submit"
+              size="lg"
+              className="mt-1 h-[54px] w-full"
+              disabled={loading}
             >
-              <SelectTrigger className="h-[50px] rounded-md border border-[var(--color-line)] bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="COUPLE">Casal</SelectItem>
-                <SelectItem value="FAMILY">Família</SelectItem>
-                <SelectItem value="SHARED">Compartilhado</SelectItem>
-              </SelectContent>
-            </Select>
+              {loading ? "Criando…" : "Criar workspace"}
+            </Button>
+          </form>
+        )}
+
+        {mode === "invite" && (
+          <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-5 shadow-card">
+            <InputField label="Seu nome" {...form.register("displayName")} />
+            <InputField
+              label="Token ou URL do convite"
+              value={inviteToken}
+              onChange={(e) => setInviteToken(e.target.value)}
+              placeholder="…/invite/abc123"
+            />
+            <AvatarColorPicker
+              value={avatarColor}
+              onChange={(c) => form.setValue("avatarColor", c)}
+            />
+            {error && <p className="text-sm text-expense">{error}</p>}
+            <Button
+              type="button"
+              size="lg"
+              className="mt-1 h-[54px] w-full"
+              disabled={loading}
+              onClick={joinWithInvite}
+            >
+              {loading ? "Entrando…" : "Entrar no workspace"}
+            </Button>
           </div>
-          <InputField
-            label="Seu nome"
-            {...form.register("displayName")}
-            error={form.formState.errors.displayName?.message}
-          />
-          <AvatarColorPicker
-            value={avatarColor}
-            onChange={(c) => form.setValue("avatarColor", c)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button
-            type="submit"
-            size="lg"
-            className="mt-2 h-[52px] w-full"
-            disabled={loading}
-          >
-            {loading ? "Criando…" : "Criar workspace"}
-          </Button>
-        </form>
-      )}
+        )}
 
-      {mode === "invite" && (
-        <div className="flex flex-col gap-3">
-          <InputField
-            label="Seu nome"
-            {...form.register("displayName")}
-          />
-          <InputField
-            label="Token ou URL do convite"
-            value={inviteToken}
-            onChange={(e) => setInviteToken(e.target.value)}
-            placeholder="…/invite/abc123"
-          />
-          <AvatarColorPicker
-            value={avatarColor}
-            onChange={(c) => form.setValue("avatarColor", c)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button
-            type="button"
-            size="lg"
-            className="mt-2 h-[52px] w-full"
-            disabled={loading}
-            onClick={joinWithInvite}
-          >
-            Entrar no workspace
-          </Button>
-        </div>
-      )}
-
-      {mode === "personal" && (
-        <div className="flex flex-col gap-3">
-          <InputField
-            label="Seu nome"
-            {...form.register("displayName")}
-          />
-          <AvatarColorPicker
-            value={avatarColor}
-            onChange={(c) => form.setValue("avatarColor", c)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button
-            type="button"
-            size="lg"
-            className="mt-2 h-[52px] w-full"
-            disabled={loading || !allowSkip}
-            onClick={continuePersonal}
-          >
-            Continuar no pessoal
-          </Button>
-          {!allowSkip && (
-            <p className="text-xs text-foreground/35">
-              Workspace pessoal já disponível nas configurações.
-            </p>
-          )}
-        </div>
-      )}
+        {mode === "personal" && (
+          <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-5 shadow-card">
+            <InputField label="Seu nome" {...form.register("displayName")} />
+            <AvatarColorPicker
+              value={avatarColor}
+              onChange={(c) => form.setValue("avatarColor", c)}
+            />
+            {error && <p className="text-sm text-expense">{error}</p>}
+            <Button
+              type="button"
+              size="lg"
+              className="mt-1 h-[54px] w-full"
+              disabled={loading || !allowSkip}
+              onClick={continuePersonal}
+            >
+              {loading ? "Preparando…" : "Continuar no pessoal"}
+            </Button>
+            {!allowSkip && (
+              <p className="text-xs text-[var(--color-text-3)]">
+                Workspace pessoal já disponível nas configurações.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -412,62 +418,66 @@ function AvatarColorPicker({
   onChange: (c: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium tracking-wide text-foreground/50">
+    <div className="flex flex-col gap-2">
+      <span className="text-label text-[var(--color-text-2)]">
         Cor do avatar
       </span>
-      <div className="flex flex-wrap gap-2">
-        {AVATAR_COLORS.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className="h-8 w-8 rounded-full border border-[var(--color-line)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111]"
-            style={{
-              backgroundColor: color,
-              outline:
-                value === color ? "2px solid #c0c0c0" : undefined,
-              outlineOffset: 2,
-            }}
-            onClick={() => onChange(color)}
-          />
-        ))}
+      <div className="flex flex-wrap gap-2.5">
+        {AVATAR_COLORS.map((color) => {
+          const selected = value === color;
+          return (
+            <button
+              key={color}
+              type="button"
+              aria-label={`Cor ${color}`}
+              className={cn(
+                "h-9 w-9 rounded-full border border-[var(--color-line)] transition-all focus-visible:outline-none",
+                selected && "scale-110"
+              )}
+              style={{
+                backgroundColor: color,
+                outline: selected
+                  ? "2px solid var(--color-text)"
+                  : undefined,
+                outlineOffset: 2,
+              }}
+              onClick={() => onChange(color)}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
+/* ============================ VISUAIS ============================ */
+
 function IntroWorkspacesVisual() {
   const items = [
-    { emoji: "👤", name: "Meu Financeiro", type: "Pessoal", color: "#c0c0c0" },
-    { emoji: "❤️", name: "Matheus & Ana", type: "Casal", color: "#e0e0e0" },
-    {
-      emoji: "🏠",
-      name: "Apartamento 42",
-      type: "Compartilhado",
-      color: "#888888",
-    },
+    { emoji: "👤", name: "Meu Financeiro", type: "Pessoal" },
+    { emoji: "❤️", name: "Matheus & Ana", type: "Casal" },
+    { emoji: "🏠", name: "Apartamento 42", type: "Compartilhado" },
   ];
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full max-w-[340px] flex-col gap-3">
       {items.map((ws, i) => (
         <div
           key={ws.name}
-          className="flex items-center gap-3 rounded-xl border border-[#E5E5EA] bg-white p-4"
+          className="flex animate-fade-up-lg items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.06] p-4 backdrop-blur-sm"
           style={{
-            transform: `translateX(${i * 8}px)`,
-            opacity: 1 - i * 0.12,
+            transform: `translateX(${i * 10}px)`,
+            animationDelay: `${i * 90}ms`,
+            animationFillMode: "backwards",
           }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-xl">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08] text-xl">
             {ws.emoji}
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground/90">{ws.name}</p>
-            <p className="mt-0.5 text-xs text-foreground/35">{ws.type}</p>
+            <p className="text-[14px] font-semibold text-white">{ws.name}</p>
+            <p className="mt-0.5 text-[12px] text-white/40">{ws.type}</p>
           </div>
-          <div
-            className="h-2 w-2 rounded-full bg-melza-silver"
-          />
+          <div className="h-2 w-2 rounded-full bg-white/40" />
         </div>
       ))}
     </div>
@@ -481,32 +491,38 @@ function IntroAttributionVisual() {
     { label: "Cartão", name: "Matheus", initial: "M" },
   ];
   return (
-    <div className="w-full rounded-xl border border-[#E5E5EA] bg-white p-4">
+    <div className="w-full max-w-[340px] animate-fade-up-lg rounded-2xl border border-white/[0.08] bg-white/[0.06] p-5 backdrop-blur-sm">
       <div className="mb-4 flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-lg">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.08] text-xl">
           🛒
         </div>
         <div>
-          <p className="text-[14px] font-medium text-foreground/90">
+          <p className="text-[15px] font-semibold text-white">
             Supermercado Extra
           </p>
-          <p className="text-xs text-foreground/35">R$ 287,40 · Hoje</p>
+          <p className="mt-0.5 font-mono text-[12px] text-white/45">
+            R$ 287,40 · Hoje
+          </p>
         </div>
       </div>
-      <div className="h-px bg-[#E5E5EA]" />
+      <div className="h-px bg-white/[0.08]" />
       <div className="flex gap-2 pt-4">
-        {people.map((p) => (
+        {people.map((p, i) => (
           <div
             key={p.label}
-            className="flex flex-1 flex-col items-center gap-1.5 rounded-md bg-[var(--color-chip)] py-2"
+            className="flex flex-1 animate-fade-up flex-col items-center gap-1.5 rounded-xl bg-white/[0.05] py-2.5"
+            style={{
+              animationDelay: `${150 + i * 80}ms`,
+              animationFillMode: "backwards",
+            }}
           >
-            <span className="text-[9px] font-medium uppercase tracking-wider text-foreground/30">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
               {p.label}
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1C1C1E] text-[10px] font-medium text-[#111111]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[11px] font-bold text-[#111111]">
               {p.initial}
             </div>
-            <span className="text-[11px] font-medium text-foreground/60">
+            <span className="text-[11px] font-medium text-white/70">
               {p.name}
             </span>
           </div>
@@ -517,29 +533,34 @@ function IntroAttributionVisual() {
 }
 
 function IntroReadyVisual() {
+  const actions = [
+    { emoji: "💳", label: "Adicionar cartão" },
+    { emoji: "🏦", label: "Vincular conta" },
+    { emoji: "👥", label: "Convidar alguém" },
+  ];
   return (
-    <div className="flex w-full flex-col items-center gap-5">
-      <BrandLockup className="max-w-[200px]" priority={false} />
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-[15px] font-medium text-foreground/90">
-          Meu Financeiro
-        </p>
-        <span className="rounded-full bg-[var(--color-chip)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#8E8E93]">
+    <div className="flex w-full max-w-[340px] flex-col items-center gap-6">
+      <div className="animate-fade-scale">
+        <BrandMark size="lg" />
+      </div>
+      <div className="flex animate-fade-up flex-col items-center gap-2">
+        <p className="text-[16px] font-semibold text-white">Meu Financeiro</p>
+        <span className="rounded-full bg-white/[0.08] px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
           Pessoal
         </span>
       </div>
-      <div className="mt-2 flex w-full gap-3">
-        {[
-          { emoji: "💳", label: "Adicionar cartão" },
-          { emoji: "🏦", label: "Vincular conta" },
-          { emoji: "👥", label: "Convidar alguém" },
-        ].map(({ emoji, label }) => (
+      <div className="flex w-full gap-3">
+        {actions.map(({ emoji, label }, i) => (
           <div
             key={label}
-            className="flex flex-1 flex-col items-center gap-1.5 rounded-md bg-white py-3"
+            className="flex flex-1 animate-fade-up-lg flex-col items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.05] py-4"
+            style={{
+              animationDelay: `${150 + i * 90}ms`,
+              animationFillMode: "backwards",
+            }}
           >
-            <span className="text-lg">{emoji}</span>
-            <span className="text-center text-[10px] leading-tight text-foreground/40">
+            <span className="text-xl">{emoji}</span>
+            <span className="text-center text-[10px] leading-tight text-white/45">
               {label}
             </span>
           </div>
