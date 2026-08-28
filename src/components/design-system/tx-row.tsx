@@ -112,12 +112,12 @@ export function TxRow({
   );
 
   const base = cn(
-    "flex w-full items-center gap-3 px-4 py-3 text-left",
+    "flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200",
     embedded
       ? "rounded-none border-0 bg-transparent"
-      : "mb-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-card)]",
+      : "mb-1.5 rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] shadow-card dark:shadow-card-dark hover:shadow-card-hover dark:hover:shadow-card-hover-dark",
     !embedded && "hover:bg-[var(--color-chip)]",
-    onClick && !embedded && "pressable",
+    onClick && !embedded && "pressable-subtle cursor-pointer",
     className
   );
 

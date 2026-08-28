@@ -187,16 +187,82 @@
   }
 
   h1 {
-    @apply text-[2rem] leading-[1.15] tracking-[-0.035em];
+    @apply text-[2rem] leading-[1.2] tracking-[-0.035em];
+    font-weight: 800;
+    font-size: 32px;
+    line-height: 1.25;
   }
   h2 {
-    @apply text-2xl leading-[1.2] tracking-[-0.025em];
+    @apply text-2xl leading-[1.25] tracking-[-0.025em];
+    font-size: 24px;
   }
   h3 {
-    @apply text-lg leading-[1.3] tracking-[-0.015em];
+    @apply text-lg leading-[1.35] tracking-[-0.015em];
+    font-size: 18px;
   }
   h4 {
     @apply text-base leading-[1.4];
+    font-size: 16px;
+  }
+
+  body {
+    @apply antialiased;
+    background-color: var(--color-page);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  /* Tipografia semântica */
+  .text-hero {
+    @apply font-bold;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+  }
+
+  .text-title {
+    @apply font-bold;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+  }
+
+  .text-subtitle {
+    @apply font-semibold;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .text-body {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .text-caption {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .text-label {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .text-hint {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    opacity: 0.7;
   }
 
   .font-money {
@@ -270,6 +336,24 @@
     transition-duration: var(--motion-fast);
   }
 
+  .pressable-subtle {
+    @apply transition-all active:scale-[0.98] active:opacity-80;
+    transition-duration: 150ms;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-200;
+  }
+
+  .hover-lift:hover {
+    @apply shadow-card-hover;
+    transform: translateY(-2px);
+  }
+
+  .dark .hover-lift:hover {
+    @apply shadow-card-hover-dark;
+  }
+
   /** Área mínima de toque (Apple HIG / Material ≈ 44px) */
   .touch-target {
     min-height: 44px;
@@ -311,12 +395,29 @@
     border-radius: 14px;
   }
 
-  .label-melza {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-text-2);
+  /* Tinting sutil — backgrounds com cor secundária */
+  .bg-success-tint {
+    background-color: rgba(34, 197, 94, 0.04);
+  }
+
+  .bg-warning-tint {
+    background-color: rgba(245, 158, 11, 0.04);
+  }
+
+  .bg-info-tint {
+    background-color: rgba(59, 130, 246, 0.04);
+  }
+
+  .dark .bg-success-tint {
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+
+  .dark .bg-warning-tint {
+    background-color: rgba(245, 158, 11, 0.08);
+  }
+
+  .dark .bg-info-tint {
+    background-color: rgba(59, 130, 246, 0.08);
   }
 
   /* Semânticas de valor monetário — substituem #EF4444, #22C55E */

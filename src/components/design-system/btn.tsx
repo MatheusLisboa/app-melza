@@ -14,13 +14,13 @@ const SIZES: Record<BtnSize, string> = {
 
 const VARIANTS: Record<BtnVariant, string> = {
   primary:
-    "bg-[var(--color-ink)] text-white hover:bg-[var(--color-onyx)] dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)] dark:hover:bg-[var(--color-fog)]",
+    "bg-[var(--color-ink)] text-white hover:bg-[var(--color-onyx)] hover:shadow-card-hover dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)] dark:hover:bg-[var(--color-fog)] dark:hover:shadow-card-hover-dark transition-all duration-200",
   secondary:
-    "bg-[var(--color-card)] text-[var(--color-text)] border border-[var(--color-line)] hover:bg-[var(--color-chip)]",
+    "bg-[var(--color-card)] text-[var(--color-text)] border border-[var(--color-line)] hover:bg-[var(--color-chip)] hover:shadow-card dark:hover:shadow-card-dark transition-all duration-200",
   ghost:
-    "bg-transparent text-[var(--color-text-2)] hover:text-[var(--color-text)]",
+    "bg-transparent text-[var(--color-text-2)] hover:text-[var(--color-text)] hover:bg-[var(--color-chip)] transition-all duration-200",
   destructive:
-    "bg-transparent border border-[#FEF2F2] text-[#EF4444] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20",
+    "bg-transparent border border-[#FEF2F2] text-[#EF4444] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20 transition-all duration-200",
 };
 
 type BtnProps = {

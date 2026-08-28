@@ -35,7 +35,7 @@ export function BalanceCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[16px] bg-[var(--color-hero)] px-5 py-5",
+        "relative overflow-hidden rounded-2xl bg-[var(--color-hero)] px-6 py-6 shadow-lg",
         className
       )}
     >

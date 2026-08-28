@@ -86,16 +86,20 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "8px",
+        lg: "10px",
         md: "8px",
         sm: "6px",
-        xl: "12px",
-        "2xl": "14px",
+        xl: "14px",
+        "2xl": "16px",
         "3xl": "20px",
       },
       boxShadow: {
         fab: "none",
         modal: "0 -4px 24px rgba(0,0,0,0.08)",
+        card: "0 2px 8px rgba(0,0,0,0.08)",
+        "card-hover": "0 8px 24px rgba(0,0,0,0.12)",
+        "card-dark": "0 2px 8px rgba(0,0,0,0.3)",
+        "card-hover-dark": "0 8px 24px rgba(0,0,0,0.4)",
       },
       transitionDuration: {
         fast: "150ms",

@@ -149,9 +149,9 @@ export function BottomNav({
         <ul
           className={cn(
             "pointer-events-auto flex h-[60px] w-full max-w-md items-stretch justify-around gap-0.5",
-            "rounded-[22px] border border-[var(--color-line)] px-1.5 py-1",
-            "bg-[var(--color-card)]/92 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl",
-            "dark:border-[#3A3A3C] dark:bg-[#1C1C1E]/92 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+            "rounded-[24px] border border-[var(--color-line)] px-1.5 py-1",
+            "bg-[var(--color-card)]/92 shadow-lg backdrop-blur-xl transition-all duration-200",
+            "dark:border-[#3A3A3C] dark:bg-[#1C1C1E]/92 dark:shadow-lg"
           )}
         >
           {PRIMARY.map(({ id, href, icon: Icon, label }) => {

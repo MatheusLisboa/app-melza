@@ -612,22 +612,22 @@ export function DashboardClient({
       </div>
 
       {/* Atalhos — grid 2x2 ao invés de 4 colunas */}
-      <div className="mt-6 px-5 md:px-6">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="mt-8 px-5 md:px-6">
+        <div className="grid grid-cols-2 gap-4">
           {quickLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="pressable flex flex-col items-center gap-2 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-3 py-4 transition-colors hover:bg-[var(--color-chip)]"
+              className="pressable flex flex-col items-center gap-2.5 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5 shadow-card dark:shadow-card-dark transition-all duration-200 hover:shadow-card-hover dark:hover:shadow-card-hover-dark hover:bg-[var(--color-chip)]"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-chip)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-chip)]">
                 <Icon
-                  size={18}
+                  size={20}
                   strokeWidth={1.75}
                   className="text-[var(--color-text)]"
                 />
               </div>
-              <span className="text-center text-[12px] font-semibold text-[var(--color-text)]">
+              <span className="text-center text-13px] font-semibold text-[var(--color-text)]">
                 {label}
               </span>
             </Link>
