@@ -227,7 +227,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
   }
 
   return (
-    <div className="page-pad space-y-5 md:px-6">
+    <div className="page-enter page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[17px] font-bold tracking-tight text-[var(--color-text)]">

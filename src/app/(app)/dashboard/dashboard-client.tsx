@@ -482,7 +482,7 @@ export function DashboardClient({
   ] as const;
 
   return (
-    <div className="relative pb-2 md:pb-8">
+    <div className="page-enter relative pb-2 md:pb-8">
       {/* Saudação compacta */}
       <div className="px-5 pt-3 md:px-6">
         <div className="flex items-baseline justify-between gap-2">

@@ -42,7 +42,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
   );
 
   return (
-    <div className="flex flex-col pb-4">
+    <div className="page-enter flex flex-col pb-4">
       <TopBar
         title="Contas"
         subtitle="Saldo disponível · PIX e débito"
@@ -92,7 +92,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
 
       <div className="page-pad mt-6 space-y-5 md:px-6">
         {active.length > 0 && (
-          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4 shadow-card dark:shadow-card-dark">
             <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
               Total nas contas
             </p>
@@ -126,7 +126,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
               return (
                 <div
                   key={account.id}
-                  className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
+                  className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] p-4 shadow-card dark:shadow-card-dark"
                 >
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"

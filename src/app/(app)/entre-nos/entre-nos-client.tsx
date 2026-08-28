@@ -273,7 +273,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
         }
       />
 
-      <div className="page-pad space-y-5 md:px-6">
+      <div className="page-enter page-pad space-y-5 md:px-6">
         {/* Seletor de mês */}
         <div className="flex items-center justify-between rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] px-2 py-2 shadow-card">
           <button

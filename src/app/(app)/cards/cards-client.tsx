@@ -68,7 +68,7 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
         }
       />
 
-      <div className="page-pad mt-6 space-y-5 md:px-6">
+      <div className="page-enter page-pad mt-6 space-y-5 md:px-6">
         {isLoading ? (
           <div className="space-y-3">
             <DsSkeleton h="h-24" className="rounded-xl" />

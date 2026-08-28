@@ -100,7 +100,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
   }, [active, alertDays]);
 
   return (
-    <div className="page-pad space-y-5 md:px-6">
+    <div className="page-enter page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
@@ -180,7 +180,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
             return (
               <li
                 key={sub.id}
-                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] p-4"
+                className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] shadow-card dark:shadow-card-dark p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 space-y-1">

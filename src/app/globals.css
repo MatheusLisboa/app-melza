@@ -354,6 +354,21 @@
     @apply shadow-card-hover-dark;
   }
 
+  /* Entrada de tela — aplicar no container raiz de cada page */
+  .page-enter {
+    animation: fade-up-lg 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Respeita quem prefere menos movimento */
+  @media (prefers-reduced-motion: reduce) {
+    .page-enter,
+    .animate-fade-up,
+    .animate-fade-up-lg,
+    .animate-fade-scale {
+      animation: none !important;
+    }
+  }
+
   /** Área mínima de toque (Apple HIG / Material ≈ 44px) */
   .touch-target {
     min-height: 44px;

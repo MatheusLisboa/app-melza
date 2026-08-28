@@ -205,7 +205,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
         }
       />
 
-      <div className="page-pad space-y-4 md:px-6">
+      <div className="page-enter page-pad space-y-4 md:px-6">
         <InputField
           placeholder="Buscar transações…"
           value={search}
