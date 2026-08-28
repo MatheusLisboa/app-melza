@@ -98,7 +98,7 @@ export function ChatClient() {
   return (
     <div className="page-enter page-pad flex h-[calc(100dvh-8rem)] flex-col gap-3 md:h-[calc(100vh-2rem)] md:px-6">
       <div>
-        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+        <h1 className="text-page-title">
           Chat financeiro
         </h1>
         <p className="mt-0.5 text-sm text-[var(--color-text-2)]">

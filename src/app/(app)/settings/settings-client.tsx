@@ -342,7 +342,7 @@ export function SettingsClient({
     <div className="page-enter mx-auto max-w-2xl space-y-5 page-pad md:px-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+          <h1 className="text-page-title">
             Perfil
           </h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-2)]">

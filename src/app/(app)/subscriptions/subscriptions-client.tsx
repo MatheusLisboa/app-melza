@@ -103,7 +103,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-enter page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+          <h1 className="text-page-title">
             Assinaturas
           </h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-2)]">

@@ -230,9 +230,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
     <div className="page-enter page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[17px] font-bold tracking-tight text-[var(--color-text)]">
-            Faturas
-          </h1>
+          <h1 className="text-page-title">Faturas</h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
             Mês do vencimento · compras pelo fechamento do cartão
           </p>

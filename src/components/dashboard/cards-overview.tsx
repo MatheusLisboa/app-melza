@@ -129,7 +129,7 @@ export function DashboardCardsSection({
   if (cardsLoading) {
     return (
       <div className="mt-6 px-5 md:px-6">
-        <h3 className="mb-3 text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+        <h3 className="mb-3 text-title">
           Cartões
         </h3>
         <div className="h-28 animate-pulse rounded-[14px] bg-[var(--color-chip)]" />
@@ -141,7 +141,7 @@ export function DashboardCardsSection({
     return (
       <div className="mt-6 px-5 md:px-6">
         <div className="mb-3 flex items-end justify-between gap-2">
-          <h3 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+          <h3 className="text-title">
             Cartões
           </h3>
           <Link
@@ -176,7 +176,7 @@ export function DashboardCardsSection({
     <div className="mt-6 px-5 md:px-6">
       <div className="mb-3 flex items-end justify-between gap-2">
         <div>
-          <h3 className="text-[17px] font-semibold tracking-tight text-[var(--color-text)]">
+          <h3 className="text-title">
             Cartões
           </h3>
           <p className="mt-0.5 text-xs text-[var(--color-text-2)]">
