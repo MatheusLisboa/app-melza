@@ -344,7 +344,7 @@ export function NubankInvoiceImportDialog({
           {lines.length > 0 && (
             <>
               {(existsCount > 0 || updateCount > 0) && (
-                <p className="text-xs text-[#8E8E93]">
+                <p className="text-xs text-[var(--color-text-2)]">
                   {existsCount > 0
                     ? `${existsCount} já cadastrada${existsCount === 1 ? "" : "s"}`
                     : null}
@@ -355,25 +355,25 @@ export function NubankInvoiceImportDialog({
                 </p>
               )}
 
-              <div className="flex items-center gap-2 rounded-md border border-[#E5E5EA] bg-white/[0.02] px-3 py-2.5">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--color-fog)] bg-white/[0.02] px-3 py-2.5">
                 <Checkbox
                   id="future-inst"
                   checked={createFuture}
                   onCheckedChange={(v) => setCreateFuture(Boolean(v))}
                 />
-                <Label htmlFor="future-inst" className="text-sm text-[#3A3A3C]">
+                <Label htmlFor="future-inst" className="text-sm text-[var(--color-text-2)]">
                   Criar parcelas futuras faltantes
                 </Label>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-[#8E8E93]">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-2)]">
                 <span>
                   {selectedCount} selecionada{selectedCount === 1 ? "" : "s"} ·{" "}
                   {formatCurrency(selectedTotal)}
                 </span>
                 <button
                   type="button"
-                  className="text-[#8E8E93]"
+                  className="text-[var(--color-text-2)]"
                   onClick={() => {
                     const targets = selectable;
                     const allOn = targets.every(
@@ -388,7 +388,7 @@ export function NubankInvoiceImportDialog({
                 </button>
               </div>
 
-              <ul className="max-h-56 divide-y divide-[var(--color-line)] overflow-y-auto rounded-md border border-[#E5E5EA]">
+              <ul className="max-h-56 divide-y divide-[var(--color-line)] overflow-y-auto rounded-md border border-[var(--color-fog)]">
                 {lines.map((line) => {
                   const st = lineStatus[line.id] ?? "new";
                   const locked = st === "exists";
@@ -412,7 +412,7 @@ export function NubankInvoiceImportDialog({
                         <p className="truncate text-[13px] font-medium text-[var(--color-text)]">
                           {line.description}
                         </p>
-                        <p className="text-[11px] text-[#8E8E93]">
+                        <p className="text-[11px] text-[var(--color-text-2)]">
                           {formatDate(line.date)}
                           {line.installmentCurrent && line.installmentTotal
                             ? ` · ${line.installmentCurrent}/${line.installmentTotal}`
@@ -421,7 +421,7 @@ export function NubankInvoiceImportDialog({
                           {st === "update" ? " · atualizar" : ""}
                         </p>
                       </div>
-                      <span className="shrink-0 font-mono text-[13px] font-medium text-[#EF4444]">
+                      <span className="shrink-0 font-mono text-[13px] font-medium text-[var(--color-expense)]">
                         {formatCurrency(line.amount)}
                       </span>
                     </li>
@@ -450,7 +450,7 @@ export function NubankInvoiceImportDialog({
             </p>
           )}
           {resultMsg && (
-            <p className="rounded-md bg-[#F0FDF4] px-3 py-2 text-sm text-[#22C55E]">
+            <p className="rounded-md bg-success-tint px-3 py-2 text-sm text-[var(--color-income)]">
               {resultMsg}
             </p>
           )}

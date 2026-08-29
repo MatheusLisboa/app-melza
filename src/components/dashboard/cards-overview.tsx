@@ -345,7 +345,7 @@ function Metric({
         className={cn(
           "mt-0.5 font-mono text-[12px] font-medium sm:text-[13px]",
           muted && "text-[var(--color-text-3)]",
-          !muted && emphasis === "warn" && "text-[#EF4444]",
+          !muted && emphasis === "warn" && "text-[var(--color-expense)]",
           !muted && emphasis === "ok" && "text-[var(--color-text)]",
           !muted && !emphasis && "text-[var(--color-text)]"
         )}

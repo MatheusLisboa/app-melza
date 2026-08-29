@@ -112,7 +112,7 @@ function Chip({
       className={cn(
         "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-all active:scale-[0.97]",
         active
-          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[#F2F2F7] dark:bg-[#F2F2F7] dark:text-[#111]"
+          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white dark:border-[var(--color-pearl)] dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
           : "border-[var(--color-line)] bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]",
         className
       )}
@@ -601,7 +601,7 @@ export function TransactionFormDialog({
                     <MemberChip
                       key={`c-${m.id}`}
                       name={m.display_name}
-                      color={m.avatar_color || "#c0c0c0"}
+                      color={m.avatar_color || "var(--color-mist)"}
                       active={form.watch("consumer_member_id") === m.id}
                       onClick={() => form.setValue("consumer_member_id", m.id)}
                     />
@@ -619,7 +619,7 @@ export function TransactionFormDialog({
                     <MemberChip
                       key={`p-${m.id}`}
                       name={m.display_name}
-                      color={m.avatar_color || "#c0c0c0"}
+                      color={m.avatar_color || "var(--color-mist)"}
                       active={form.watch("paid_by_member_id") === m.id}
                       onClick={() => form.setValue("paid_by_member_id", m.id)}
                     />
@@ -652,8 +652,8 @@ export function TransactionFormDialog({
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
                           form.watch("consumer_share_percent") === opt.value
-                            ? "border-[#111111] bg-[#111111] text-white"
-                            : "border-[#E5E5EA] bg-white text-[#3A3A3C]"
+                            ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                            : "border-[var(--color-fog)] bg-[var(--color-card)] text-[var(--color-text-2)]"
                         )}
                       >
                         {opt.label}
@@ -731,7 +731,7 @@ export function TransactionFormDialog({
             </div>
 
             {error && (
-              <p className="rounded-[12px] bg-[#EF4444]/10 px-3 py-2.5 text-sm text-[#EF4444]">
+              <p className="rounded-[12px] bg-[var(--color-expense)]/10 px-3 py-2.5 text-sm text-[var(--color-expense)]">
                 {error}
               </p>
             )}

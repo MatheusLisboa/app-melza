@@ -247,8 +247,8 @@ export function AccountFormDialog({
                   className={cn(
                     "rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors",
                     form.watch("is_shared") !== false
-                      ? "border-[#111111] bg-[#111111] text-white"
-                      : "border-[#E5E5EA] bg-white text-[#111111]"
+                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                      : "border-[var(--color-fog)] bg-[var(--color-card)] text-[var(--color-text)]"
                   )}
                 >
                   <span className="block font-medium">Compartilhada</span>
@@ -262,8 +262,8 @@ export function AccountFormDialog({
                   className={cn(
                     "rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors",
                     form.watch("is_shared") === false
-                      ? "border-[#111111] bg-[#111111] text-white"
-                      : "border-[#E5E5EA] bg-white text-[#111111]"
+                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                      : "border-[var(--color-fog)] bg-[var(--color-card)] text-[var(--color-text)]"
                   )}
                 >
                   <span className="block font-medium">Pessoal</span>
