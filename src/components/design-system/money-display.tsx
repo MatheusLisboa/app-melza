@@ -32,9 +32,9 @@ export function MoneyDisplay({
   return (
     <span
       className={cn(
-        "font-mono font-extrabold tracking-tight leading-none text-[#111111]",
+        "font-mono font-extrabold tracking-tight leading-none text-[var(--color-ink)]",
         SIZE[size],
-        !color && negative && "text-[#EF4444]",
+        !color && negative && "text-[var(--color-expense)]",
         className
       )}
       style={color ? { color } : undefined}

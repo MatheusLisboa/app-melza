@@ -20,7 +20,7 @@ const VARIANTS: Record<BtnVariant, string> = {
   ghost:
     "bg-transparent text-[var(--color-text-2)] hover:text-[var(--color-text)] hover:bg-[var(--color-chip)] transition-all duration-200",
   destructive:
-    "bg-transparent border border-[#FEF2F2] text-[#EF4444] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20 transition-all duration-200",
+    "bg-transparent border border-[var(--color-expense)]/15 text-[var(--color-expense)] hover:bg-[var(--color-expense)]/8 dark:border-[var(--color-expense)]/20 dark:hover:bg-[var(--color-expense)]/15 transition-all duration-200",
 };
 
 type BtnProps = {

@@ -23,7 +23,7 @@ import { CardSelector } from "@/components/transactions/card-selector";
 import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/design-system";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -173,16 +173,17 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
                         {loan.third_party?.name ?? "Terceiro"}
                       </p>
                       <Badge
-                        variant="secondary"
+                        status="custom"
+                        bg="var(--color-chip)"
                         className={
                           loan.direction === "given"
-                            ? "bg-[var(--color-chip)] text-income"
-                            : "bg-[var(--color-chip)] text-expense"
+                            ? "text-income"
+                            : "text-expense"
                         }
                       >
                         {loan.direction === "given" ? "Dado" : "Recebido"}
                       </Badge>
-                      <Badge variant="outline">
+                      <Badge status="outline">
                         {STATUS_LABEL[loan.status] ?? loan.status}
                       </Badge>
                     </div>

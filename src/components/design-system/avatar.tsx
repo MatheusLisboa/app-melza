@@ -24,7 +24,7 @@ export function Avatar({
         height: size,
         backgroundColor: member.imageUrl
           ? "transparent"
-          : member.color || "#1C1C1E",
+          : member.color || "var(--color-night)",
         fontSize: size * 0.36,
       }}
       title={member.name}

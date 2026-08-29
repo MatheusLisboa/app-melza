@@ -35,35 +35,35 @@ export function BalanceCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl bg-[var(--color-hero)] px-6 py-6 shadow-lg",
+        "relative overflow-hidden rounded-2xl bg-[var(--color-hero)] px-6 py-6 shadow-[var(--shadow-card)]",
         className
       )}
     >
       <div
         className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full opacity-[0.07]"
-        style={{ background: "#fff" }}
+        style={{ background: "var(--color-hero-fg)" }}
       />
       <div
         className="pointer-events-none absolute -bottom-16 -left-8 h-44 w-44 rounded-full opacity-[0.05]"
-        style={{ background: "#fff" }}
+        style={{ background: "var(--color-hero-fg)" }}
       />
 
       <div className="relative mb-2 flex items-start justify-between gap-2">
         <div>
           <p
-            className="text-[11px] font-medium uppercase text-[#8E8E93]"
+            className="text-[11px] font-medium uppercase text-[var(--color-silver)]"
             style={{ letterSpacing: "0.06em" }}
           >
             {title}
           </p>
           {subtitle ? (
-            <p className="mt-0.5 text-[11px] text-[#636366]">{subtitle}</p>
+            <p className="mt-0.5 text-[11px] text-[var(--color-text-2)]">{subtitle}</p>
           ) : null}
         </div>
         <button
           type="button"
           onClick={() => setHide((v) => !v)}
-          className="rounded-lg p-1.5 text-[#8E8E93] transition-colors hover:bg-white/10 hover:text-white"
+          className="rounded-lg p-1.5 text-[var(--color-silver)] transition-colors hover:bg-white/10 hover:text-[var(--color-hero-fg)]"
           aria-label={hide ? "Mostrar saldo" : "Ocultar saldo"}
         >
           {hide ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -71,41 +71,41 @@ export function BalanceCard({
       </div>
 
       {loading ? (
-        <div className="relative mb-3 h-9 w-48 animate-pulse rounded-md bg-[#2C2C2E]" />
+        <div className="relative mb-3 h-9 w-48 animate-pulse rounded-md bg-[var(--color-onyx)]" />
       ) : (
         <p className="relative mb-3 font-mono text-[32px] font-extrabold leading-none tracking-tight text-[var(--color-hero-fg)] sm:text-[36px]">
           {hide ? "••••••" : formatCurrency(balance)}
         </p>
       )}
 
-      <div className="relative mb-3 h-[3px] overflow-hidden rounded-full bg-[#2C2C2E]">
+      <div className="relative mb-3 h-[3px] overflow-hidden rounded-full bg-[var(--color-onyx)]">
         <div
-          className="h-full rounded-full bg-[#22C55E] transition-all duration-300 ease-out"
+          className="h-full rounded-full bg-[var(--color-income)] transition-all duration-300 ease-out"
           style={{ width: `${loading ? 0 : progress}%` }}
         />
       </div>
 
       <div className="relative flex items-end justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#636366]">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--color-text-2)]">
             Entradas
           </div>
-          <div className="mt-0.5 font-mono text-[13px] font-bold text-[#22C55E]">
+          <div className="mt-0.5 font-mono text-[13px] font-bold text-[var(--color-income)]">
             {loading ? "—" : hide ? "••••" : formatCurrency(income)}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-wide text-[#636366]">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--color-text-2)]">
             Saldo do mês
           </div>
           <div
             className={cn(
               "mt-0.5 font-mono text-[13px] font-bold",
               loading
-                ? "text-[#8E8E93]"
+                ? "text-[var(--color-silver)]"
                 : net >= 0
-                  ? "text-[#22C55E]"
-                  : "text-[#EF4444]"
+                  ? "text-[var(--color-income)]"
+                  : "text-[var(--color-expense)]"
             )}
           >
             {loading
@@ -116,10 +116,10 @@ export function BalanceCard({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wide text-[#636366]">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--color-text-2)]">
             Saídas
           </div>
-          <div className="mt-0.5 font-mono text-[13px] font-bold text-[#EF4444]">
+          <div className="mt-0.5 font-mono text-[13px] font-bold text-[var(--color-expense)]">
             {loading ? "—" : hide ? "••••" : formatCurrency(expenses)}
           </div>
         </div>
