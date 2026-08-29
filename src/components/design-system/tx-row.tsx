@@ -1,6 +1,7 @@
 "use client";
 
 import { AttributionTrio, type AttributionMember } from "./attribution-trio";
+import { Badge } from "./badge";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -60,9 +61,9 @@ export function TxRow({
     type === "income" ? "+" : type === "expense" ? "−" : "";
   const valueColor =
     type === "income"
-      ? "text-[#22C55E]"
+      ? "text-[var(--color-income)]"
       : type === "expense"
-        ? "text-[#EF4444]"
+        ? "text-[var(--color-expense)]"
         : "text-[var(--color-text-2)]";
 
   const content = (
@@ -76,16 +77,16 @@ export function TxRow({
             {title}
           </span>
           {pending && (
-            <span className="shrink-0 rounded-full bg-[#FEF9EE] px-2.5 py-0.5 text-[11px] font-semibold text-[#92400E] dark:bg-[#3A2A10] dark:text-[#FBBF24]">
+            <Badge status="pending" className="shrink-0">
               Pendente
-            </span>
+            </Badge>
           )}
           {installments && (
-            <span className="shrink-0 rounded-full bg-[var(--color-ink)] px-2.5 py-0.5 text-[11px] font-semibold text-white dark:bg-[#F2F2F7] dark:text-[#111111]">
+            <Badge status="installment" className="shrink-0">
               {installments.asPurchase
                 ? `${installments.total}x`
                 : `${installments.current}/${installments.total}`}
-            </span>
+            </Badge>
           )}
         </div>
         {showTrio && (

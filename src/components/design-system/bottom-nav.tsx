@@ -151,7 +151,7 @@ export function BottomNav({
             "pointer-events-auto flex h-[60px] w-full max-w-md items-stretch justify-around gap-0.5",
             "rounded-[24px] border border-[var(--color-line)] px-1.5 py-1",
             "bg-[var(--color-card)]/92 shadow-lg backdrop-blur-xl transition-all duration-200",
-            "dark:border-[#3A3A3C] dark:bg-[#1C1C1E]/92 dark:shadow-lg"
+            "dark:border-[var(--color-graphite)] dark:bg-[var(--color-night)]/92 dark:shadow-lg"
           )}
         >
           {PRIMARY.map(({ id, href, icon: Icon, label }) => {
@@ -172,7 +172,7 @@ export function BottomNav({
                     className={cn(
                       "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1.5 transition-colors",
                       isActive
-                        ? "bg-[var(--color-ink)] text-white dark:bg-[#F2F2F7] dark:text-[#111111]"
+                        ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
                         : "text-[var(--color-text-2)]"
                     )}
                   >
@@ -197,13 +197,13 @@ export function BottomNav({
               aria-expanded={moreOpen}
             >
               {showMoreBadge ? (
-                <span className="absolute right-[22%] top-1.5 h-2 w-2 rounded-full bg-[#EF4444]" />
+                <span className="absolute right-[22%] top-1.5 h-2 w-2 rounded-full bg-[var(--color-expense)]" />
               ) : null}
               <span
                 className={cn(
                   "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1.5 transition-colors",
                   active === "more"
-                    ? "bg-[var(--color-ink)] text-white dark:bg-[#F2F2F7] dark:text-[#111111]"
+                    ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
                     : "text-[var(--color-text-2)]"
                 )}
               >
@@ -260,7 +260,7 @@ export function BottomNav({
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1 truncate">{label}</span>
                     {href === "/entre-nos" && entreNosBadge ? (
-                      <span className="h-2 w-2 rounded-full bg-[#EF4444]" />
+                      <span className="h-2 w-2 rounded-full bg-[var(--color-expense)]" />
                     ) : null}
                   </Link>
                 </li>

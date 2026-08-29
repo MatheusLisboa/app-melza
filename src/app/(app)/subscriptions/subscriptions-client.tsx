@@ -24,7 +24,7 @@ import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/design-system";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -189,12 +189,10 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                         {sub.name}
                       </p>
                       {!sub.is_active && (
-                        <Badge variant="outline">Inativa</Badge>
+                        <Badge status="outline">Inativa</Badge>
                       )}
                       {daysLeft != null && daysLeft >= 0 && daysLeft <= alertDays && (
-                        <Badge className="bg-[var(--color-chip)] text-[var(--color-text-2)] hover:bg-[var(--color-chip)]">
-                          em {daysLeft}d
-                        </Badge>
+                        <Badge status="fixed">em {daysLeft}d</Badge>
                       )}
                     </div>
                     <p className="text-xs text-[var(--color-text-2)] capitalize">

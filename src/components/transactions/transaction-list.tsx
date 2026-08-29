@@ -199,7 +199,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
             <SlidersHorizontal
               size={16}
               strokeWidth={2}
-              className="text-[#8E8E93]"
+              className="text-[var(--color-text-2)]"
             />
           </button>
         }
@@ -223,7 +223,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                 onClick={() => setFilter(tab.id)}
                 className={cn(
                   "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-all",
-                  !active && "bg-[var(--color-chip)] text-[#8E8E93]"
+                  !active && "bg-[var(--color-chip)] text-[var(--color-text-2)]"
                 )}
                 style={
                   active
@@ -242,7 +242,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
         </div>
 
         {showFilters && (
-          <div className="grid gap-3 rounded-2xl border border-[#E5E5EA] bg-card/40 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 rounded-2xl border border-[var(--color-fog)] bg-card/40 p-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
               <Label>De</Label>
               <Input
@@ -319,7 +319,7 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
           </div>
         ) : isError ? (
           <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
-            <p className="text-sm text-[#EF4444]">
+            <p className="text-sm text-[var(--color-expense)]">
               Não foi possível carregar o histórico.
             </p>
             <p className="mt-1 text-xs text-[var(--color-text-2)]">
