@@ -31,7 +31,7 @@ export type BottomNavId =
   | "dashboard"
   | "transactions"
   | "chat"
-  | "cards"
+  | "planning"
   | "more";
 
 const PRIMARY: {
@@ -48,16 +48,16 @@ const PRIMARY: {
     label: "Histórico",
   },
   { id: "chat", href: "/chat", icon: MessageCircle, label: "IA" },
-  { id: "cards", href: "/cards", icon: CreditCard, label: "Cartões" },
+  { id: "planning", href: "/planning", icon: Target, label: "Plano" },
 ];
 
 const MORE_PATHS = [
   "/accounts",
+  "/cards",
   "/invoices",
   "/subscriptions",
   "/loans",
   "/reports",
-  "/planning",
   "/entre-nos",
   "/settings",
 ] as const;
@@ -71,18 +71,19 @@ type MoreLink = {
 
 const MORE_LINKS: MoreLink[] = [
   { href: "/accounts", label: "Contas", icon: Wallet },
+  { href: "/cards", label: "Cartões", icon: CreditCard },
   { href: "/invoices", label: "Faturas", icon: Receipt },
   { href: "/subscriptions", label: "Assinaturas", icon: Repeat },
   { href: "/loans", label: "Empréstimos", icon: HandCoins },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
-  { href: "/planning", label: "Planejamento", icon: Target },
   { href: "/entre-nos", label: "Entre Nós", icon: Users, sharedOnly: true },
   { href: "/settings", label: "Perfil", icon: User },
 ];
 
 function resolveActive(pathname: string): BottomNavId | null {
   if (pathname === "/chat" || pathname.startsWith("/chat/")) return "chat";
-  if (pathname === "/cards" || pathname.startsWith("/cards/")) return "cards";
+  if (pathname === "/planning" || pathname.startsWith("/planning/"))
+    return "planning";
   if (
     pathname === "/transactions" ||
     pathname.startsWith("/transactions/")

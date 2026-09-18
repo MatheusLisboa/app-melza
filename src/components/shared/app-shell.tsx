@@ -18,6 +18,7 @@ import type { MembershipOption } from "@/components/shared/workspace-switcher";
 import type { WorkspaceMember } from "@/types";
 import { workspaceAccent, isSharedWorkspace } from "@/lib/utils/workspace";
 import { WorkspaceRealtime } from "@/components/shared/workspace-realtime";
+import { CommandSearch } from "@/components/shared/command-search";
 import { useEntreNosDebt } from "@/lib/hooks/use-entre-nos";
 import { formatCurrency } from "@/lib/utils/format";
 import Link from "next/link";
@@ -202,6 +203,7 @@ function ShellChrome({
         <main className="app-main min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
           {children}
         </main>
+        <CommandSearch workspaceId={member.workspace_id} />
         <MobileNav
           wsColor={wsColor}
           showEntreNos={showEntreNos}

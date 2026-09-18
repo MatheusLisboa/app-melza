@@ -13,13 +13,14 @@ import {
 import { toast } from "sonner";
 import { createTransactionAction } from "@/lib/actions/transactions";
 import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
-import { MoneyInput } from "@/components/transactions/money-input";
+import { Btn, MoneyKeypad } from "@/components/design-system";
 import { CardSelector } from "@/components/transactions/card-selector";
 import { useAccounts, useCards, useWorkspaceMembers } from "@/lib/hooks/use-finance";
 import type { AccountType, Category, WorkspaceMember } from "@/types";
 import { toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
-import { Btn } from "@/components/design-system";
+import { haptic } from "@/lib/ui/haptic";
+import { saveTxTemplate } from "@/lib/ui/last-pay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,11 +162,13 @@ export function TransactionFormDialog({
   trigger,
   open: controlledOpen,
   onOpenChange,
+  prefill,
 }: {
   member: WorkspaceMember;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  prefill?: Partial<TransactionInput> | null;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -180,6 +183,7 @@ export function TransactionFormDialog({
   const [aiLoading, setAiLoading] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const qc = useQueryClient();
 
   const { data: cards = [] } = useCards(member.workspace_id);
@@ -238,6 +242,11 @@ export function TransactionFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    if (prefill) {
+      const next = { ...defaults, ...prefill };
+      form.reset(next);
+      return;
+    }
     try {
       const raw = localStorage.getItem(`melza-last-pay:${member.workspace_id}`);
       if (!raw) return;
@@ -254,7 +263,7 @@ export function TransactionFormDialog({
     } catch {
       /* ignore */
     }
-  }, [open, member.workspace_id, form]);
+  }, [open, member.workspace_id, form, prefill, defaults]);
 
   useEffect(() => {
     if (!open || (txType !== "expense" && txType !== "income")) return;
@@ -400,6 +409,14 @@ export function TransactionFormDialog({
           payment_channel: values.payment_channel,
         })
       );
+      saveTxTemplate(member.workspace_id, {
+        description: values.description,
+        amount: values.amount,
+        payment_method: values.payment_method,
+        payment_channel: values.payment_channel,
+        category_id: values.category_id,
+        transaction_type: values.transaction_type,
+      });
     } catch {
       /* ignore */
     }
@@ -410,6 +427,7 @@ export function TransactionFormDialog({
     setReceiptFile(null);
     form.reset(defaults);
     invalidateFinanceQueries(qc);
+    haptic("success");
     toast.success("Lançamento salvo");
   }
 
@@ -474,16 +492,12 @@ export function TransactionFormDialog({
             </div>
 
             {/* Hero valor */}
-            <div className="rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-4">
-              <FieldLabel>Valor</FieldLabel>
-              <MoneyInput
-                value={amount}
-                onValueChange={(v) =>
-                  form.setValue("amount", v, { shouldValidate: true })
-                }
-                className="mt-1.5 h-[52px] rounded-xl border-0 bg-transparent pl-11 text-[28px] font-semibold leading-none tracking-tight text-[var(--color-text)] shadow-none focus-visible:ring-0"
-              />
-            </div>
+            <MoneyKeypad
+              value={amount}
+              onValueChange={(v) =>
+                form.setValue("amount", v, { shouldValidate: true })
+              }
+            />
 
             <div className="space-y-3">
               <div className="space-y-1.5">
@@ -519,22 +533,63 @@ export function TransactionFormDialog({
 
               <div className="space-y-1.5">
                 <FieldLabel>Data</FieldLabel>
-                <div className="relative">
-                  <CalendarDays
-                    size={16}
-                    strokeWidth={1.75}
-                    className="pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 text-[var(--color-text-2)]"
-                  />
+                <div className="flex gap-2">
+                  {(
+                    [
+                      { id: "today", label: "Hoje", date: toISODate(new Date()) },
+                      {
+                        id: "yesterday",
+                        label: "Ontem",
+                        date: toISODate(
+                          new Date(Date.now() - 86_400_000)
+                        ),
+                      },
+                    ] as const
+                  ).map((chip) => {
+                    const active = form.watch("transaction_date") === chip.date;
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        onClick={() => {
+                          form.setValue("transaction_date", chip.date);
+                          setShowCalendar(false);
+                        }}
+                        className={cn(
+                          "rounded-full px-3.5 py-1.5 text-[13px] font-medium",
+                          active
+                            ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                            : "bg-[var(--color-chip)] text-[var(--color-text-2)]"
+                        )}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowCalendar((v) => !v)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[13px] font-medium",
+                      showCalendar
+                        ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                        : "bg-[var(--color-chip)] text-[var(--color-text-2)]"
+                    )}
+                  >
+                    <CalendarDays size={14} />
+                    Outro
+                  </button>
+                </div>
+                {showCalendar ? (
                   <Input
                     type="date"
                     {...form.register("transaction_date")}
                     className={cn(
                       FIELD,
-                      "pl-10 pr-3 font-medium [color-scheme:light] dark:[color-scheme:dark]",
-                      "[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      "mt-1 [color-scheme:light] dark:[color-scheme:dark]"
                     )}
                   />
-                </div>
+                ) : null}
               </div>
             </div>
 
@@ -804,6 +859,7 @@ export function TransactionFormDialog({
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
+                  capture="environment"
                   className="block w-full text-[13px] text-[var(--color-text-2)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--color-chip)] file:px-3 file:py-2 file:text-[13px] file:font-medium file:text-[var(--color-text)]"
                   onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
                 />

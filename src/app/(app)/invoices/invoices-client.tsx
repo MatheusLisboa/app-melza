@@ -270,7 +270,7 @@ export function InvoicesClient({ member }: { member: WorkspaceMember }) {
 
       {!effectiveCardId ? (
         <EmptyState
-          icon={<CreditCardIcon size={22} strokeWidth={1.75} />}
+          scene="invoice"
           title="Nenhum cartão cadastrado"
           description="Adicione um cartão de crédito para acompanhar suas faturas por ciclo."
           actionLabel="Adicionar cartão"

@@ -49,6 +49,7 @@ import {
 } from "@/lib/utils/format";
 import { yearMonthOf } from "@/lib/finance/month-projection";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/ui/haptic";
 import type { TransactionWithRelations } from "@/types";
 
 type Tab = "budget" | "goals" | "rules" | "categories" | "close";
@@ -199,6 +200,7 @@ function BudgetTab({ member }: { member: WorkspaceMember }) {
 
       {budgets.length === 0 ? (
         <EmptyState
+          scene="goal"
           title="Nenhum teto ainda"
           description="Defina quanto pode gastar em alimentação, lazer, etc."
         />
@@ -329,6 +331,7 @@ function GoalsTab({ member }: { member: WorkspaceMember }) {
 
       {active.length === 0 ? (
         <EmptyState
+          scene="goal"
           title="Nenhuma meta"
           description="Defina um valor e acompanhe o progresso."
         />
@@ -485,6 +488,7 @@ function RulesTab({ member }: { member: WorkspaceMember }) {
       </form>
       {rules.length === 0 ? (
         <EmptyState
+          scene="search"
           title="Nenhuma regra"
           description="Ex.: “ifood” → Alimentação."
         />
@@ -621,6 +625,7 @@ function CloseTab({ member }: { member: WorkspaceMember }) {
   const to = toISODate(endOfMonth(now));
   const { data: closes = [] } = useMonthCloses(member.workspace_id);
   const already = closes.find((c) => c.year_month === ym);
+  const [burst, setBurst] = useState(false);
 
   const { data: monthTx = [], isLoading } = useQuery({
     queryKey: ["reports", member.workspace_id, from, to, "close"],
@@ -657,11 +662,38 @@ function CloseTab({ member }: { member: WorkspaceMember }) {
     )
     .reduce((s, t) => s + Number(t.amount), 0);
   const [notes, setNotes] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
 
   if (isLoading) return <DsSkeleton h="h-32" className="rounded-xl" />;
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4">
+      {burst ? (
+        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+          {[
+            { l: "12%", d: "0ms" },
+            { l: "28%", d: "40ms" },
+            { l: "46%", d: "80ms" },
+            { l: "62%", d: "30ms" },
+            { l: "78%", d: "70ms" },
+            { l: "88%", d: "20ms" },
+          ].map((d) => (
+            <span
+              key={d.l}
+              className="absolute top-8 h-1.5 w-1.5 rounded-full bg-[var(--color-ink)] dark:bg-[var(--color-pearl)]"
+              style={{
+                left: d.l,
+                animation: `melza-burst 700ms ${d.d} ease-out forwards`,
+              }}
+            />
+          ))}
+          <div className="absolute inset-x-0 top-6 flex justify-center">
+            <span className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-[12px] font-medium text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]">
+              Retrato salvo
+            </span>
+          </div>
+        </div>
+      ) : null}
       <div className="rounded-[14px] bg-[var(--color-hero)] px-5 py-5 text-[var(--color-hero-fg)]">
         <p className="text-[11px] uppercase tracking-wider text-[var(--color-silver)]">
           {formatMonthYear(now)}
@@ -684,12 +716,21 @@ function CloseTab({ member }: { member: WorkspaceMember }) {
           Arquiva um retrato do mês. Não trava lançamentos — só marca o ritual.
         </p>
       )}
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Anotação opcional (ex.: fatura Inter em atraso)"
-        className="min-h-[72px] w-full rounded-[12px] border border-[var(--color-line)] bg-[var(--color-input)] px-3 py-2 text-sm"
-      />
+      <button
+        type="button"
+        onClick={() => setShowNotes((v) => !v)}
+        className="text-left text-[13px] font-medium text-[var(--color-text-2)]"
+      >
+        {showNotes ? "Esconder anotação" : "Anotar algo (opcional)"}
+      </button>
+      {showNotes ? (
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Ex.: fatura Inter em atraso"
+          className="min-h-[72px] w-full rounded-[12px] border border-[var(--color-line)] bg-[var(--color-input)] px-3 py-2 text-sm"
+        />
+      ) : null}
       <Btn
         onClick={async () => {
           const res = await closeMonthAction({
@@ -700,7 +741,10 @@ function CloseTab({ member }: { member: WorkspaceMember }) {
           });
           if (res.error) toast.error(res.error);
           else {
+            haptic("success");
             toast.success("Mês fechado");
+            setBurst(true);
+            window.setTimeout(() => setBurst(false), 900);
             await qc.invalidateQueries({ queryKey: ["month-closes"] });
           }
         }}

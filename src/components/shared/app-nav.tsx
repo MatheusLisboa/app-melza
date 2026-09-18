@@ -37,6 +37,7 @@ const SIDEBAR_NAV: {
 }[] = [
   { href: "/dashboard", label: "Início", icon: Home },
   { href: "/transactions", label: "Histórico", icon: ArrowUpDown },
+  { href: "/planning", label: "Planejamento", icon: Target },
   { href: "/cards", label: "Cartões", icon: CreditCard },
   { href: "/accounts", label: "Contas", icon: Wallet },
   { href: "/entre-nos", label: "Entre Nós", icon: Users, sharedOnly: true },
@@ -45,7 +46,6 @@ const SIDEBAR_NAV: {
   { href: "/loans", label: "Empréstimos", icon: HandCoins },
   { href: "/chat", label: "Chat IA", icon: MessageCircle },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
-  { href: "/planning", label: "Planejamento", icon: Target },
   { href: "/settings", label: "Perfil", icon: User },
 ];
 

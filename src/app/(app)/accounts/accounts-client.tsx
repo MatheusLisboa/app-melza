@@ -111,6 +111,7 @@ export function AccountsPageClient({ member }: { member: WorkspaceMember }) {
         ) : active.length === 0 ? (
           <>
             <EmptyState
+              scene="tx"
               title="Nenhuma conta"
               description="Cadastre corrente, poupança ou dinheiro para lançar PIX."
               actionLabel="Adicionar conta"

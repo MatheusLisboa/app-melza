@@ -2,16 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3,
   ChevronRight,
   CreditCard,
-  FileText,
-  History,
-  Banknote,
   QrCode,
-  Wallet,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
@@ -22,7 +17,6 @@ import {
 import type {
   WorkspaceMember,
   TransactionWithRelations,
-  Subscription,
 } from "@/types";
 import type { MembershipOption } from "@/components/shared/workspace-switcher";
 import {
@@ -32,15 +26,18 @@ import {
   endOfMonth,
   startOfMonth,
   toISODate,
+  addMonths,
 } from "@/lib/utils/format";
 import {
   BalanceCard,
+  EmptyState,
   Fab,
   MonthNav,
   TxRow,
   DsSkeleton,
   Avatar,
   toDsMember,
+  PullToRefresh,
 } from "@/components/design-system";
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
@@ -50,6 +47,16 @@ import {
   MonthProjectionCard,
   SetupChecklist,
 } from "@/components/dashboard/planning-widgets";
+import {
+  BudgetAlert,
+  CategoryRows,
+  MonthInsight,
+  RepeatTemplates,
+  TodayAgenda,
+} from "@/components/dashboard/home-extras";
+import type { LastTxTemplate } from "@/lib/ui/last-pay";
+import type { TransactionInput } from "@/lib/validations/transaction";
+import { invalidateFinanceQueries } from "@/lib/finance/invalidate";
 import {
   paymentMethodCaption,
   resolvePaymentChannel,
@@ -84,20 +91,6 @@ function greetingLabel(date = new Date()): string {
 function firstName(displayName: string): string {
   const part = displayName.trim().split(/\s+/)[0];
   return part || displayName;
-}
-
-function dueCaption(iso: string | null): string {
-  if (!iso) return "—";
-  const due = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  due.setHours(12, 0, 0, 0);
-  const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return `atrasada · ${formatDate(iso)}`;
-  if (days === 0) return "Vence hoje";
-  if (days === 1) return "Vence amanhã";
-  if (days <= 7) return `em ${days} dias`;
-  return formatDate(iso);
 }
 
 function SectionHeader({
@@ -142,38 +135,6 @@ function SectionHeader({
   );
 }
 
-const SPEND_CHANNELS: {
-  id: PaymentChannel;
-  label: string;
-  hint: string;
-  icon: typeof QrCode;
-}[] = [
-  {
-    id: "pix",
-    label: "PIX",
-    hint: "Saiu da conta na hora",
-    icon: QrCode,
-  },
-  {
-    id: "card",
-    label: "Cartão",
-    hint: "Vai na fatura",
-    icon: CreditCard,
-  },
-  {
-    id: "account",
-    label: "Conta",
-    hint: "Débito / transferência",
-    icon: Wallet,
-  },
-  {
-    id: "cash",
-    label: "Dinheiro",
-    hint: "Em espécie",
-    icon: Banknote,
-  },
-];
-
 /** Dashboard Make — PersonalDashboard (+ shared sections) */
 export function DashboardClient({
   member,
@@ -183,8 +144,10 @@ export function DashboardClient({
   memberships?: MembershipOption[];
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [expandCategories, setExpandCategories] = useState(false);
+  const [prefill, setPrefill] = useState<Partial<TransactionInput> | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
+  const qc = useQueryClient();
   const from = toISODate(startOfMonth(monthAnchor));
   const to = toISODate(endOfMonth(monthAnchor));
   const isCurrentMonth = useMemo(() => {
@@ -227,6 +190,33 @@ export function DashboardClient({
     },
   });
 
+  const prevFrom = toISODate(startOfMonth(addMonths(monthAnchor, -1)));
+  const prevTo = toISODate(endOfMonth(addMonths(monthAnchor, -1)));
+  const { data: prevTx = [] } = useQuery({
+    queryKey: ["dashboard", "prev-month", member.workspace_id, prevFrom, prevTo],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          "amount, transaction_type, status, category_id, category:categories(name)"
+        )
+        .eq("workspace_id", member.workspace_id)
+        .gte("transaction_date", prevFrom)
+        .lte("transaction_date", prevTo)
+        .neq("status", "cancelled");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as {
+        amount: number;
+        transaction_type: string;
+        status: string;
+        category_id: string | null;
+        category?: { name: string } | null;
+      }[];
+    },
+  });
+
   /** Saldo: usa current_balance das contas. Fallback (txs) só se algum saldo for null. */
   const needsBalanceFallback = useMemo(() => {
     const active = accounts.filter((a) => a.is_active);
@@ -257,25 +247,6 @@ export function DashboardClient({
         account_id: string;
         transfer_to_account_id: string | null;
       }[];
-    },
-  });
-
-  const { data: upcoming = [] } = useQuery({
-    queryKey: ["dashboard", "subs", member.workspace_id],
-    staleTime: 2 * 60_000,
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select(
-          "id, name, amount, billing_cycle, next_billing_date, is_active, notes, kind"
-        )
-        .eq("workspace_id", member.workspace_id)
-        .eq("is_active", true)
-        .order("next_billing_date", { ascending: true })
-        .limit(8);
-      if (error) throw error;
-      return (data ?? []) as Subscription[];
     },
   });
 
@@ -435,6 +406,37 @@ export function DashboardClient({
     }));
   }, [confirmedMonth]);
 
+  const spentByCatId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of confirmedMonth) {
+      if (
+        tx.transaction_type !== "expense" &&
+        tx.transaction_type !== "loan_given"
+      ) {
+        continue;
+      }
+      if (!tx.category_id) continue;
+      map.set(tx.category_id, (map.get(tx.category_id) ?? 0) + Number(tx.amount));
+    }
+    return map;
+  }, [confirmedMonth]);
+
+  const prevCats = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of prevTx) {
+      if (tx.status === "scheduled") continue;
+      if (
+        tx.transaction_type !== "expense" &&
+        tx.transaction_type !== "loan_given"
+      ) {
+        continue;
+      }
+      const name = tx.category?.name ?? "Sem categoria";
+      map.set(name, (map.get(name) ?? 0) + Number(tx.amount));
+    }
+    return Array.from(map.entries()).map(([name, total]) => ({ name, total }));
+  }, [prevTx]);
+
   /** Despesas do mês agrupadas por forma de pagamento */
   const spendByChannel = useMemo(() => {
     const totals: Record<PaymentChannel, number> = {
@@ -443,7 +445,6 @@ export function DashboardClient({
       account: 0,
       cash: 0,
     };
-    let uncategorized = 0;
 
     for (const tx of confirmedMonth) {
       if (
@@ -454,18 +455,12 @@ export function DashboardClient({
       }
       const channel = resolvePaymentChannel(tx);
       if (channel) totals[channel] += Number(tx.amount);
-      else uncategorized += Number(tx.amount);
     }
-
-    const rows = SPEND_CHANNELS.map((c) => ({
-      ...c,
-      total: totals[c.id],
-    })).filter((r) => r.total > 0);
 
     const cashOut = totals.pix + totals.account + totals.cash;
     const onCard = totals.card;
 
-    return { rows, cashOut, onCard, uncategorized };
+    return { cashOut, onCard };
   }, [confirmedMonth]);
 
   const recent = useMemo(() => {
@@ -496,16 +491,37 @@ export function DashboardClient({
       ? sharedMemberships[0]
       : null;
 
-  const quickLinks = [
-    { href: "/invoices", label: "Faturas", icon: FileText },
-    { href: "/cards", label: "Cartões", icon: CreditCard },
-    { href: "/transactions", label: "Histórico", icon: History },
-    { href: "/reports", label: "Relatórios", icon: BarChart3 },
-  ] as const;
+  const openDuplicate = (tx: (typeof recent)[number]) => {
+    setPrefill({
+      description: tx.description,
+      amount: Number(tx.amount),
+      transaction_type: tx.transaction_type as TransactionInput["transaction_type"],
+      category_id: tx.category_id,
+      payment_channel: resolvePaymentChannel(tx) ?? "card",
+    });
+    setCreateOpen(true);
+  };
+
+  const pickTemplate = (t: LastTxTemplate) => {
+    setPrefill({
+      description: t.description,
+      amount: t.amount,
+      payment_method: t.payment_method,
+      payment_channel: t.payment_channel,
+      category_id: t.category_id,
+      transaction_type: (t.transaction_type as TransactionInput["transaction_type"]) ?? "expense",
+    });
+    setCreateOpen(true);
+  };
 
   return (
+    <PullToRefresh
+      onRefresh={async () => {
+        invalidateFinanceQueries(qc);
+        await qc.refetchQueries({ queryKey: ["dashboard"] });
+      }}
+    >
     <div className="page-enter relative pb-2 md:pb-8">
-      {/* Saudação compacta */}
       <div className="px-5 pt-3 md:px-6">
         <div className="flex items-baseline justify-between gap-2">
           <h1 className="truncate text-[20px] font-semibold leading-tight tracking-tight text-[var(--color-text)]">
@@ -527,7 +543,6 @@ export function DashboardClient({
         <MonthNav value={monthAnchor} onChange={setMonthAnchor} />
       </div>
 
-      {/* Saldo */}
       <div className="px-5 pt-4 md:px-6">
         <BalanceCard
           balance={consolidatedBalance}
@@ -538,35 +553,18 @@ export function DashboardClient({
           title={isCurrentMonth ? `Disponível · ${monthShort}` : `Resumo · ${monthShort}`}
           subtitle={isCurrentMonth ? undefined : monthLabel}
         />
-      </div>
-
-      {/* Atalhos compactos */}
-      <div className="mt-4 px-5 md:px-6">
-        <div className="grid grid-cols-4 gap-2">
-          {quickLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="pressable flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] px-1 py-3 shadow-card transition-all duration-200 hover:bg-[var(--color-chip)] hover:shadow-card-hover dark:shadow-card-dark dark:hover:shadow-card-hover-dark"
-            >
-              <Icon
-                size={18}
-                strokeWidth={1.75}
-                className="text-[var(--color-text)]"
-              />
-              <span className="text-center text-[11px] font-semibold leading-tight text-[var(--color-text)]">
-                {label}
-              </span>
-            </Link>
-          ))}
-        </div>
+        <MonthInsight current={byCategory} previous={prevCats} />
+        {isCurrentMonth ? (
+          <MonthProjectionCard member={member} balance={consolidatedBalance} />
+        ) : null}
       </div>
 
       <SetupChecklist member={member} />
-      <MonthProjectionCard
-        member={member}
-        balance={consolidatedBalance}
-      />
+      <BudgetAlert member={member} spentByCat={spentByCatId} />
+      <RepeatTemplates workspaceId={member.workspace_id} onPick={pickTemplate} />
+
+      <TodayAgenda member={member} />
+      <DashboardCardsSection member={member} />
 
       {/* Recentes */}
       <div className="mt-6 px-5 md:px-6">
@@ -598,18 +596,20 @@ export function DashboardClient({
             </div>
           </div>
         ) : recent.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
-            <p className="text-sm text-[var(--color-text-2)]">
-              {isCurrentMonth
-                ? "Nenhum lançamento recente."
-                : `Nenhum lançamento em ${monthLabel}.`}
-            </p>
-            <p className="mt-1 text-[12px] text-[var(--color-text-3)]">
-              {isCurrentMonth
+          <EmptyState
+            scene="tx"
+            title={
+              isCurrentMonth
+                ? "Nenhum lançamento recente"
+                : `Nada em ${monthLabel}`
+            }
+            description={
+              isCurrentMonth
                 ? "Toque no + para registrar a primeira despesa."
-                : "Troque o mês acima ou registre um lançamento."}
-            </p>
-          </div>
+                : "Troque o mês acima ou registre um lançamento."
+            }
+            className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] py-8"
+          />
         ) : (
           <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
             {recent.map((tx, i) => {
@@ -668,6 +668,7 @@ export function DashboardClient({
                     payer={payer}
                     cardOwner={cardOwner}
                     onClick={() => setDetailId(tx.id)}
+                    onLongPress={() => openDuplicate(tx)}
                   />
                 </div>
               );
@@ -675,8 +676,6 @@ export function DashboardClient({
           </div>
         )}
       </div>
-
-      <DashboardCardsSection member={member} />
 
       {sharedCta?.workspace && (
         <div className="mt-4 px-5 md:px-6">
@@ -710,9 +709,7 @@ export function DashboardClient({
       )}
 
       {/* Como pagou este mês */}
-      {(spendByChannel.cashOut > 0 ||
-        spendByChannel.onCard > 0 ||
-        spendByChannel.rows.length > 0) && (
+      {(spendByChannel.cashOut > 0 || spendByChannel.onCard > 0) && (
         <div className="mt-6 px-5 md:px-6">
           <SectionHeader
             title="Como você pagou"
@@ -750,54 +747,6 @@ export function DashboardClient({
             </div>
           </div>
 
-          {spendByChannel.rows.length > 0 && (
-            <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
-              {spendByChannel.rows.map((row, i) => {
-                const Icon = row.icon;
-                const pct =
-                  monthExpense > 0
-                    ? Math.round((row.total / monthExpense) * 100)
-                    : 0;
-                return (
-                  <div
-                    key={row.id}
-                    className={cn(
-                      "px-4 py-3.5",
-                      i > 0 && "border-t border-[var(--color-line)]"
-                    )}
-                  >
-                    <div className="mb-2 flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-chip)]">
-                        <Icon className="h-3.5 w-3.5 text-[var(--color-text)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-medium text-[var(--color-text)]">
-                          {row.label}
-                        </p>
-                        <p className="text-[11px] text-[var(--color-text-2)]">
-                          {row.hint}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono text-[13px] font-medium text-[var(--color-text)]">
-                          {formatCurrency(row.total)}
-                        </p>
-                        <p className="text-[10px] text-[var(--color-text-2)]">
-                          {pct}%
-                        </p>
-                      </div>
-                    </div>
-                    <div className="h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--color-text)]/35 transition-all duration-300"
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
 
@@ -867,126 +816,20 @@ export function DashboardClient({
             href="/reports"
             linkLabel="Relatório"
           />
-          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-1">
-            {(expandCategories ? byCategory : byCategory.slice(0, 4)).map(
-              ({ emoji, name: catName, total, pct }, i) => (
-              <div
-                key={catName}
-                className={cn(
-                  "py-3",
-                  i > 0 && "border-t border-[var(--color-line)]"
-                )}
-              >
-                <div className="mb-1.5 flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-chip)] text-base">
-                    {emoji}
-                  </span>
-                  <p className="flex-1 text-[14px] font-medium text-[var(--color-text)]">
-                    {catName}
-                  </p>
-                  <span className="font-mono text-[13px] font-medium text-[var(--color-text)]">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
-                <div className="ml-11 h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-text)]/35"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          {byCategory.length > 4 ? (
-            <button
-              type="button"
-              onClick={() => setExpandCategories((v) => !v)}
-              className="mt-2 w-full py-1.5 text-center text-[13px] font-medium text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
-            >
-              {expandCategories
-                ? "Ver menos"
-                : `Ver mais ${byCategory.length - 4} categorias`}
-            </button>
-          ) : null}
+          <CategoryRows rows={byCategory} />
         </div>
       )}
 
       <GoalsPeek member={member} />
 
-      {/* Próximas contas */}
-      <div className="mt-6 px-5 md:px-6">
-        <SectionHeader
-          title="Próximas contas"
-          large
-          href="/subscriptions"
-          linkLabel="Ver todas"
-        />
-        {upcoming.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
-            <p className="text-sm text-[var(--color-text-2)]">
-              Nenhuma assinatura próxima.
-            </p>
-            <Link
-              href="/subscriptions"
-              className="mt-1 inline-block text-[13px] font-medium text-[var(--color-text)] underline-offset-2 hover:underline"
-            >
-              Cadastrar assinatura
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
-            {upcoming.slice(0, 5).map((item, i) => {
-              const caption = dueCaption(item.next_billing_date);
-              const isIncome = item.kind === "income";
-              const urgent =
-                !isIncome &&
-                (caption.startsWith("atrasada") || caption.startsWith("Vence"));
-              return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3.5",
-                  i > 0 && "border-t border-[var(--color-line)]"
-                )}
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)] text-base">
-                  {isIncome ? "↓" : "🔁"}
-                </div>
-                <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--color-text)]">
-                  {item.name}
-                </p>
-                <div className="text-right">
-                  <p
-                    className={cn(
-                      "font-mono text-[13px] font-medium",
-                      isIncome
-                        ? "text-[#22C55E]"
-                        : "text-[var(--color-text)]"
-                    )}
-                  >
-                    {isIncome ? "+" : ""}
-                    {formatCurrency(Number(item.amount))}
-                  </p>
-                  <p
-                    className={cn(
-                      "text-[11px]",
-                      urgent
-                        ? "text-[var(--color-warning)]"
-                        : "text-[var(--color-text-2)]"
-                    )}
-                  >
-                    {caption}
-                  </p>
-                </div>
-              </div>
-            );
-            })}
-          </div>
-        )}
-      </div>
-
       <TransactionFormDialog
         member={member}
+        open={createOpen}
+        onOpenChange={(v) => {
+          setCreateOpen(v);
+          if (!v) setPrefill(null);
+        }}
+        prefill={prefill}
         trigger={<Fab color={accent.color} />}
       />
 
@@ -999,6 +842,7 @@ export function DashboardClient({
         transactionId={detailId}
       />
     </div>
+    </PullToRefresh>
   );
 }
 

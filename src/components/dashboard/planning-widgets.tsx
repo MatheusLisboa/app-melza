@@ -252,44 +252,25 @@ export function MonthProjectionCard({
   const closed = closes.some((c) => c.year_month === yearMonthOf(now));
 
   return (
-    <div className="mt-4 px-5 md:px-6">
-      <Link
-        href="/planning"
-        className="block rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4 transition-colors hover:bg-[var(--color-chip)]"
-      >
-        <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
-          Até o fim do mês
-        </p>
-        <p
-          className={cn(
-            "mt-1.5 font-mono text-[22px] font-extrabold",
-            projection.leftover >= 0
-              ? "text-[var(--color-text)]"
-              : "text-[var(--color-expense)]"
-          )}
-        >
-          {formatCurrency(projection.leftover)}
-        </p>
-        <p className="mt-1 text-[12px] text-[var(--color-text-2)]">
-          Saldo {formatCurrency(projection.balance)}
-          {projection.billsLeft > 0
-            ? ` · contas ${formatCurrency(projection.billsLeft)}`
-            : ""}
-          {projection.incomeLeft > 0
-            ? ` · a receber ${formatCurrency(projection.incomeLeft)}`
-            : ""}
-        </p>
-        {closed ? (
-          <p className="mt-2 text-[11px] text-[var(--color-text-3)]">
-            Este mês já foi fechado
-          </p>
-        ) : (
-          <p className="mt-2 text-[11px] font-medium text-[var(--color-text)]">
-            Planejamento e fechar mês →
-          </p>
+    <Link
+      href="/planning"
+      className="mt-2 flex items-baseline justify-between gap-3 px-0.5"
+    >
+      <span className="text-[12px] text-[var(--color-text-2)]">
+        Até o fim do mês
+        {closed ? " · fechado" : ""}
+      </span>
+      <span
+        className={cn(
+          "font-mono text-[13px] font-semibold",
+          projection.leftover >= 0
+            ? "text-[var(--color-text)]"
+            : "text-[var(--color-expense)]"
         )}
-      </Link>
-    </div>
+      >
+        {formatCurrency(projection.leftover)}
+      </span>
+    </Link>
   );
 }
 

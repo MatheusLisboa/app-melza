@@ -169,6 +169,7 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
         </div>
       ) : subscriptions.length === 0 ? (
         <EmptyState
+          scene="tx"
           title="Nada recorrente ainda"
           description="Cadastre Netflix, aluguel ou o salário do mês."
           actionLabel="Nova"

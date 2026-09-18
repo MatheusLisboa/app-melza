@@ -151,6 +151,7 @@ export function LoansClient({ member }: { member: WorkspaceMember }) {
         </div>
       ) : loans.length === 0 ? (
         <EmptyState
+          scene="tx"
           title="Nenhum empréstimo"
           description="Registre valores emprestados ou recebidos de terceiros."
           actionLabel="Novo empréstimo"

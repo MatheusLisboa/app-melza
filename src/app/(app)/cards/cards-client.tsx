@@ -77,6 +77,7 @@ export function CardsPageClient({ member }: { member: WorkspaceMember }) {
           </div>
         ) : activeCards.length === 0 ? (
           <EmptyState
+            scene="card"
             title="Nenhum cartão cadastrado"
             description="Adicione um cartão para acompanhar faturas e limite."
             actionLabel="Adicionar cartão"

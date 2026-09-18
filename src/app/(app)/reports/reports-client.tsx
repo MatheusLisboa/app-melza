@@ -19,7 +19,7 @@ import {
   toISODate,
 } from "@/lib/utils/format";
 import { downloadCsv, toCsv } from "@/lib/utils/csv";
-import { Btn, DsSkeleton, EmptyState } from "@/components/design-system";
+import { Btn, DsSkeleton, EmptyState, InkDonut, Sparkline, SpendHeatmap } from "@/components/design-system";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, TrendingDown, TrendingUp, SlidersHorizontal } from "lucide-react";
 import { CsvImportCard } from "@/components/transactions/csv-import";
 import { cn } from "@/lib/utils";
+import { CategoryGlyph } from "@/lib/ui/category-icon";
 
 export function ReportsClient({ member }: { member: WorkspaceMember }) {
   const now = useMemo(() => new Date(), []);
@@ -41,6 +42,7 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
   const [memberId, setMemberId] = useState("all");
   const [categoryId, setCategoryId] = useState("all");
   const [txType, setTxType] = useState("all");
+  const [moreFilters, setMoreFilters] = useState(false);
 
   const { data: cards = [] } = useCards(member.workspace_id);
   const activeCards = useMemo(
@@ -207,6 +209,90 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
     return { current, previous, delta, pct };
   }, [compareTx, curFrom, curTo, prevFrom, prevTo]);
 
+  const sparkFrom = toISODate(startOfMonth(addMonths(now, -5)));
+  const { data: sparkRaw = [] } = useQuery({
+    queryKey: ["reports-spark", member.workspace_id, sparkFrom, curTo],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error: qError } = await supabase
+        .from("transactions")
+        .select("amount, transaction_type, transaction_date, status")
+        .eq("workspace_id", member.workspace_id)
+        .gte("transaction_date", sparkFrom)
+        .lte("transaction_date", curTo)
+        .neq("status", "cancelled")
+        .limit(1200);
+      if (qError) throw new Error(qError.message);
+      return (data ?? []) as {
+        amount: number;
+        transaction_type: string;
+        transaction_date: string;
+        status: string;
+      }[];
+    },
+  });
+
+  const sparkValues = useMemo(() => {
+    const months: number[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = addMonths(now, -i);
+      const a = toISODate(startOfMonth(d));
+      const b = toISODate(endOfMonth(d));
+      months.push(
+        sparkRaw
+          .filter(
+            (t) =>
+              t.transaction_date >= a &&
+              t.transaction_date <= b &&
+              t.status !== "scheduled" &&
+              (t.transaction_type === "expense" ||
+                t.transaction_type === "loan_given")
+          )
+          .reduce((s, t) => s + Number(t.amount), 0)
+      );
+    }
+    return months;
+  }, [sparkRaw, now]);
+
+  const heatDays = useMemo(() => {
+    const days: { date: string; total: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = toISODate(d);
+      const total = sparkRaw
+        .filter(
+          (t) =>
+            t.transaction_date === iso &&
+            t.status !== "scheduled" &&
+            (t.transaction_type === "expense" ||
+              t.transaction_type === "loan_given")
+        )
+        .reduce((s, t) => s + Number(t.amount), 0);
+      days.push({ date: iso, total });
+    }
+    return days;
+  }, [sparkRaw]);
+
+  const categorySlices = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of transactions) {
+      if (
+        tx.status === "scheduled" ||
+        (tx.transaction_type !== "expense" &&
+          tx.transaction_type !== "loan_given")
+      ) {
+        continue;
+      }
+      const name = tx.category?.name ?? "Sem categoria";
+      map.set(name, (map.get(name) ?? 0) + Number(tx.amount));
+    }
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [transactions]);
+
   function exportCsv() {
     const csv = toCsv(
       [
@@ -267,6 +353,14 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
             {formatCurrency(compare.current)}
           </p>
           <p className="mt-1 text-xs text-[#636366]">Despesas</p>
+          {sparkValues.some((v) => v > 0) ? (
+            <div className="mt-3 text-white/80">
+              <Sparkline values={sparkValues} width={160} height={32} />
+              <p className="mt-1 text-[10px] uppercase tracking-wide text-[#8E8E93]">
+                6 meses
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-5 py-4">
           <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-2)]">
@@ -284,9 +378,9 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
             className={cn(
               "mt-2 flex items-center gap-1.5 font-mono text-2xl font-extrabold",
               compare.delta > 0
-                ? "text-[#EF4444]"
+                ? "text-[var(--color-expense)]"
                 : compare.delta < 0
-                  ? "text-[#22C55E]"
+                  ? "text-[var(--color-income)]"
                   : "text-[var(--color-text)]"
             )}
           >
@@ -356,8 +450,17 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setMoreFilters((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-chip)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-2)]"
+          >
+            <SlidersHorizontal size={12} />
+            {moreFilters ? "Menos" : "Mais"}
+          </button>
         </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {moreFilters ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="space-y-1.5">
           <Label className="text-[var(--color-text-2)]">De</Label>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -428,19 +531,20 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
             </SelectContent>
           </Select>
         </div>
-      </div>
+        </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-4 text-sm">
         <span className="text-[var(--color-text-2)]">
           Despesas:{" "}
-          <strong className="font-mono font-bold text-[#EF4444]">
+          <strong className="font-mono font-bold text-[var(--color-expense)]">
             {formatCurrency(expenseTotal)}
           </strong>
         </span>
         <span className="text-[var(--color-text-2)]">
           Receitas:{" "}
-          <strong className="font-mono font-bold text-[#22C55E]">
+          <strong className="font-mono font-bold text-[var(--color-income)]">
             {formatCurrency(incomeTotal)}
           </strong>
         </span>
@@ -449,46 +553,14 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
         </span>
       </div>
 
-      {expenseTotal > 0 && (
-        <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-3">
+      {expenseTotal > 0 && categorySlices.length > 0 && (
+        <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-4">
           <p className="mb-3 text-[13px] font-semibold">Despesas por categoria</p>
-          {(() => {
-            const map = new Map<string, { name: string; total: number }>();
-            for (const tx of transactions) {
-              if (
-                tx.status === "scheduled" ||
-                (tx.transaction_type !== "expense" &&
-                  tx.transaction_type !== "loan_given")
-              ) {
-                continue;
-              }
-              const key = tx.category_id ?? "none";
-              const prev = map.get(key) ?? {
-                name: tx.category?.name ?? "Sem categoria",
-                total: 0,
-              };
-              prev.total += Number(tx.amount);
-              map.set(key, prev);
-            }
-            const rows = Array.from(map.values()).sort((a, b) => b.total - a.total);
-            const max = rows[0]?.total || 1;
-            return rows.slice(0, 8).map((r) => (
-              <div key={r.name} className="mb-2 last:mb-0">
-                <div className="mb-1 flex justify-between text-[12px]">
-                  <span>{r.name}</span>
-                  <span className="font-mono">{formatCurrency(r.total)}</span>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-ink)]"
-                    style={{ width: `${Math.round((r.total / max) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ));
-          })()}
+          <InkDonut slices={categorySlices} />
         </div>
       )}
+
+      <SpendHeatmap days={heatDays} />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -498,11 +570,12 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
           <DsSkeleton h="h-14" className="rounded-xl" />
         </div>
       ) : isError ? (
-        <p className="text-sm text-[#EF4444]">
+        <p className="text-sm text-[var(--color-expense)]">
           {error instanceof Error ? error.message : "Erro ao carregar"}
         </p>
       ) : transactions.length === 0 ? (
         <EmptyState
+          scene="report"
           title="Nenhum lançamento"
           description="Não há lançamentos no período filtrado. Ajuste as datas ou cadastre movimentos."
           actionLabel="Ir ao histórico"
@@ -522,9 +595,6 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
             const payerName = members.find(
               (m) => m.id === tx.paid_by_member_id
             )?.display_name;
-            const initial = (
-              tx.description.trim().charAt(0) || "?"
-            ).toUpperCase();
 
             return (
               <div
@@ -534,9 +604,12 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
                   i > 0 && "border-t border-[var(--color-line-soft)]"
                 )}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-icon)] text-[13px] font-bold text-white">
-                  {initial}
-                </div>
+                <CategoryGlyph
+                  name={tx.category?.name}
+                  emoji={tx.category?.icon}
+                  className="h-9 w-9"
+                  size={15}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-[var(--color-text)]">
                     {tx.description}
@@ -556,9 +629,9 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
                   className={cn(
                     "shrink-0 font-mono text-sm font-bold",
                     isExpense
-                      ? "text-[#EF4444]"
+                      ? "text-[var(--color-expense)]"
                       : isIncome
-                        ? "text-[#22C55E]"
+                        ? "text-[var(--color-income)]"
                         : "text-[var(--color-text)]"
                   )}
                 >

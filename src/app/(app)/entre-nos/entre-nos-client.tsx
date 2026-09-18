@@ -333,6 +333,7 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
           </div>
         ) : isError ? (
           <EmptyState
+            scene="tx"
             title="Não foi possível carregar"
             description={
               error instanceof Error
@@ -344,11 +345,13 @@ export function EntreNosClient({ member }: { member: WorkspaceMember }) {
           />
         ) : members.length < 2 ? (
           <EmptyState
+            scene="search"
             title="Aguardando membros"
             description="Convide alguém para o workspace. Quando entrarem, o acerto aparece aqui."
           />
         ) : !hasAnyActivity ? (
           <EmptyState
+            scene="goal"
             title="Tudo certo neste mês"
             description={
               settlement.settledAmount > 0

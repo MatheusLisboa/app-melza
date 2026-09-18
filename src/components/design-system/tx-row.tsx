@@ -4,6 +4,7 @@ import { AttributionTrio, type AttributionMember } from "./attribution-trio";
 import { Badge } from "./badge";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { CategoryGlyph } from "@/lib/ui/category-icon";
 
 export function TxRow({
   emoji,
@@ -19,6 +20,7 @@ export function TxRow({
   payer,
   cardOwner,
   onClick,
+  onLongPress,
   className,
   embedded = false,
 }: {
@@ -40,6 +42,7 @@ export function TxRow({
   payer?: AttributionMember | null;
   cardOwner?: AttributionMember | null;
   onClick?: () => void;
+  onLongPress?: () => void;
   className?: string;
   embedded?: boolean;
 }) {
@@ -50,12 +53,6 @@ export function TxRow({
     payer!.id === cardOwner!.id;
 
   const meta = [paymentLabel, category, dateLabel].filter(Boolean).join(" · ");
-  const initial = (
-    title.trim().charAt(0) ||
-    category?.trim().charAt(0) ||
-    "?"
-  ).toUpperCase();
-  const iconLabel = emoji?.trim() || initial;
 
   const sign =
     type === "income" ? "+" : type === "expense" ? "−" : "";
@@ -68,9 +65,12 @@ export function TxRow({
 
   const content = (
     <>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-icon)] text-[13px] font-bold text-white">
-        {iconLabel}
-      </div>
+      <CategoryGlyph
+        name={category}
+        emoji={emoji}
+        className="h-9 w-9"
+        size={15}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-semibold text-[var(--color-text)]">
@@ -121,9 +121,25 @@ export function TxRow({
     className
   );
 
-  if (onClick) {
+  if (onClick || onLongPress) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     return (
-      <button type="button" onClick={onClick} className={base}>
+      <button
+        type="button"
+        onClick={onClick}
+        onContextMenu={(e) => {
+          if (!onLongPress) return;
+          e.preventDefault();
+          onLongPress();
+        }}
+        onTouchStart={() => {
+          if (!onLongPress) return;
+          timer = setTimeout(() => onLongPress(), 480);
+        }}
+        onTouchEnd={() => timer && clearTimeout(timer)}
+        onTouchMove={() => timer && clearTimeout(timer)}
+        className={base}
+      >
         {content}
       </button>
     );

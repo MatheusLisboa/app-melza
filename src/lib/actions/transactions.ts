@@ -332,3 +332,18 @@ export async function deleteTransactionAction(transactionId: string) {
 
   return { success: true };
 }
+
+export async function updateTransactionCategoryAction(
+  transactionId: string,
+  categoryId: string | null
+) {
+  const member = await requireMember();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("transactions")
+    .update({ category_id: categoryId })
+    .eq("id", transactionId)
+    .eq("workspace_id", member.workspace_id);
+  if (error) return { error: error.message };
+  return { success: true };
+}

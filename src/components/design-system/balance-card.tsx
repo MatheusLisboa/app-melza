@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { CountMoney } from "./count-money";
 
 /** Card hero Melza — ink, barra, Entradas | Saídas */
 export function BalanceCard({
@@ -73,9 +74,11 @@ export function BalanceCard({
       {loading ? (
         <div className="relative mb-3 h-9 w-48 animate-pulse rounded-md bg-[var(--color-onyx)]" />
       ) : (
-        <p className="relative mb-3 font-mono text-[32px] font-extrabold leading-none tracking-tight text-[var(--color-hero-fg)] sm:text-[36px]">
-          {hide ? "••••••" : formatCurrency(balance)}
-        </p>
+        <CountMoney
+          value={balance}
+          hidden={hide}
+          className="relative mb-3 block font-mono text-[32px] font-extrabold leading-none tracking-tight text-[var(--color-hero-fg)] sm:text-[36px]"
+        />
       )}
 
       <div className="relative mb-3 h-[3px] overflow-hidden rounded-full bg-[var(--color-onyx)]">
@@ -91,7 +94,13 @@ export function BalanceCard({
             Entradas
           </div>
           <div className="mt-0.5 font-mono text-[13px] font-bold text-[var(--color-income)]">
-            {loading ? "—" : hide ? "••••" : formatCurrency(income)}
+            {loading ? (
+              "—"
+            ) : hide ? (
+              "••••"
+            ) : (
+              <CountMoney value={income} className="font-mono text-[13px] font-bold text-[var(--color-income)]" />
+            )}
           </div>
         </div>
         <div className="text-center">
@@ -120,7 +129,16 @@ export function BalanceCard({
             Saídas
           </div>
           <div className="mt-0.5 font-mono text-[13px] font-bold text-[var(--color-expense)]">
-            {loading ? "—" : hide ? "••••" : formatCurrency(expenses)}
+            {loading ? (
+              "—"
+            ) : hide ? (
+              "••••"
+            ) : (
+              <CountMoney
+                value={expenses}
+                className="font-mono text-[13px] font-bold text-[var(--color-expense)]"
+              />
+            )}
           </div>
         </div>
       </div>
