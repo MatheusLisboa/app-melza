@@ -178,6 +178,8 @@ export function TransactionFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const qc = useQueryClient();
 
   const { data: cards = [] } = useCards(member.workspace_id);
@@ -217,6 +219,7 @@ export function TransactionFormDialog({
       third_party_name: "",
       third_party_relationship: "",
       transfer_to_account_id: null,
+      receipt_url: null,
     }),
     [member.id]
   );
@@ -232,6 +235,26 @@ export function TransactionFormDialog({
   const amount = form.watch("amount");
   const description = form.watch("description");
   const channel = form.watch("payment_channel") ?? "card";
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const raw = localStorage.getItem(`melza-last-pay:${member.workspace_id}`);
+      if (!raw) return;
+      const last = JSON.parse(raw) as {
+        payment_method?: string;
+        payment_channel?: PaymentChannel;
+      };
+      if (last.payment_channel) {
+        form.setValue("payment_channel", last.payment_channel);
+      }
+      if (last.payment_method) {
+        form.setValue("payment_method", last.payment_method);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [open, member.workspace_id, form]);
 
   useEffect(() => {
     if (!open || (txType !== "expense" && txType !== "income")) return;
@@ -262,11 +285,13 @@ export function TransactionFormDialog({
           categoryId: string;
           categoryName: string;
           confidence: number;
+          provider?: string;
         };
         if (data.categoryId && data.confidence >= 0.5) {
           form.setValue("category_id", data.categoryId);
+          const prefix = data.provider === "rule" ? "Regra" : "IA";
           setAiHint(
-            `IA: ${data.categoryName} (${Math.round(data.confidence * 100)}%)`
+            `${prefix}: ${data.categoryName} (${Math.round(data.confidence * 100)}%)`
           );
         }
       } catch {
@@ -334,7 +359,31 @@ export function TransactionFormDialog({
   async function onSubmit(values: TransactionInput) {
     setSubmitting(true);
     setError(null);
-    const result = await createTransactionAction(values);
+
+    let receipt_url: string | null = null;
+    if (receiptFile) {
+      const supabase = createClient();
+      const ext = receiptFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${member.workspace_id}/${member.user_id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upError } = await supabase.storage
+        .from("receipts")
+        .upload(path, receiptFile, { contentType: receiptFile.type, upsert: false });
+      if (upError) {
+        setSubmitting(false);
+        const msg = upError.message.includes("Bucket not found")
+          ? "Bucket de comprovantes ainda não existe. Rode a migration 014."
+          : upError.message;
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      receipt_url = path;
+    }
+
+    const result = await createTransactionAction({
+      ...values,
+      receipt_url,
+    });
     setSubmitting(false);
 
     if (result.error) {
@@ -343,9 +392,22 @@ export function TransactionFormDialog({
       return;
     }
 
-    // Fecha na hora; atualiza listas em background
+    try {
+      localStorage.setItem(
+        `melza-last-pay:${member.workspace_id}`,
+        JSON.stringify({
+          payment_method: values.payment_method,
+          payment_channel: values.payment_channel,
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+
     setOpen(false);
     setAiHint(null);
+    setAdvanced(false);
+    setReceiptFile(null);
     form.reset(defaults);
     invalidateFinanceQueries(qc);
     toast.success("Lançamento salvo");
@@ -376,7 +438,9 @@ export function TransactionFormDialog({
         <DrawerHeader className="border-b border-[var(--color-line)]">
           <DrawerTitle>Novo lançamento</DrawerTitle>
           <p className="text-sm text-[var(--color-text-2)]">
-            Gasto, receita ou transferência
+            {advanced
+              ? "Rateio, parcelas, categoria e comprovante"
+              : "Valor, descrição e como pagou — o resto é opcional"}
           </p>
         </DrawerHeader>
 
@@ -593,6 +657,7 @@ export function TransactionFormDialog({
               </div>
             )}
 
+            {advanced && (
             <div className="space-y-3 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
               <div className="space-y-2">
                 <FieldLabel>Quem consumiu</FieldLabel>
@@ -663,6 +728,7 @@ export function TransactionFormDialog({
                 </div>
               ) : null}
             </div>
+            )}
 
             {(txType === "loan_given" || txType === "loan_received") && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -685,7 +751,7 @@ export function TransactionFormDialog({
               </div>
             )}
 
-            {showInstallment && (
+            {advanced && showInstallment && (
               <div className="space-y-2 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-chip)] p-3.5">
                 <div className="flex items-center gap-2.5">
                   <Checkbox
@@ -720,6 +786,7 @@ export function TransactionFormDialog({
               </div>
             )}
 
+            {advanced && (
             <div className="space-y-1.5">
               <FieldLabel>Notas</FieldLabel>
               <Textarea
@@ -729,6 +796,32 @@ export function TransactionFormDialog({
                 className="min-h-[68px] resize-none rounded-[12px] border-[var(--color-line)] bg-[var(--color-input)]"
               />
             </div>
+            )}
+
+            {advanced && (
+              <div className="space-y-1.5">
+                <FieldLabel>Comprovante</FieldLabel>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="block w-full text-[13px] text-[var(--color-text-2)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--color-chip)] file:px-3 file:py-2 file:text-[13px] file:font-medium file:text-[var(--color-text)]"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                />
+                {receiptFile ? (
+                  <p className="text-[12px] text-[var(--color-text-2)]">
+                    {receiptFile.name}
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setAdvanced((v) => !v)}
+              className="w-full py-1 text-center text-[13px] font-medium text-[var(--color-text-2)] hover:text-[var(--color-text)]"
+            >
+              {advanced ? "Menos detalhes" : "Mais detalhes (rateio, parcela, comprovante)"}
+            </button>
 
             {error && (
               <p className="rounded-[12px] bg-[var(--color-expense)]/10 px-3 py-2.5 text-sm text-[var(--color-expense)]">

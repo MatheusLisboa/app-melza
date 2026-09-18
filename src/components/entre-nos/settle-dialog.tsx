@@ -171,6 +171,37 @@ export function SettleEntreNosDialog({
             ) : null}
           </div>
 
+          {creditor.pix_key ? (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${creditor.pix_key}\n${formatCurrency(remaining)}`
+                  );
+                  toast.success("Chave PIX e valor copiados");
+                } catch {
+                  toast.error("Não foi possível copiar");
+                }
+              }}
+              className="w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-3 text-left"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-[var(--color-text-2)]">
+                PIX de {creditor.display_name}
+              </p>
+              <p className="mt-0.5 truncate font-mono text-[13px] font-medium">
+                {creditor.pix_key}
+              </p>
+              <p className="mt-1 text-[12px] text-[var(--color-text-2)]">
+                Toque para copiar chave + valor
+              </p>
+            </button>
+          ) : (
+            <p className="text-[12px] text-[var(--color-text-2)]">
+              {creditor.display_name} ainda não cadastrou chave PIX no perfil.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"

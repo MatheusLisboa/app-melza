@@ -9,6 +9,7 @@ export const subscriptionSchema = z.object({
   account_id: z.string().uuid().optional().nullable(),
   category_id: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
+  kind: z.enum(["expense", "income"]).optional().default("expense"),
 });
 
 export type SubscriptionInput = z.infer<typeof subscriptionSchema>;

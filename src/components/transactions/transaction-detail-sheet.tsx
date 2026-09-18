@@ -252,6 +252,8 @@ export function TransactionDetailSheet({
                   </div>
                 ))}
               </div>
+
+              <ReceiptPreview path={tx.receipt_url} />
             </>
           )}
         </div>
@@ -271,5 +273,46 @@ export function TransactionDetailSheet({
         ) : null}
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function ReceiptPreview({ path }: { path: string | null }) {
+  const { data: signedUrl } = useQuery({
+    queryKey: ["receipt", path],
+    enabled: Boolean(path) && !path?.startsWith("http"),
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from("receipts")
+        .createSignedUrl(path!, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+  });
+
+  const href = path?.startsWith("http") ? path : signedUrl ?? null;
+  if (!path) return null;
+  if (!href) {
+    return (
+      <p className="mt-3 text-[12px] text-[var(--color-text-2)]">
+        Carregando comprovante…
+      </p>
+    );
+  }
+  const isImage = /\.(jpe?g|png|webp)$/i.test(path);
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-3 block overflow-hidden rounded-xl border border-[var(--color-line)]"
+    >
+      {isImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={href} alt="Comprovante" className="max-h-56 w-full object-cover" />
+      ) : (
+        <p className="px-4 py-3 text-[13px] font-medium">Abrir comprovante</p>
+      )}
+    </a>
   );
 }

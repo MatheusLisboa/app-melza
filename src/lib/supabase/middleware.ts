@@ -20,7 +20,8 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isAuthRoute =
+  const isPublicPage =
+    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/invite") ||
@@ -48,7 +49,10 @@ export async function updateSession(request: NextRequest) {
 
   // Sem env no Vercel o middleware antigo só “passava adiante” → "/" em branco.
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (pathname === "/" || (!isAuthRoute && pathname !== "/login")) {
+    if (pathname === "/") {
+      return supabaseResponse;
+    }
+    if (!isPublicPage && pathname !== "/login") {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("error", "missing_env");
@@ -80,7 +84,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isPublicPage) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Não autenticado" },
@@ -105,9 +109,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname === "/") {
+  if (pathname === "/" && user) {
     const url = request.nextUrl.clone();
-    url.pathname = user ? "/dashboard" : "/login";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 

@@ -29,7 +29,9 @@ Abra [http://localhost:3000](http://localhost:3000).
 - Contas, cartões, lançamentos, faturas por ciclo, assinaturas, empréstimos
 - **Entre Nós** (acerto entre membros no workspace compartilhado)
 - Relatórios, importação Nubank (PDF), prévia / PDF da fatura
+- Orçamento por categoria, metas, regras de categorização, fechar o mês
 - Chat IA (`/chat`): consulta saldos/limites/faturas, criar lançamento, pagar fatura, etc.
+- Landing pública, lançamento rápido, comprovantes, chave PIX no Entre Nós
 - Tema claro/escuro, PWA, perfil com avatar
 
 ## Supabase
@@ -42,9 +44,10 @@ Abra [http://localhost:3000](http://localhost:3000).
 |----------|------------|
 | Banco **novo** | `001_initial_schema.sql` (+ `005`…`008` se não estiverem no 001) |
 | Ainda tem `families` | `004_migrate_families_complete.sql` (ver README do Supabase) |
-| Já em workspaces | garantir `005` → `006` → `007` → `008` → **`009_security_rls.sql`** |
+| Já em workspaces | garantir `005` → `006` → `007` → `008` → **`009_security_rls.sql`** → `010`…`013` → **`014_planning_and_habits.sql`** |
 
 Bucket de Storage `avatars` (público de leitura) é necessário para foto de perfil — ver nota em `008_avatar_url.sql`.
+Bucket privado `receipts` entra na `014` (comprovantes de lançamento).
 
 ## IA
 

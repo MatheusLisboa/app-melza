@@ -17,6 +17,10 @@ const FINANCE_ROOTS = new Set([
   "categories",
   "workspace-members",
   "app-shell",
+  "category-budgets",
+  "categorization-rules",
+  "savings-goals",
+  "month-closes",
 ]);
 
 /**

@@ -54,6 +54,7 @@ export function SettingsClient({
   const alertDays = useUiStore((s) => s.subscriptionAlertDays);
   const setAlertDays = useUiStore((s) => s.setSubscriptionAlertDays);
   const [displayName, setDisplayName] = useState(member.display_name);
+  const [pixKey, setPixKey] = useState(member.pix_key ?? "");
   const [avatarColor, setAvatarColor] = useState(member.avatar_color);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(
     member.avatar_url ?? null
@@ -108,6 +109,7 @@ export function SettingsClient({
         display_name: displayName,
         avatar_color: avatarColor,
         avatar_url: avatarUrl,
+        pix_key: pixKey.trim() || null,
       })
       .eq("id", member.id);
     setSaving(false);
@@ -483,6 +485,19 @@ export function SettingsClient({
                 />
               ))}
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pixKey">Chave PIX</Label>
+            <Input
+              id="pixKey"
+              value={pixKey}
+              onChange={(e) => setPixKey(e.target.value)}
+              placeholder="CPF, e-mail, telefone ou chave aleatória"
+            />
+            <p className="text-[12px] text-[var(--color-text-2)]">
+              Usada no Entre Nós para copiar na hora do acerto. Fica só no
+              workspace.
+            </p>
           </div>
           <Btn onClick={saveProfile} disabled={saving || photoBusy}>
             {saving ? "Salvando…" : "Salvar perfil"}

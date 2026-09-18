@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { AlertTriangle, Check, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 function monthlyEquivalent(sub: Subscription): number {
   const amount = Number(sub.amount);
@@ -85,8 +86,18 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
   });
 
   const active = subscriptions.filter((s) => s.is_active);
-  const monthlyTotal = useMemo(
-    () => active.reduce((sum, s) => sum + monthlyEquivalent(s), 0),
+  const monthlyExpense = useMemo(
+    () =>
+      active
+        .filter((s) => s.kind !== "income")
+        .reduce((sum, s) => sum + monthlyEquivalent(s), 0),
+    [active]
+  );
+  const monthlyIncome = useMemo(
+    () =>
+      active
+        .filter((s) => s.kind === "income")
+        .reduce((sum, s) => sum + monthlyEquivalent(s), 0),
     [active]
   );
 
@@ -103,14 +114,12 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
     <div className="page-enter page-pad space-y-5 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-page-title">
-            Assinaturas
-          </h1>
+          <h1 className="text-page-title">Assinaturas</h1>
           <p className="mt-0.5 text-sm text-[var(--color-text-2)]">
-            Total mensal estimado:{" "}
-            <span className="font-money text-[var(--color-text)]">
-              {formatCurrency(monthlyTotal)}
-            </span>
+            Saídas {formatCurrency(monthlyExpense)}
+            {monthlyIncome > 0
+              ? ` · entradas ${formatCurrency(monthlyIncome)}`
+              : ""}
           </p>
         </div>
         <SubscriptionFormDialog
@@ -160,9 +169,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
         </div>
       ) : subscriptions.length === 0 ? (
         <EmptyState
-          title="Nenhuma assinatura"
-          description="Cadastre Netflix, Spotify e outras cobranças recorrentes."
-          actionLabel="Nova assinatura"
+          title="Nada recorrente ainda"
+          description="Cadastre Netflix, aluguel ou o salário do mês."
+          actionLabel="Nova"
           onAction={() => setCreateOpen(true)}
         />
       ) : (
@@ -188,6 +197,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                       <p className="font-medium text-[var(--color-text)]">
                         {sub.name}
                       </p>
+                      {sub.kind === "income" ? (
+                        <Badge status="outline">Receita</Badge>
+                      ) : null}
                       {!sub.is_active && (
                         <Badge status="outline">Inativa</Badge>
                       )}
@@ -224,7 +236,11 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                               toast.error(res.error);
                               return;
                             }
-                            toast.success(`${sub.name} marcado como pago`);
+                            toast.success(
+                              sub.kind === "income"
+                                ? `${sub.name} marcado como recebido`
+                                : `${sub.name} marcado como pago`
+                            );
                             await qc.invalidateQueries({
                               queryKey: ["subscriptions"],
                             });
@@ -236,7 +252,9 @@ export function SubscriptionsClient({ member }: { member: WorkspaceMember }) {
                             });
                           }}
                         >
-                          Marcar como pago
+                          {sub.kind === "income"
+                            ? "Marcar como recebido"
+                            : "Marcar como pago"}
                         </Btn>
                       )}
                       <Btn
@@ -311,6 +329,7 @@ function SubscriptionFormDialog({
       account_id: null,
       category_id: null,
       notes: "",
+      kind: "expense",
     },
   });
 
@@ -325,7 +344,11 @@ function SubscriptionFormDialog({
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Nova assinatura</DialogTitle>
+          <DialogTitle>
+            {form.watch("kind") === "income"
+              ? "Nova receita recorrente"
+              : "Nova assinatura"}
+          </DialogTitle>
         </DialogHeader>
         <form
           className="space-y-3"
@@ -345,9 +368,38 @@ function SubscriptionFormDialog({
             form.reset();
           })}
         >
+          <div className="flex gap-2">
+            {(
+              [
+                { id: "expense" as const, label: "Assinatura" },
+                { id: "income" as const, label: "Receita (salário)" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => form.setValue("kind", opt.id)}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-[12px] font-medium",
+                  form.watch("kind") === opt.id
+                    ? "bg-[var(--color-ink)] text-white"
+                    : "bg-[var(--color-chip)] text-[var(--color-text-2)]"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <div className="space-y-1">
             <Label>Nome</Label>
-            <Input {...form.register("name")} placeholder="Netflix, Spotify…" />
+            <Input
+              {...form.register("name")}
+              placeholder={
+                form.watch("kind") === "income"
+                  ? "Salário, aluguel recebido…"
+                  : "Netflix, Spotify…"
+              }
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -443,7 +495,11 @@ function SubscriptionFormDialog({
               <SelectContent>
                 <SelectItem value="none">Nenhuma</SelectItem>
                 {categories
-                  .filter((c) => c.type === "expense")
+                  .filter(
+                    (c) =>
+                      c.type ===
+                      (form.watch("kind") === "income" ? "income" : "expense")
+                  )
                   .map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.icon} {c.name}

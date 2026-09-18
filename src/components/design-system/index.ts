@@ -5,6 +5,7 @@ export { Fab } from "./fab";
 export { DsSkeleton } from "./skeleton";
 export { InputField } from "./input-field";
 export { TopBar } from "./top-bar";
+export { MonthNav } from "./month-nav";
 export { BrandMark, BrandWordmark, BrandLockup } from "./brand-mark";
 export { TxRow } from "./tx-row";
 export { Avatar } from "./avatar";

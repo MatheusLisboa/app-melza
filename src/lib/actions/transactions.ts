@@ -6,10 +6,10 @@ import {
   transactionSchema,
   type TransactionInput,
 } from "@/lib/validations/transaction";
-import { toISODate } from "@/lib/utils/format";
 import { parsePaymentMethod } from "@/lib/utils/payment-method";
 import { tagsForPaymentChannel } from "@/lib/utils/payment-channel";
 import { dateForInstallmentInSeries } from "@/lib/finance/installment-dates";
+import { matchCategorizationRule } from "@/lib/finance/categorize-rules";
 import {
   accountBalanceDelta,
   adjustAccountBalance,
@@ -34,6 +34,15 @@ export async function createTransactionAction(raw: TransactionInput) {
   const card_id = payment.kind === "card" ? payment.id : null;
   const account_id = payment.kind === "account" ? payment.id : null;
   const tags = tagsForPaymentChannel(input.payment_channel);
+
+  let category_id = input.category_id || null;
+  if (!category_id && input.description.trim()) {
+    const { data: rules } = await supabase
+      .from("categorization_rules")
+      .select("pattern, category_id")
+      .eq("workspace_id", member.workspace_id);
+    category_id = matchCategorizationRule(input.description, rules ?? []);
+  }
 
   let third_party_id: string | null = null;
   let loan_id: string | null = null;
@@ -112,7 +121,7 @@ export async function createTransactionAction(raw: TransactionInput) {
       transaction_type: "transfer" as const,
       description: input.description,
       notes: input.notes || null,
-      category_id: input.category_id || null,
+      category_id,
       status: "confirmed" as const,
       transfer_group_id: transferGroupId,
       transaction_date: input.transaction_date,
@@ -198,7 +207,7 @@ export async function createTransactionAction(raw: TransactionInput) {
         transaction_type: input.transaction_type,
         description: `${input.description} (${i}/${input.total_installments})`,
         notes: input.notes || null,
-        category_id: input.category_id || null,
+        category_id,
         card_id,
         account_id,
         tags,
@@ -242,7 +251,7 @@ export async function createTransactionAction(raw: TransactionInput) {
     transaction_type: input.transaction_type,
     description: input.description,
     notes: input.notes || null,
-    category_id: input.category_id || null,
+    category_id,
     card_id,
     account_id,
     tags,
@@ -251,6 +260,7 @@ export async function createTransactionAction(raw: TransactionInput) {
     transaction_date: input.transaction_date,
     status: "confirmed",
     paid_at: new Date().toISOString(),
+    receipt_url: input.receipt_url || null,
   });
 
   if (error) return { error: error.message };

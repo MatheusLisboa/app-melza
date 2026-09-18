@@ -24,6 +24,11 @@ export const transactionSchema = z
     payment_method: z.string().min(1, "Selecione o meio de pagamento"),
     payment_channel: paymentChannelSchema.optional().nullable(),
     notes: z.string().optional().nullable(),
+    receipt_url: z
+      .string()
+      .min(1)
+      .optional()
+      .nullable(),
     is_installment: z.boolean(),
     total_installments: z.number().int().min(2).max(48).nullable().optional(),
     third_party_name: z.string().optional().nullable(),

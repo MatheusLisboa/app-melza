@@ -19,6 +19,9 @@ Migrations adicionais:
 - **`007_delete_workspace_rpc.sql`** — exclusão real via RPC (necessária)
 - **`008_avatar_url.sql`** — `avatar_url` + política/bucket `avatars` (foto de perfil)
 - **`009_security_rls.sql`** — endurece invites + roles (obrigatória)
+- **`013_push_subscriptions.sql`** — Web Push
+- **`014_planning_and_habits.sql`** — orçamento, regras, metas, fechar mês, PIX, comprovantes, receitas recorrentes
+
 Confirme antes (SQL):
 
 ```sql

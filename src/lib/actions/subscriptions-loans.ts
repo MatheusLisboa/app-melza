@@ -35,6 +35,7 @@ export async function createSubscriptionAction(raw: SubscriptionInput) {
     category_id: input.category_id || null,
     notes: input.notes || null,
     is_active: true,
+    kind: input.kind ?? "expense",
   });
 
   if (error) return { error: error.message };
@@ -92,7 +93,7 @@ export async function paySubscriptionAction(subscriptionId: string) {
     consumer_member_id: member.id,
     amount: Number(sub.amount),
     currency: sub.currency || "BRL",
-    transaction_type: "expense",
+    transaction_type: sub.kind === "income" ? "income" : "expense",
     description: sub.name,
     notes: sub.notes,
     category_id: sub.category_id,

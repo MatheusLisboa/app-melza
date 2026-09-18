@@ -16,6 +16,7 @@ import {
   Users,
   BarChart3,
   User,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ const MORE_PATHS = [
   "/subscriptions",
   "/loans",
   "/reports",
+  "/planning",
   "/entre-nos",
   "/settings",
 ] as const;
@@ -73,6 +75,7 @@ const MORE_LINKS: MoreLink[] = [
   { href: "/subscriptions", label: "Assinaturas", icon: Repeat },
   { href: "/loans", label: "Empréstimos", icon: HandCoins },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
+  { href: "/planning", label: "Planejamento", icon: Target },
   { href: "/entre-nos", label: "Entre Nós", icon: Users, sharedOnly: true },
   { href: "/settings", label: "Perfil", icon: User },
 ];
@@ -183,6 +186,11 @@ export function BottomNav({
                       </span>
                     )}
                   </span>
+                  {!isActive && (
+                    <span className="mt-0.5 max-w-full truncate text-[9px] font-medium text-[var(--color-text-3)]">
+                      {label}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

@@ -20,6 +20,9 @@ import {
   formatCurrency,
   formatDate,
   toISODate,
+  addMonths,
+  startOfMonth,
+  endOfMonth,
 } from "@/lib/utils/format";
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { Input } from "@/components/ui/input";
@@ -33,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { collapseInstallmentPurchases } from "@/lib/finance/collapse-installments";
 import { cn } from "@/lib/utils";
+import { paymentMethodCaption } from "@/lib/utils/payment-channel";
 
 const TransactionFormDialog = dynamic(
   () =>
@@ -52,16 +56,14 @@ const TransactionDetailSheet = dynamic(
 type FilterTab = "all" | "income" | "expense";
 
 export function TransactionsPageClient({ member }: { member: WorkspaceMember }) {
-  const now = new Date();
-  // Histórico amplo: 6 meses atrás → 12 meses à frente (parcelas da fatura)
-  const [from, setFrom] = useState(() => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-    return toISODate(d);
-  });
-  const [to, setTo] = useState(() => {
-    const d = new Date(now.getFullYear(), now.getMonth() + 13, 0);
-    return toISODate(d);
-  });
+  const now = useMemo(() => new Date(), []);
+  const defaults = useMemo(() => {
+    const from = toISODate(new Date(now.getFullYear(), now.getMonth() - 6, 1));
+    const to = toISODate(new Date(now.getFullYear(), now.getMonth() + 13, 0));
+    return { from, to };
+  }, [now]);
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(defaults.to);
   const [cardId, setCardId] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
   const [paidBy, setPaidBy] = useState<string>("all");
@@ -70,6 +72,13 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
   const [showFilters, setShowFilters] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  const filtersActive =
+    cardId !== "all" ||
+    categoryId !== "all" ||
+    paidBy !== "all" ||
+    from !== defaults.from ||
+    to !== defaults.to;
 
   const { data: cards = [] } = useCards(member.workspace_id);
   const activeCards = useMemo(
@@ -160,7 +169,25 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(tx);
     }
-    return Array.from(map.entries());
+    return Array.from(map.entries()).map(([dateLabel, txs]) => {
+      const net = txs.reduce((sum, tx) => {
+        if (tx.status === "scheduled") return sum;
+        if (
+          tx.transaction_type === "expense" ||
+          tx.transaction_type === "loan_given"
+        ) {
+          return sum - tx.displayAmount;
+        }
+        if (
+          tx.transaction_type === "income" ||
+          tx.transaction_type === "loan_received"
+        ) {
+          return sum + tx.displayAmount;
+        }
+        return sum;
+      }, 0);
+      return { dateLabel, txs, net };
+    });
   }, [filtered]);
 
   const totalExpense = useMemo(
@@ -193,14 +220,27 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)]"
+            className={cn(
+              "relative flex h-9 w-9 items-center justify-center rounded-xl",
+              showFilters || filtersActive
+                ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                : "bg-[var(--color-chip)]"
+            )}
             aria-label="Filtros"
+            aria-pressed={showFilters}
           >
             <SlidersHorizontal
               size={16}
               strokeWidth={2}
-              className="text-[var(--color-text-2)]"
+              className={
+                showFilters || filtersActive
+                  ? undefined
+                  : "text-[var(--color-text-2)]"
+              }
             />
+            {filtersActive && !showFilters ? (
+              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--color-expense)]" />
+            ) : null}
           </button>
         }
       />
@@ -222,18 +262,11 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                 type="button"
                 onClick={() => setFilter(tab.id)}
                 className={cn(
-                  "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-all",
-                  !active && "bg-[var(--color-chip)] text-[var(--color-text-2)]"
-                )}
-                style={
+                  "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
                   active
-                    ? {
-                        background: `${accent.color}25`,
-                        color: accent.color,
-                        border: `1px solid ${accent.color}45`,
-                      }
-                    : { border: "1px solid transparent" }
-                }
+                    ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                    : "bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
+                )}
               >
                 {tab.label}
               </button>
@@ -242,7 +275,58 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
         </div>
 
         {showFilters && (
-          <div className="grid gap-3 rounded-2xl border border-[var(--color-fog)] bg-card/40 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-3 rounded-2xl border border-[var(--color-fog)] bg-card/40 p-4">
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  {
+                    id: "month",
+                    label: "Este mês",
+                    from: toISODate(startOfMonth(now)),
+                    to: toISODate(endOfMonth(now)),
+                  },
+                  {
+                    id: "prev",
+                    label: "Mês passado",
+                    from: toISODate(startOfMonth(addMonths(now, -1))),
+                    to: toISODate(endOfMonth(addMonths(now, -1))),
+                  },
+                  {
+                    id: "3m",
+                    label: "3 meses",
+                    from: toISODate(startOfMonth(addMonths(now, -2))),
+                    to: toISODate(endOfMonth(now)),
+                  },
+                  {
+                    id: "all",
+                    label: "Período amplo",
+                    from: defaults.from,
+                    to: defaults.to,
+                  },
+                ] as const
+              ).map((preset) => {
+                const active = from === preset.from && to === preset.to;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setFrom(preset.from);
+                      setTo(preset.to);
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+                      active
+                        ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                        : "bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
               <Label>De</Label>
               <Input
@@ -307,6 +391,22 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                 </SelectContent>
               </Select>
             </div>
+            {filtersActive ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFrom(defaults.from);
+                  setTo(defaults.to);
+                  setCardId("all");
+                  setCategoryId("all");
+                  setPaidBy("all");
+                }}
+                className="text-left text-[13px] font-medium text-[var(--color-text-2)] underline-offset-2 hover:text-[var(--color-text)] hover:underline sm:col-span-2 lg:col-span-3"
+              >
+                Limpar filtros
+              </button>
+            ) : null}
+          </div>
           </div>
         )}
 
@@ -342,10 +442,23 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
           />
         ) : (
           <div className="space-y-6">
-            {grouped.map(([dateLabel, txs]) => (
+            {grouped.map(({ dateLabel, txs, net }) => (
               <section key={dateLabel}>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-2)]">
-                  {dateLabel}
+                <h3 className="mb-2 flex items-baseline justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-2)]">
+                  <span>{dateLabel}</span>
+                  <span
+                    className={cn(
+                      "font-mono text-[11px] font-bold normal-case tracking-normal",
+                      net > 0
+                        ? "text-[var(--color-income)]"
+                        : net < 0
+                          ? "text-[var(--color-expense)]"
+                          : "text-[var(--color-text-3)]"
+                    )}
+                  >
+                    {net > 0 ? "+" : net < 0 ? "−" : ""}
+                    {formatCurrency(Math.abs(net))}
+                  </span>
                 </h3>
                 <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
                   {txs.map((tx, i) => {
@@ -393,6 +506,9 @@ export function TransactionsPageClient({ member }: { member: WorkspaceMember }) 
                             isSettlement
                               ? "Acerto Entre Nós"
                               : tx.category?.name
+                          }
+                          paymentLabel={
+                            isSettlement ? null : paymentMethodCaption(tx)
                           }
                           dateLabel={formatDate(tx.transaction_date)}
                           amount={tx.displayAmount}

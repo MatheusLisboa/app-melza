@@ -14,6 +14,8 @@ import {
   Users,
   User,
   Wallet,
+  Target,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +44,8 @@ const SIDEBAR_NAV: {
   { href: "/subscriptions", label: "Assinaturas", icon: Repeat },
   { href: "/loans", label: "Empréstimos", icon: HandCoins },
   { href: "/chat", label: "Chat IA", icon: MessageCircle },
-  { href: "/reports", label: "Relatórios", icon: Receipt },
+  { href: "/reports", label: "Relatórios", icon: BarChart3 },
+  { href: "/planning", label: "Planejamento", icon: Target },
   { href: "/settings", label: "Perfil", icon: User },
 ];
 

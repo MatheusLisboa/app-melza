@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { getAiLanguageModel } from "@/lib/ai/provider";
+import { matchCategorizationRule } from "@/lib/finance/categorize-rules";
 
 const bodySchema = z.object({
   description: z.string().min(1),
@@ -39,17 +40,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
     }
 
-    const ai = getAiLanguageModel("categorize");
-    if (!ai.ok) {
-      return NextResponse.json(
-        {
-          error: ai.error,
-          code: ai.code,
-        },
-        { status: 503 }
-      );
-    }
-
     const supabase = await createClient();
     const {
       data: { user },
@@ -71,6 +61,11 @@ export async function POST(request: Request) {
 
     const catType = parsed.data.type ?? "expense";
 
+    const { data: rules } = await supabase
+      .from("categorization_rules")
+      .select("pattern, category_id")
+      .eq("workspace_id", parsed.data.workspaceId);
+
     const { data: categories } = await supabase
       .from("categories")
       .select("id, name, type, icon")
@@ -81,6 +76,31 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Sem categorias" },
         { status: 400 }
+      );
+    }
+
+    const ruleCatId = matchCategorizationRule(
+      parsed.data.description,
+      rules ?? []
+    );
+    const ruleCat = categories.find((c) => c.id === ruleCatId);
+    if (ruleCat) {
+      return NextResponse.json({
+        categoryId: ruleCat.id,
+        categoryName: ruleCat.name,
+        confidence: 1,
+        provider: "rule",
+      });
+    }
+
+    const ai = getAiLanguageModel("categorize");
+    if (!ai.ok) {
+      return NextResponse.json(
+        {
+          error: ai.error,
+          code: ai.code,
+        },
+        { status: 503 }
       );
     }
 

@@ -36,6 +36,7 @@ import {
 import {
   BalanceCard,
   Fab,
+  MonthNav,
   TxRow,
   DsSkeleton,
   Avatar,
@@ -44,6 +45,11 @@ import {
 import { workspaceAccent } from "@/lib/utils/workspace";
 import { setActiveWorkspaceAction } from "@/lib/actions/workspace";
 import { DashboardCardsSection } from "@/components/dashboard/cards-overview";
+import {
+  GoalsPeek,
+  MonthProjectionCard,
+  SetupChecklist,
+} from "@/components/dashboard/planning-widgets";
 import {
   paymentMethodCaption,
   resolvePaymentChannel,
@@ -78,6 +84,20 @@ function greetingLabel(date = new Date()): string {
 function firstName(displayName: string): string {
   const part = displayName.trim().split(/\s+/)[0];
   return part || displayName;
+}
+
+function dueCaption(iso: string | null): string {
+  if (!iso) return "—";
+  const due = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  due.setHours(12, 0, 0, 0);
+  const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (days < 0) return `atrasada · ${formatDate(iso)}`;
+  if (days === 0) return "Vence hoje";
+  if (days === 1) return "Vence amanhã";
+  if (days <= 7) return `em ${days} dias`;
+  return formatDate(iso);
 }
 
 function SectionHeader({
@@ -163,13 +183,17 @@ export function DashboardClient({
   memberships?: MembershipOption[];
 }) {
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [expandCards, setExpandCards] = useState(false);
-  const [expandSpend, setExpandSpend] = useState(false);
   const [expandCategories, setExpandCategories] = useState(false);
-  const [expandUpcoming, setExpandUpcoming] = useState(false);
-  const monthAnchor = useMemo(() => new Date(), []);
+  const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
   const from = toISODate(startOfMonth(monthAnchor));
   const to = toISODate(endOfMonth(monthAnchor));
+  const isCurrentMonth = useMemo(() => {
+    const now = startOfMonth(new Date());
+    return (
+      monthAnchor.getFullYear() === now.getFullYear() &&
+      monthAnchor.getMonth() === now.getMonth()
+    );
+  }, [monthAnchor]);
   const accent = workspaceAccent(member.workspace?.type);
   const isShared = member.workspace?.type !== "PERSONAL";
 
@@ -244,12 +268,12 @@ export function DashboardClient({
       const { data, error } = await supabase
         .from("subscriptions")
         .select(
-          "id, name, amount, billing_cycle, next_billing_date, is_active, notes"
+          "id, name, amount, billing_cycle, next_billing_date, is_active, notes, kind"
         )
         .eq("workspace_id", member.workspace_id)
         .eq("is_active", true)
         .order("next_billing_date", { ascending: true })
-        .limit(3);
+        .limit(8);
       if (error) throw error;
       return (data ?? []) as Subscription[];
     },
@@ -265,6 +289,7 @@ export function DashboardClient({
   const { data: recentTx = [], isLoading: recentLoading } = useQuery({
     queryKey: ["dashboard", "recent", member.workspace_id, recentFrom],
     staleTime: 30_000,
+    enabled: isCurrentMonth,
     queryFn: async () => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -287,9 +312,6 @@ export function DashboardClient({
       return data as TransactionWithRelations[];
     },
   });
-
-  // ... later recent collapses to fewer rows — slice in useMemo
-
 
   const confirmedMonth = useMemo(
     () => monthTx.filter((t) => t.status !== "scheduled"),
@@ -407,7 +429,7 @@ export function DashboardClient({
     }
     const rows = Array.from(map.values()).sort((a, b) => b.total - a.total);
     const max = rows[0]?.total || 1;
-    return rows.slice(0, 4).map((r) => ({
+    return rows.map((r) => ({
       ...r,
       pct: Math.round((r.total / max) * 100),
     }));
@@ -446,10 +468,10 @@ export function DashboardClient({
     return { rows, cashOut, onCard, uncategorized };
   }, [confirmedMonth]);
 
-  const recent = useMemo(
-    () => collapseInstallmentPurchases(recentTx).slice(0, 5),
-    [recentTx]
-  );
+  const recent = useMemo(() => {
+    const source = isCurrentMonth ? recentTx : monthTx;
+    return collapseInstallmentPurchases(source).slice(0, 5);
+  }, [isCurrentMonth, monthTx, recentTx]);
   const monthLabel = formatMonthYear(monthAnchor);
   const monthShort = monthAnchor
     .toLocaleDateString("pt-BR", { month: "short" })
@@ -501,6 +523,10 @@ export function DashboardClient({
         ) : null}
       </div>
 
+      <div className="px-5 pt-4 md:px-6">
+        <MonthNav value={monthAnchor} onChange={setMonthAnchor} />
+      </div>
+
       {/* Saldo */}
       <div className="px-5 pt-4 md:px-6">
         <BalanceCard
@@ -509,19 +535,54 @@ export function DashboardClient({
           expenses={monthExpense}
           accentColor={accent.color}
           loading={isLoading && monthTx.length === 0}
-          title={`Disponível · ${monthShort}`}
+          title={isCurrentMonth ? `Disponível · ${monthShort}` : `Resumo · ${monthShort}`}
+          subtitle={isCurrentMonth ? undefined : monthLabel}
         />
       </div>
 
-      {/* Recentes — MOVIDO PARA CIMA (mais importante) */}
+      {/* Atalhos compactos */}
+      <div className="mt-4 px-5 md:px-6">
+        <div className="grid grid-cols-4 gap-2">
+          {quickLinks.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="pressable flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] px-1 py-3 shadow-card transition-all duration-200 hover:bg-[var(--color-chip)] hover:shadow-card-hover dark:shadow-card-dark dark:hover:shadow-card-hover-dark"
+            >
+              <Icon
+                size={18}
+                strokeWidth={1.75}
+                className="text-[var(--color-text)]"
+              />
+              <span className="text-center text-[11px] font-semibold leading-tight text-[var(--color-text)]">
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <SetupChecklist member={member} />
+      <MonthProjectionCard
+        member={member}
+        balance={consolidatedBalance}
+      />
+
+      {/* Recentes */}
       <div className="mt-6 px-5 md:px-6">
         <SectionHeader
-          title={isShared ? "Timeline" : "Últimas transações"}
+          title={
+            isCurrentMonth
+              ? isShared
+                ? "Timeline"
+                : "Últimas transações"
+              : `Lançamentos · ${monthShort}`
+          }
           large
           href="/transactions"
           linkLabel="Ver todas"
         />
-        {recentLoading ? (
+        {(isCurrentMonth ? recentLoading : isLoading) ? (
           <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
             <div className="flex flex-col gap-3">
               {[1, 2, 3].map((i) => (
@@ -539,10 +600,14 @@ export function DashboardClient({
         ) : recent.length === 0 ? (
           <div className="rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5">
             <p className="text-sm text-[var(--color-text-2)]">
-              Nenhum lançamento recente.
+              {isCurrentMonth
+                ? "Nenhum lançamento recente."
+                : `Nenhum lançamento em ${monthLabel}.`}
             </p>
             <p className="mt-1 text-[12px] text-[var(--color-text-3)]">
-              Toque no + para registrar a primeira despesa.
+              {isCurrentMonth
+                ? "Toque no + para registrar a primeira despesa."
+                : "Troque o mês acima ou registre um lançamento."}
             </p>
           </div>
         ) : (
@@ -611,29 +676,7 @@ export function DashboardClient({
         )}
       </div>
 
-      {/* Atalhos — grid 2x2 ao invés de 4 colunas */}
-      <div className="mt-8 px-5 md:px-6">
-        <div className="grid grid-cols-2 gap-4">
-          {quickLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="pressable flex flex-col items-center gap-2.5 rounded-2xl border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-5 shadow-card dark:shadow-card-dark transition-all duration-200 hover:shadow-card-hover dark:hover:shadow-card-hover-dark hover:bg-[var(--color-chip)]"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-chip)]">
-                <Icon
-                  size={20}
-                  strokeWidth={1.75}
-                  className="text-[var(--color-text)]"
-                />
-              </div>
-              <span className="text-center text-13px] font-semibold text-[var(--color-text)]">
-                {label}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <DashboardCardsSection member={member} />
 
       {sharedCta?.workspace && (
         <div className="mt-4 px-5 md:px-6">
@@ -825,7 +868,8 @@ export function DashboardClient({
             linkLabel="Relatório"
           />
           <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-1">
-            {byCategory.map(({ emoji, name: catName, total, pct }, i) => (
+            {(expandCategories ? byCategory : byCategory.slice(0, 4)).map(
+              ({ emoji, name: catName, total, pct }, i) => (
               <div
                 key={catName}
                 className={cn(
@@ -853,8 +897,21 @@ export function DashboardClient({
               </div>
             ))}
           </div>
+          {byCategory.length > 4 ? (
+            <button
+              type="button"
+              onClick={() => setExpandCategories((v) => !v)}
+              className="mt-2 w-full py-1.5 text-center text-[13px] font-medium text-[var(--color-text-2)] transition-colors hover:text-[var(--color-text)]"
+            >
+              {expandCategories
+                ? "Ver menos"
+                : `Ver mais ${byCategory.length - 4} categorias`}
+            </button>
+          ) : null}
         </div>
       )}
+
+      <GoalsPeek member={member} />
 
       {/* Próximas contas */}
       <div className="mt-6 px-5 md:px-6">
@@ -878,7 +935,13 @@ export function DashboardClient({
           </div>
         ) : (
           <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)]">
-            {upcoming.map((item, i) => (
+            {upcoming.slice(0, 5).map((item, i) => {
+              const caption = dueCaption(item.next_billing_date);
+              const isIncome = item.kind === "income";
+              const urgent =
+                !isIncome &&
+                (caption.startsWith("atrasada") || caption.startsWith("Vence"));
+              return (
               <div
                 key={item.id}
                 className={cn(
@@ -887,23 +950,37 @@ export function DashboardClient({
                 )}
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-chip)] text-base">
-                  🔁
+                  {isIncome ? "↓" : "🔁"}
                 </div>
                 <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--color-text)]">
                   {item.name}
                 </p>
                 <div className="text-right">
-                  <p className="font-mono text-[13px] font-medium text-[var(--color-text)]">
+                  <p
+                    className={cn(
+                      "font-mono text-[13px] font-medium",
+                      isIncome
+                        ? "text-[#22C55E]"
+                        : "text-[var(--color-text)]"
+                    )}
+                  >
+                    {isIncome ? "+" : ""}
                     {formatCurrency(Number(item.amount))}
                   </p>
-                  <p className="text-[11px] text-[var(--color-text-2)]">
-                    {item.next_billing_date
-                      ? formatDate(item.next_billing_date)
-                      : "—"}
+                  <p
+                    className={cn(
+                      "text-[11px]",
+                      urgent
+                        ? "text-[var(--color-warning)]"
+                        : "text-[var(--color-text-2)]"
+                    )}
+                  >
+                    {caption}
                   </p>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

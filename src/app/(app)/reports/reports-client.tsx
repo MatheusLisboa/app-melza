@@ -306,7 +306,58 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
       </div>
 
       {/* Filtros */}
-      <div className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="space-y-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              {
+                id: "month",
+                label: "Este mês",
+                from: toISODate(startOfMonth(now)),
+                to: toISODate(endOfMonth(now)),
+              },
+              {
+                id: "prev",
+                label: "Mês passado",
+                from: toISODate(startOfMonth(addMonths(now, -1))),
+                to: toISODate(endOfMonth(addMonths(now, -1))),
+              },
+              {
+                id: "3m",
+                label: "3 meses",
+                from: toISODate(startOfMonth(addMonths(now, -2))),
+                to: toISODate(endOfMonth(now)),
+              },
+              {
+                id: "year",
+                label: "Este ano",
+                from: `${now.getFullYear()}-01-01`,
+                to: toISODate(endOfMonth(now)),
+              },
+            ] as const
+          ).map((preset) => {
+            const active = from === preset.from && to === preset.to;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  setFrom(preset.from);
+                  setTo(preset.to);
+                }}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  active
+                    ? "bg-[var(--color-ink)] text-white dark:bg-[var(--color-pearl)] dark:text-[var(--color-ink)]"
+                    : "bg-[var(--color-chip)] text-[var(--color-text-2)] hover:text-[var(--color-text)]"
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="space-y-1.5">
           <Label className="text-[var(--color-text-2)]">De</Label>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -378,6 +429,7 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
           </Select>
         </div>
       </div>
+      </div>
 
       <div className="flex flex-wrap gap-4 text-sm">
         <span className="text-[var(--color-text-2)]">
@@ -396,6 +448,47 @@ export function ReportsClient({ member }: { member: WorkspaceMember }) {
           {transactions.length} lançamento(s)
         </span>
       </div>
+
+      {expenseTotal > 0 && (
+        <div className="overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-[var(--color-card)] px-4 py-3">
+          <p className="mb-3 text-[13px] font-semibold">Despesas por categoria</p>
+          {(() => {
+            const map = new Map<string, { name: string; total: number }>();
+            for (const tx of transactions) {
+              if (
+                tx.status === "scheduled" ||
+                (tx.transaction_type !== "expense" &&
+                  tx.transaction_type !== "loan_given")
+              ) {
+                continue;
+              }
+              const key = tx.category_id ?? "none";
+              const prev = map.get(key) ?? {
+                name: tx.category?.name ?? "Sem categoria",
+                total: 0,
+              };
+              prev.total += Number(tx.amount);
+              map.set(key, prev);
+            }
+            const rows = Array.from(map.values()).sort((a, b) => b.total - a.total);
+            const max = rows[0]?.total || 1;
+            return rows.slice(0, 8).map((r) => (
+              <div key={r.name} className="mb-2 last:mb-0">
+                <div className="mb-1 flex justify-between text-[12px]">
+                  <span>{r.name}</span>
+                  <span className="font-mono">{formatCurrency(r.total)}</span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-[var(--color-chip)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--color-ink)]"
+                    style={{ width: `${Math.round((r.total / max) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">

@@ -35,6 +35,7 @@ export interface WorkspaceMember {
   role: MemberRole;
   avatar_color: string;
   avatar_url?: string | null;
+  pix_key?: string | null;
   created_at: string;
   workspace?: Workspace | null;
 }
@@ -116,7 +117,52 @@ export interface Subscription {
   is_active: boolean;
   notes: string | null;
   logo_url: string | null;
+  /** expense = assinatura; income = salário / receita recorrente */
+  kind?: "expense" | "income";
   created_at: string;
+}
+
+export interface CategoryBudget {
+  id: string;
+  workspace_id: string;
+  category_id: string;
+  amount: number;
+  created_at: string;
+  updated_at: string;
+  category?: Category | null;
+}
+
+export interface CategorizationRule {
+  id: string;
+  workspace_id: string;
+  pattern: string;
+  category_id: string;
+  created_at: string;
+  category?: Category | null;
+}
+
+export interface SavingsGoal {
+  id: string;
+  workspace_id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string | null;
+  account_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonthClose {
+  id: string;
+  workspace_id: string;
+  year_month: string;
+  closed_at: string;
+  closed_by_member_id: string | null;
+  income: number;
+  expenses: number;
+  notes: string | null;
 }
 
 export interface Loan {
@@ -165,6 +211,7 @@ export interface Transaction {
   status: TransactionStatus;
   ai_category_suggestion: string | null;
   ai_confidence: number | null;
+  receipt_url: string | null;
   created_at: string;
   updated_at: string;
 }

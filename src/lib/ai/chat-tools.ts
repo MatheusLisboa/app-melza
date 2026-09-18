@@ -1048,6 +1048,7 @@ export function buildChatTools(opts: {
           name,
           amount,
           billing_cycle: billingCycle,
+          kind: "expense",
           next_billing_date: nextBillingDate || null,
           card_id,
           account_id,
